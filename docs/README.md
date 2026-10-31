@@ -55,7 +55,7 @@ Configure em **Settings > Secrets and variables > Actions** o secret `MSSQL_SA_P
 
 Depois dos testes funcionais, em push para `main` ou disparo manual em `main`, o job **Implantar na VPS** constrói a imagem da API com `src/WebApi/Dockerfile`, envia a imagem e a configuração por SSH, gera `devops/.env` no servidor e sobe todos os serviços em `~/ntix`.
 
-O servidor precisa ter Docker com Compose e `curl`, e o usuário de SSH precisa poder usar o Docker. Recomenda-se ao menos 6 GB de memória, porque o SQL Server sozinho reserva até 2 GB.
+A cada deploy, `devops/vps/ensure-dependencies.sh` verifica `curl`, `tar`, `gzip`, Docker e Docker Compose no servidor e instala o que faltar. Para instalar, o usuário de SSH precisa ser root ou ter sudo sem senha. Também é preciso ter acesso à internet e um sistema com `apt`, `dnf` ou `yum`. Recomenda-se ao menos 6 GB de memória, porque o SQL Server sozinho reserva até 2 GB.
 
 | Secret | Conteúdo |
 |---|---|

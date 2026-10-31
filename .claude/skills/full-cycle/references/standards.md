@@ -43,6 +43,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - GitHub Actions: build, testes unitários e integrados em paralelo e, depois, testes funcionais.
 - Valores sensíveis da esteira vêm de secrets do repositório, nunca do arquivo do workflow.
 - Deploy em VPS via SSH, depois dos testes: acesso por secrets, variáveis de ambiente geradas no servidor a cada deploy e API em contêiner construído pelo `Dockerfile`.
+- O deploy verifica as dependências do servidor e instala o que faltar antes de usá-las.
 - Na VPS só a API é pública. Banco e observabilidade escutam em `127.0.0.1`.
 
 ### Nomes

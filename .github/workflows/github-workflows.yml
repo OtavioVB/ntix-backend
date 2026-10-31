@@ -129,7 +129,11 @@ jobs:
             IdentitiesOnly yes
             StrictHostKeyChecking yes
           CONFIG
-          ssh vps 'docker compose version'
+
+      - name: Verificar e instalar as dependências do servidor
+        run: |
+          ssh vps 'bash -s' < devops/vps/ensure-dependencies.sh
+          ssh vps 'docker version --format "Docker {{.Server.Version}}" && docker compose version'
 
       - name: Construir a imagem da API
         run: docker build --file src/WebApi/Dockerfile --tag "$WEBAPI_IMAGE" .
