@@ -42,6 +42,8 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 ### Integração contínua
 - GitHub Actions: build, testes unitários e integrados em paralelo e, depois, testes funcionais.
 - Valores sensíveis da esteira vêm de secrets do repositório, nunca do arquivo do workflow.
+- Deploy em VPS via SSH, depois dos testes: acesso por secrets, variáveis de ambiente geradas no servidor a cada deploy e API em contêiner construído pelo `Dockerfile`.
+- Na VPS só a API é pública. Banco e observabilidade escutam em `127.0.0.1`.
 
 ### Nomes
 - Use o nome mais simples que descreva o negócio: `Customer`, não `CustomerAccount`.

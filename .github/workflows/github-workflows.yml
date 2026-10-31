@@ -95,3 +95,72 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Rodar testes funcionais
         run: dotnet test tsts/FunctionalTests/FunctionalTests.csproj --configuration ${{ env.BUILD_CONFIGURATION }}
+
+  deploy:
+    name: Implantar na VPS
+    needs: functional-tests
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency: deploy-vps
+    env:
+      WEBAPI_IMAGE: ntix-webapi:${{ github.sha }}
+      DEPLOY_PATH: ntix
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configurar acesso SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/vps_key
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/vps_key ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<CONFIG
+          Host vps
+            HostName $VPS_HOST
+            Port $VPS_PORT
+            User $VPS_USER
+            IdentityFile ~/.ssh/vps_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+          CONFIG
+          ssh vps 'docker compose version'
+
+      - name: Construir a imagem da API
+        run: docker build --file src/WebApi/Dockerfile --tag "$WEBAPI_IMAGE" .
+
+      - name: Enviar a imagem para o servidor
+        run: docker save "$WEBAPI_IMAGE" | gzip | ssh vps 'gunzip | docker load'
+
+      - name: Enviar a configuração dos serviços
+        run: tar czf - devops data | ssh vps "mkdir -p '$DEPLOY_PATH' && tar xzf - -C '$DEPLOY_PATH'"
+
+      - name: Gerar as variáveis de ambiente no servidor
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.VPS_MSSQL_SA_PASSWORD }}
+          MSSQL_PID: ${{ vars.VPS_MSSQL_PID || 'Express' }}
+        run: |
+          printf "MSSQL_SA_PASSWORD='%s'\nMSSQL_PID=%s\nWEBAPI_IMAGE=%s\nASPNETCORE_ENVIRONMENT=Production\n" \
+            "$MSSQL_SA_PASSWORD" "$MSSQL_PID" "$WEBAPI_IMAGE" \
+            | ssh vps "umask 077 && cat > '$DEPLOY_PATH/devops/.env'"
+
+      - name: Subir os serviços
+        run: ssh vps "cd '$DEPLOY_PATH' && docker compose -f devops/docker-compose.yml --profile app up -d --remove-orphans"
+
+      - name: Verificar a API
+        run: |
+          ssh vps 'for attempt in $(seq 1 30); do
+            curl --fail --silent --output /dev/null http://127.0.0.1:8080/openapi/v1.json && exit 0
+            sleep 5
+          done
+          docker logs --tail 50 ntix-webapi
+          exit 1'
+
+      - name: Remover imagens antigas da API
+        run: |
+          ssh vps "docker image ls ntix-webapi --format '{{.Repository}}:{{.Tag}}' | grep -v '$WEBAPI_IMAGE' | xargs -r docker image rm || true"

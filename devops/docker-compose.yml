@@ -4,10 +4,10 @@ services:
     container_name: ntix-sqlserver-local
     restart: unless-stopped
     ports:
-      - "1433:1433"
+      - "127.0.0.1:1433:1433"
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_PID: "Developer"
+      MSSQL_PID: "${MSSQL_PID:-Developer}"
       MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Defina MSSQL_SA_PASSWORD em devops/.env (veja devops/.env.example)}"
     volumes:
       - ntix-sqlserver-volume:/var/opt/mssql
@@ -47,9 +47,9 @@ services:
     volumes:
       - ./observability/otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - "4317:4317"
-      - "4318:4318"
-      - "13133:13133"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:13133:13133"
     depends_on:
       - prometheus
       - tempo
@@ -72,7 +72,7 @@ services:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ntix-prometheus-volume:/prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     restart: unless-stopped
     networks:
       - ntix-network-local
@@ -86,7 +86,7 @@ services:
       - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - ntix-tempo-volume:/var/tempo
     ports:
-      - "3200:3200"
+      - "127.0.0.1:3200:3200"
     restart: unless-stopped
     networks:
       - ntix-network-local
@@ -100,7 +100,7 @@ services:
       - ./observability/loki/loki.yaml:/etc/loki/loki.yaml:ro
       - ntix-loki-volume:/loki
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     restart: unless-stopped
     networks:
       - ntix-network-local
@@ -123,6 +123,31 @@ services:
       - prometheus
       - tempo
       - loki
+    restart: unless-stopped
+    networks:
+      - ntix-network-local
+
+  ntix-webapi:
+    profiles: ["app"]
+    image: "${WEBAPI_IMAGE:-ntix-webapi:local}"
+    build:
+      context: ..
+      dockerfile: src/WebApi/Dockerfile
+    container_name: ntix-webapi
+    environment:
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      OTEL_SERVICE_NAME: ntix-webapi
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      SqlServerConfiguration__ConnectionString: "Server=ntix-sqlserver-local,1433;Database=ntix;User Id=sa;Password=${MSSQL_SA_PASSWORD:?Defina MSSQL_SA_PASSWORD em devops/.env (veja devops/.env.example)};Encrypt=True;TrustServerCertificate=True"
+    ports:
+      - "8080:8080"
+    depends_on:
+      ntix-sqlserver-init:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_started
     restart: unless-stopped
     networks:
       - ntix-network-local
