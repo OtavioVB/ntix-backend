@@ -34,7 +34,11 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Unit of Work: o caso de uso faz rollback em qualquer exceção e só faz commit quando a regra de negócio permite a criação.
 - Evite consultas com `LIKE`. Prefira consultas exatas sobre índices.
 
+### Exceções
+- Toda exceção tratada no caso de uso é devolvida ao controller, exceto o cancelamento da requisição, que é tratado e devolvido com 4XX.
+
 ### Observabilidade
+- A definição da senha do cliente gera spans, e o dashboard aponta quando as iterações do hash extrapolam.
 - Logs, traces e métricas via OpenTelemetry, visualizados no Grafana ([RFC 0005](../../../../docs/rfcs/0005-observabilidade-com-opentelemetry.md)).
 - Caso de uso de negócio tem funil em métricas do Prometheus e dashboard próprio: um contador de solicitações e um contador de desfechos.
 - Nenhum sinal pode expor dado pessoal completo, nem em mensagem de exceção copiada para um span.
@@ -53,6 +57,8 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 ### Regras de negócio
 - Não invente regra que não foi estipulada, mesmo que pareça uma proteção técnica, como um limite de tentativas.
 - Slug único: o primeiro usa só o nome; se já existir, gera-se uma versão aleatória de 5 letras ou números, verifica-se na base e usa-se a primeira livre.
+- Senha do cliente: obrigatória, com ao menos 8 caracteres, uma letra maiúscula, uma minúscula, um número e um símbolo. É persistida como hash que combina a chave privada do servidor com o hash da senha, e cada cliente tem o próprio salt.
+- Celular do cliente: opcional, com DDD e número.
 
 ### Padrões de código
 - Seguir os padrões dos projetos de referência `Tech.Aquisition.Customers` e `ntix`, resumidos em [code-patterns.md](code-patterns.md).
@@ -106,6 +112,11 @@ Assumidas por Claude. Valem até o usuário dizer o contrário; ao confirmar, mo
 - Slug não aparece nos logs, porque revela o nome completo do cliente.
 - O Sonar da esteira é o SonarQube Cloud, e a API Key é o secret `SONAR_TOKEN`, exposto ao job como variável de ambiente.
 - A esteira gera a cobertura com o `coverlet.collector`, e o `coverlet.msbuild` fica disponível para `dotnet test /p:CollectCoverage=true`.
+- Algoritmo da senha: PBKDF2-SHA256 com 600 mil iterações e salt aleatório de 16 bytes, seguido de HMAC-SHA256 com a chave privada (`PasswordConfiguration__PrivateKey`). Só a biblioteca padrão do .NET, sem RFC.
+- Símbolo da senha é qualquer caractere que não seja letra, número ou espaço. A senha não tem tamanho máximo, porque nenhum foi estipulado.
+- Celular tem exatamente 11 dígitos (2 de DDD e 9 de número), aceita `(`, `)`, `-` e espaços na entrada e é persistido só com dígitos. Não há validação da lista de DDDs nem do nono dígito, e o celular não aparece nos logs.
+- O 4XX do cancelamento é o 499, e a exceção que chega ao controller não é capturada e vira 500.
+- O número de iterações é fixo, então "extrapolar" é medido pelo tempo do hash: p95 amarelo a partir de 250 ms e vermelho a partir de 500 ms. As iterações ficam no hash, porque gerar o salt não itera.
 - Enquanto só houver um endpoint, o controller lê os headers com `[FromHeader]` e o caso de uso valida o `AuditableInfoValueObject`, sem middleware.
 
 ## Decisões em aberto

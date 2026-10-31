@@ -26,6 +26,7 @@ public sealed class MeasurementCollector : IDisposable
     private readonly MeterListener _listener = new();
 
     public List<CapturedMeasurement> Measurements { get; } = [];
+    public List<(string Instrument, double Value)> Durations { get; } = [];
 
     public MeasurementCollector(TestMeterFactory meterFactory)
     {
@@ -47,6 +48,8 @@ public sealed class MeasurementCollector : IDisposable
 
             Measurements.Add(new CapturedMeasurement(instrument.Name, value, outcome));
         });
+
+        _listener.SetMeasurementEventCallback<double>((instrument, value, _, _) => Durations.Add((instrument.Name, value)));
 
         _listener.Start();
     }

@@ -18,6 +18,7 @@ public sealed class CreateCustomerDiagnostics
 
     private readonly Counter<long> _requests;
     private readonly Counter<long> _outcomes;
+    private readonly Histogram<double> _passwordHashDuration;
 
     public CreateCustomerDiagnostics(IMeterFactory meterFactory)
     {
@@ -33,6 +34,12 @@ public sealed class CreateCustomerDiagnostics
             unit: "{request}",
             description: "Solicitações de cadastro de cliente concluídas, por desfecho.");
 
+        _passwordHashDuration = meter.CreateHistogram<double>(
+            name: "ntix.customers.password.hash.duration",
+            unit: "s",
+            description: "Tempo das iterações de hash na definição da senha do cliente.",
+            advice: new InstrumentAdvice<double> { HistogramBucketBoundaries = [0.05, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.75, 1, 2, 5] });
+
         // O increase() do Prometheus ignora a primeira amostra de uma série: partir de zero mantém o funil exato.
         _requests.Add(0);
 
@@ -45,4 +52,7 @@ public sealed class CreateCustomerDiagnostics
 
     public void RegistrationFinished(string outcome)
         => _outcomes.Add(1, new KeyValuePair<string, object?>(OUTCOME_TAG, outcome));
+
+    public void PasswordHashed(double seconds)
+        => _passwordHashDuration.Record(seconds);
 }

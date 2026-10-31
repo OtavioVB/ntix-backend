@@ -1,4 +1,5 @@
 using Application.UseCases.Base.Interfaces;
+using Application.UseCases.CreateCustomer;
 using Application.UseCases.CreateCustomer.Inputs;
 using Domain.ValueObjects;
 using Microsoft.AspNetCore.Authorization;
@@ -11,6 +12,8 @@ namespace WebApi.Controllers;
 [ApiController]
 public sealed class CustomersV1Controller : ControllerBase
 {
+    private const int CLIENT_CLOSED_REQUEST_STATUS_CODE = 499;
+
     [HttpPost]
     [AllowAnonymous]
     public async Task<IActionResult> CreateCustomerAsync(
@@ -26,13 +29,18 @@ public sealed class CustomersV1Controller : ControllerBase
             input: CreateCustomerUseCaseInput.Create(
                 fullName: request.FullName,
                 email: request.Email,
-                document: request.Document),
+                document: request.Document,
+                password: request.Password,
+                phoneNumber: request.PhoneNumber),
             auditableInfo: AuditableInfoValueObject.Build(
                 correlationId: correlationId,
                 originService: originService,
                 executionUser: executionUser,
                 requestedAt: requestedAt),
             cancellationToken: cancellationToken);
+
+        if (result.Notifications.Any(notification => notification.Code == CreateCustomerUseCase.CREATE_CUSTOMER_CANCELED_NOTIFICATION_CODE))
+            return StatusCode(CLIENT_CLOSED_REQUEST_STATUS_CODE, result.Notifications);
 
         if (result.IsError)
             return BadRequest(result.Notifications);

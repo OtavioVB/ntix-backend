@@ -1,3 +1,4 @@
+using Application.UseCases.Base.Configuration;
 using Application.UseCases.CreateCustomer;
 using Application.UseCases.CreateCustomer.Inputs;
 using Domain.ValueObjects;
@@ -8,6 +9,9 @@ using Infra.SqlServer.Repositories.Customers.Models;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using UnitTests.Support;
 
@@ -22,6 +26,9 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
     private const string OBFUSCATED_EMAIL = "ma***@ntix.com";
     private const string DOCUMENT = "52998224725";
     private const string OBFUSCATED_DOCUMENT = "***.982.247-**";
+    private const string PASSWORD = "Senha@123";
+    private const string PRIVATE_KEY = "chave-de-teste";
+    private const string PHONE_NUMBER = "11987654321";
 
     private const string CORRELATION_ID = "b7e2f0d4-8c3a-4f5e-a1b2-c3d4e5f6a7b8";
     private const string ORIGIN_SERVICE = "customer-portal";
@@ -126,7 +133,7 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
             .ThrowsAsync(new InvalidOperationException("database unavailable"));
 
         // Act
-        await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo()));
 
         // Assert
         ThenFunnelRecorded("error");
@@ -141,7 +148,7 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
             .ThrowsAsync(new InvalidOperationException("commit failed"));
 
         // Act
-        await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo()));
 
         // Assert
         ThenFunnelRecorded("error");
@@ -156,10 +163,55 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
             .ThrowsAsync(new OperationCanceledException());
 
         // Act
-        await Assert.ThrowsAsync<OperationCanceledException>(() => _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo()));
+        await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
 
         // Assert
         ThenFunnelRecorded(null);
+    }
+
+    [Fact]
+    public async Task Given_NewCustomer_When_Executing_Should_RecordPasswordHashDuration()
+    {
+        // Arrange & Act
+        await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+
+        // Assert
+        var duration = Assert.Single(_measurements.Durations);
+        Assert.Equal("ntix.customers.password.hash.duration", duration.Instrument);
+        Assert.True(duration.Value > 0);
+    }
+
+    [Fact]
+    public async Task Given_NewCustomer_When_Executing_Should_CreateSpansOfPasswordDefinitionWithoutPassword()
+    {
+        // Arrange
+        var spans = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == CreateCustomerDiagnostics.NAME,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = spans.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        // Act
+        await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+
+        // Assert
+        Assert.Single(spans, span => span.OperationName == "CreateCustomer.GeneratePasswordSalt");
+        var hashSpan = Assert.Single(spans, span => span.OperationName == "CreateCustomer.HashPassword");
+        Assert.Equal(PasswordHashValueObject.ITERATIONS, hashSpan.GetTagItem("ntix.password.iterations"));
+        Assert.All(spans, span => Assert.DoesNotContain(span.TagObjects, tag => Equals(tag.Value, PASSWORD)));
+    }
+
+    [Fact]
+    public async Task Given_WeakPassword_When_Executing_Should_NotRecordPasswordHashDuration()
+    {
+        // Arrange & Act
+        await _useCase.ExecuteAsync(BuildInput(password: "senha"), BuildAuditableInfo());
+
+        // Assert
+        Assert.Empty(_measurements.Durations);
     }
 
     public CreateCustomerUseCaseTests()
@@ -175,6 +227,7 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
         _useCase = new CreateCustomerUseCase(
             customerRepository: _repository,
             unitOfWork: _unitOfWork,
+            passwordConfiguration: new PasswordConfiguration(PRIVATE_KEY),
             diagnostics: diagnostics,
             logger: _logger);
     }
@@ -182,11 +235,15 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
     private static CreateCustomerUseCaseInput BuildInput(
         string fullName = FULL_NAME,
         string email = EMAIL,
-        string document = DOCUMENT)
+        string document = DOCUMENT,
+        string password = PASSWORD,
+        string? phoneNumber = null)
         => CreateCustomerUseCaseInput.Create(
             fullName: fullName,
             email: email,
-            document: document);
+            document: document,
+            password: password,
+            phoneNumber: phoneNumber);
 
     private static AuditableInfoValueObject BuildAuditableInfo()
         => AuditableInfoValueObject.Build(CORRELATION_ID, ORIGIN_SERVICE, EXECUTION_USER, REQUESTED_AT);
@@ -234,6 +291,117 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
             notification => Assert.Equal("CPF_FORMAT_INVALID", notification.Code));
         await _unitOfWork.DidNotReceive().BeginTransactionAsync(Arg.Any<CancellationToken>());
         await ThenCustomerWasNotCreated();
+    }
+
+    [Fact]
+    public async Task Given_WeakPassword_When_Executing_Should_ReturnNotificationWithoutOpeningTransaction()
+    {
+        // Arrange
+        var input = BuildInput(password: "senha@123");
+
+        // Act
+        var result = await _useCase.ExecuteAsync(input, BuildAuditableInfo());
+
+        // Assert
+        Assert.True(result.IsError);
+        var notification = Assert.Single(result.Notifications);
+        Assert.Equal("PASSWORD_WITHOUT_UPPERCASE", notification.Code);
+        await _unitOfWork.DidNotReceive().BeginTransactionAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Given_InvalidPhoneNumber_When_Executing_Should_ReturnNotificationWithoutOpeningTransaction()
+    {
+        // Arrange
+        var input = BuildInput(phoneNumber: "987654321");
+
+        // Act
+        var result = await _useCase.ExecuteAsync(input, BuildAuditableInfo());
+
+        // Assert
+        Assert.True(result.IsError);
+        var notification = Assert.Single(result.Notifications);
+        Assert.Equal("PHONE_NUMBER_FORMAT_INVALID", notification.Code);
+        await _unitOfWork.DidNotReceive().BeginTransactionAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Given_NewCustomer_When_Executing_Should_CreateWithHashOfPasswordSaltAndPrivateKey()
+    {
+        // Arrange
+        CustomerModel? created = null;
+        _repository
+            .CreateAsync(Arg.Do<CustomerModel>(customer => created = customer), Arg.Any<CancellationToken>())
+            .Returns(CustomerCreationResult.Created);
+
+        // Act
+        await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+
+        // Assert
+        Assert.NotNull(created);
+        var passwordHash = Rfc2898DeriveBytes.Pbkdf2(PASSWORD, created.PasswordSalt, PasswordHashValueObject.ITERATIONS, HashAlgorithmName.SHA256, PasswordHashValueObject.LENGTH);
+        Assert.Equal(HMACSHA256.HashData(Encoding.UTF8.GetBytes(PRIVATE_KEY), passwordHash), created.PasswordHash);
+        Assert.Equal(PasswordSaltValueObject.LENGTH, created.PasswordSalt.Length);
+    }
+
+    [Fact]
+    public async Task Given_PhoneNumber_When_Executing_Should_CreateWithNormalizedPhoneNumber()
+    {
+        // Arrange
+        var input = BuildInput(phoneNumber: "(11) 98765-4321");
+
+        // Act
+        await _useCase.ExecuteAsync(input, BuildAuditableInfo());
+
+        // Assert
+        await _repository
+            .Received(1)
+            .CreateAsync(Arg.Is<CustomerModel>(customer => customer.PhoneNumber == PHONE_NUMBER), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Given_NoPhoneNumber_When_Executing_Should_CreateWithoutPhoneNumber()
+    {
+        // Arrange & Act
+        var result = await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await _repository
+            .Received(1)
+            .CreateAsync(Arg.Is<CustomerModel>(customer => customer.PhoneNumber == null), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Given_SlugConflict_When_Executing_Should_KeepSamePasswordHashAndSalt()
+    {
+        // Arrange
+        var created = new List<CustomerModel>();
+        _repository
+            .CreateAsync(Arg.Do<CustomerModel>(created.Add), Arg.Any<CancellationToken>())
+            .Returns(CustomerCreationResult.SlugAlreadyExists, CustomerCreationResult.Created);
+
+        // Act
+        await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+
+        // Assert
+        Assert.Equal(2, created.Count);
+        Assert.Equal(created[0].PasswordHash, created[1].PasswordHash);
+        Assert.Equal(created[0].PasswordSalt, created[1].PasswordSalt);
+    }
+
+    [Fact]
+    public async Task Given_NewCustomer_When_Executing_Should_NotLogPasswordOrPhoneNumber()
+    {
+        // Arrange & Act
+        await _useCase.ExecuteAsync(BuildInput(phoneNumber: PHONE_NUMBER), BuildAuditableInfo());
+
+        // Assert
+        Assert.All(_logger.Logs, log =>
+        {
+            Assert.DoesNotContain(PASSWORD, log.Message);
+            Assert.DoesNotContain(PHONE_NUMBER, log.Message);
+        });
     }
 
     [Fact]
@@ -473,7 +641,7 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
     }
 
     [Fact]
-    public async Task Given_RepositoryFailure_When_Executing_Should_RollbackLogErrorAndReturnErrorNotification()
+    public async Task Given_RepositoryFailure_When_Executing_Should_RollbackLogErrorAndPropagateException()
     {
         // Arrange
         var failure = new InvalidOperationException("database unavailable");
@@ -482,12 +650,10 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
             .ThrowsAsync(failure);
 
         // Act
-        var result = await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo()));
 
         // Assert
-        Assert.True(result.IsError);
-        var notification = Assert.Single(result.Notifications);
-        Assert.Equal("CREATE_CUSTOMER_ERROR", notification.Code);
+        Assert.Same(failure, thrown);
         await ThenRolledBackWithoutCommit();
         var log = Assert.Single(_logger.Logs);
         Assert.Equal(LogLevel.Error, log.Level);
@@ -495,7 +661,7 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
     }
 
     [Fact]
-    public async Task Given_CommitFailure_When_Executing_Should_RollbackAndReturnErrorNotification()
+    public async Task Given_CommitFailure_When_Executing_Should_RollbackAndPropagateException()
     {
         // Arrange
         _unitOfWork
@@ -503,17 +669,15 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
             .ThrowsAsync(new InvalidOperationException("commit failed"));
 
         // Act
-        var result = await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+        var execute = () => _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
 
         // Assert
-        Assert.True(result.IsError);
-        var notification = Assert.Single(result.Notifications);
-        Assert.Equal("CREATE_CUSTOMER_ERROR", notification.Code);
+        await Assert.ThrowsAsync<InvalidOperationException>(execute);
         await _unitOfWork.Received(1).RollbackAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Given_RollbackFailure_When_HandlingException_Should_LogBothFailuresAndReturnErrorNotification()
+    public async Task Given_RollbackFailure_When_HandlingException_Should_LogBothFailuresAndPropagateOriginalException()
     {
         // Arrange
         var failure = new InvalidOperationException("database unavailable");
@@ -526,16 +690,16 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
             .ThrowsAsync(rollbackFailure);
 
         // Act
-        var result = await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo()));
 
         // Assert
-        Assert.True(result.IsError);
+        Assert.Same(failure, thrown);
         Assert.Contains(_logger.Logs, log => ReferenceEquals(log.Exception, failure));
         Assert.Contains(_logger.Logs, log => ReferenceEquals(log.Exception, rollbackFailure));
     }
 
     [Fact]
-    public async Task Given_CanceledRequest_When_Executing_Should_RollbackAndPropagateCancellation()
+    public async Task Given_CanceledRequest_When_Executing_Should_RollbackAndReturnCanceledNotification()
     {
         // Arrange
         _repository
@@ -543,10 +707,12 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
             .ThrowsAsync(new OperationCanceledException());
 
         // Act
-        var execute = () => _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+        var result = await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
 
         // Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(execute);
+        Assert.True(result.IsError);
+        var notification = Assert.Single(result.Notifications);
+        Assert.Equal(CreateCustomerUseCase.CREATE_CUSTOMER_CANCELED_NOTIFICATION_CODE, notification.Code);
         await ThenRolledBackWithoutCommit();
         Assert.Empty(_logger.Logs);
     }

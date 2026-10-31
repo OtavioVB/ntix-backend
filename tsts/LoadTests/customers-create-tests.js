@@ -7,6 +7,7 @@ const createCustomerFailRate = new Rate("create_customer_fail");
 const BASE_URL = __ENV.BASE_URL;
 const CUSTOMERS_ROUTE = "/api/v1/customers";
 
+const PASSWORD = "Senha@123";
 const HOMONYM_FULL_NAME = "Cliente Homonimo Carga";
 const HOMONYM_PERCENTAGE = 0.05;
 const MAX_CPF_BASE = 1000000000;
@@ -66,6 +67,7 @@ export default function (data) {
         fullName: Math.random() < HOMONYM_PERCENTAGE ? HOMONYM_FULL_NAME : `Cliente Carga ${uniqueNumber}`,
         email: `cliente.carga.${uniqueNumber}@ntix.com`,
         document: buildCpf(uniqueNumber),
+        password: PASSWORD,
     });
 
     const response = http.post(`${BASE_URL}${CUSTOMERS_ROUTE}`, payload, {

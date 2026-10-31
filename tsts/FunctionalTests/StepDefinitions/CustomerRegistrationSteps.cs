@@ -5,6 +5,7 @@ using Reqnroll;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 
 namespace FunctionalTests.StepDefinitions;
 
@@ -14,6 +15,14 @@ public sealed class CustomerRegistrationSteps
     private const string CUSTOMERS_ROUTE = "api/v1/customers";
     private const string COUNT_CUSTOMERS_SQL = "SELECT COUNT(*) FROM customers.Customer;";
     private const string SELECT_SLUG_BY_EMAIL_SQL = "SELECT slug FROM customers.Customer WHERE email = @email;";
+    private const string SELECT_PASSWORD_HASH_BY_EMAIL_SQL = "SELECT password_hash FROM customers.Customer WHERE email = @email;";
+    private const string COUNT_CUSTOMERS_BY_EMAIL_AND_PHONE_NUMBER_SQL = "SELECT COUNT(*) FROM customers.Customer WHERE email = @email AND phone_number = @phone_number;";
+    private const string COUNT_CUSTOMERS_BY_EMAIL_WITHOUT_PHONE_NUMBER_SQL = "SELECT COUNT(*) FROM customers.Customer WHERE email = @email AND phone_number IS NULL;";
+
+    private const string FULL_NAME = "Maria da Silva";
+    private const string EMAIL = "maria@ntix.com";
+    private const string DOCUMENT = "52998224725";
+    private const string PASSWORD = "Senha@123";
 
     private static readonly Dictionary<string, string> AUDITABLE_HEADERS_BY_INFORMATION = new()
     {
@@ -27,15 +36,16 @@ public sealed class CustomerRegistrationSteps
 
     private HttpResponseMessage? _response;
     private string? _registeredEmail;
+    private string? _registeredPassword;
     private int _customersBeforeRegistration;
 
     private sealed record NotificationResponse(string Code, string Message, string Type);
 
-    private Task<HttpResponseMessage> RegisterAsync(string fullName, string email, string document, string? omittedHeader = null)
+    private Task<HttpResponseMessage> RegisterAsync(string fullName, string email, string document, string? omittedHeader = null, string password = PASSWORD, string? phoneNumber = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, CUSTOMERS_ROUTE)
         {
-            Content = JsonContent.Create(new { fullName, email, document })
+            Content = JsonContent.Create(new { fullName, email, document, password, phoneNumber })
         };
 
         var auditableHeaders = new Dictionary<string, string>
@@ -80,8 +90,33 @@ public sealed class CustomerRegistrationSteps
     public async Task WhenRegistrationArrivesWithout(string information)
     {
         _customersBeforeRegistration = await CountCustomersAsync();
-        _registeredEmail = "maria@ntix.com";
-        _response = await RegisterAsync("Maria da Silva", _registeredEmail, "52998224725", AUDITABLE_HEADERS_BY_INFORMATION[information]);
+        _registeredEmail = EMAIL;
+        _response = await RegisterAsync(FULL_NAME, _registeredEmail, DOCUMENT, AUDITABLE_HEADERS_BY_INFORMATION[information]);
+    }
+
+    [When("me cadastro com a senha {string}")]
+    public async Task WhenRegisteringWithPassword(string password)
+    {
+        _customersBeforeRegistration = await CountCustomersAsync();
+        _registeredEmail = EMAIL;
+        _registeredPassword = password;
+        _response = await RegisterAsync(FULL_NAME, EMAIL, DOCUMENT, password: password);
+    }
+
+    [When("me cadastro com o celular {string}")]
+    public async Task WhenRegisteringWithPhoneNumber(string phoneNumber)
+    {
+        _customersBeforeRegistration = await CountCustomersAsync();
+        _registeredEmail = EMAIL;
+        _response = await RegisterAsync(FULL_NAME, EMAIL, DOCUMENT, phoneNumber: phoneNumber);
+    }
+
+    [When("me cadastro sem informar o celular")]
+    public async Task WhenRegisteringWithoutPhoneNumber()
+    {
+        _customersBeforeRegistration = await CountCustomersAsync();
+        _registeredEmail = EMAIL;
+        _response = await RegisterAsync(FULL_NAME, EMAIL, DOCUMENT);
     }
 
     [Then("meu cadastro é criado")]
@@ -113,4 +148,28 @@ public sealed class CustomerRegistrationSteps
     [Then("recebo o slug {string} seguido de uma versão de cinco letras ou números")]
     public async Task ThenReceivesVersionedSlug(string baseSlug)
         => Assert.Matches($"^{baseSlug}-[a-z0-9]{{5}}$", await GetRegisteredSlugAsync());
+
+    [Then("minha senha não fica guardada como foi escrita")]
+    public async Task ThenPasswordIsNotStoredAsWritten()
+    {
+        var passwordHash = await NtixApiHooks.Database.ScalarAsync<byte[]>(
+            SELECT_PASSWORD_HASH_BY_EMAIL_SQL,
+            new SqlParameter("@email", _registeredEmail));
+
+        Assert.NotEqual(Encoding.UTF8.GetBytes(_registeredPassword!), passwordHash);
+        Assert.DoesNotContain(_registeredPassword!, Encoding.UTF8.GetString(passwordHash));
+    }
+
+    [Then("o celular {string} fica registrado")]
+    public async Task ThenPhoneNumberIsRegistered(string phoneNumber)
+        => Assert.Equal(1, await NtixApiHooks.Database.ScalarAsync<int>(
+            COUNT_CUSTOMERS_BY_EMAIL_AND_PHONE_NUMBER_SQL,
+            new SqlParameter("@email", _registeredEmail),
+            new SqlParameter("@phone_number", phoneNumber)));
+
+    [Then("nenhum celular fica registrado")]
+    public async Task ThenNoPhoneNumberIsRegistered()
+        => Assert.Equal(1, await NtixApiHooks.Database.ScalarAsync<int>(
+            COUNT_CUSTOMERS_BY_EMAIL_WITHOUT_PHONE_NUMBER_SQL,
+            new SqlParameter("@email", _registeredEmail)));
 }

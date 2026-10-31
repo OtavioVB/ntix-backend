@@ -6,5 +6,8 @@ public sealed record CustomerModel(
     string Email,
     string Document,
     string Slug,
+    byte[] PasswordHash,
+    byte[] PasswordSalt,
+    string? PhoneNumber,
     DateTime CreatedAt,
     Guid CreatedCorrelationId);

@@ -1,4 +1,5 @@
 using Application.UseCases.Base;
+using Application.UseCases.Base.Configuration;
 using Application.UseCases.Base.Interfaces;
 using Application.UseCases.CreateCustomer.Inputs;
 using Domain.BoundedContexts.CustomerContext.Entities;
@@ -18,17 +19,20 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
 {
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly PasswordConfiguration _passwordConfiguration;
     private readonly CreateCustomerDiagnostics _diagnostics;
     private readonly ILogger<CreateCustomerUseCase> _logger;
 
     public CreateCustomerUseCase(
         ICustomerRepository customerRepository,
         IUnitOfWork unitOfWork,
+        PasswordConfiguration passwordConfiguration,
         CreateCustomerDiagnostics diagnostics,
         ILogger<CreateCustomerUseCase> logger)
     {
         _customerRepository = customerRepository;
         _unitOfWork = unitOfWork;
+        _passwordConfiguration = passwordConfiguration;
         _diagnostics = diagnostics;
         _logger = logger;
     }
@@ -36,8 +40,8 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
     private const string CREATE_CUSTOMER_SUCCESS_NOTIFICATION_CODE = "CREATE_CUSTOMER_SUCCESS";
     private const string CREATE_CUSTOMER_SUCCESS_NOTIFICATION_MESSAGE = "O cliente foi cadastrado com sucesso.";
 
-    private const string CREATE_CUSTOMER_ERROR_NOTIFICATION_CODE = "CREATE_CUSTOMER_ERROR";
-    private const string CREATE_CUSTOMER_ERROR_NOTIFICATION_MESSAGE = "Não foi possível cadastrar o cliente.";
+    public const string CREATE_CUSTOMER_CANCELED_NOTIFICATION_CODE = "CREATE_CUSTOMER_CANCELED";
+    private const string CREATE_CUSTOMER_CANCELED_NOTIFICATION_MESSAGE = "A solicitação de cadastro foi cancelada.";
 
     private const string CUSTOMER_ALREADY_EXISTS_NOTIFICATION_CODE = "CUSTOMER_ALREADY_EXISTS";
     private const string CUSTOMER_ALREADY_EXISTS_NOTIFICATION_MESSAGE = "Já existe um cliente com o email ou o CPF informado.";
@@ -61,6 +65,10 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
             if (!baseSlug.IsValid)
                 return BuildInvalidDataResult(baseSlug.MethodResult);
 
+            // Antes da transação: o hash é lento de propósito e não pode segurar locks no banco.
+            var passwordSalt = GeneratePasswordSalt();
+            var passwordHash = HashPassword(input.Password, passwordSalt);
+
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
             var customerExists = await _customerRepository.ExistsByEmailOrDocumentAsync(
@@ -71,14 +79,14 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
             if (customerExists)
                 return await RejectCustomerAlreadyExistsAsync(input);
 
-            var customer = BuildCustomer(input, auditableInfo, await GetAvailableSlugAsync(baseSlug, cancellationToken));
+            var customer = BuildCustomer(input, auditableInfo, await GetAvailableSlugAsync(baseSlug, cancellationToken), passwordHash, passwordSalt);
             var creationResult = await _customerRepository.CreateAsync(BuildCustomerModel(customer), cancellationToken);
 
             while (creationResult == CustomerCreationResult.SlugAlreadyExists)
             {
                 CreateCustomerLog.SlugTaken(_logger, input.Email.GetObfuscatedValue());
 
-                customer = BuildCustomer(input, auditableInfo, await GetAvailableSlugAsync(baseSlug.BuildRandomVersion(), cancellationToken));
+                customer = BuildCustomer(input, auditableInfo, await GetAvailableSlugAsync(baseSlug.BuildRandomVersion(), cancellationToken), passwordHash, passwordSalt);
                 creationResult = await _customerRepository.CreateAsync(BuildCustomerModel(customer), cancellationToken);
             }
 
@@ -94,15 +102,38 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
             await RollbackAsync();
 
             if (ex is OperationCanceledException || cancellationToken.IsCancellationRequested)
-                throw;
+                return BuildCanceledResult();
 
             CreateCustomerLog.Failed(_logger, ex);
 
             // Só o tipo: a mensagem de uma exceção de banco pode trazer dados pessoais.
             Activity.Current?.SetStatus(ActivityStatusCode.Error, ex.GetType().Name);
 
-            return BuildErrorResult();
+            RecordOutcome(CreateCustomerDiagnostics.OUTCOME_ERROR);
+
+            throw;
         }
+    }
+
+    private static PasswordSaltValueObject GeneratePasswordSalt()
+    {
+        using var activity = CreateCustomerDiagnostics.ACTIVITY_SOURCE.StartActivity("CreateCustomer.GeneratePasswordSalt");
+
+        return PasswordSaltValueObject.Build();
+    }
+
+    private PasswordHashValueObject HashPassword(PasswordValueObject password, PasswordSaltValueObject salt)
+    {
+        using var activity = CreateCustomerDiagnostics.ACTIVITY_SOURCE.StartActivity("CreateCustomer.HashPassword");
+
+        activity?.SetTag("ntix.password.iterations", PasswordHashValueObject.ITERATIONS);
+
+        var startedAt = Stopwatch.GetTimestamp();
+        var hash = PasswordHashValueObject.Build(password, salt, _passwordConfiguration.PrivateKey);
+
+        _diagnostics.PasswordHashed(Stopwatch.GetElapsedTime(startedAt).TotalSeconds);
+
+        return hash;
     }
 
     private static Activity? StartActivity(AuditableInfoValueObject auditableInfo)
@@ -147,13 +178,16 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
         }
     }
 
-    private static Customer BuildCustomer(CreateCustomerUseCaseInput input, AuditableInfoValueObject auditableInfo, SlugValueObject slug)
+    private static Customer BuildCustomer(CreateCustomerUseCaseInput input, AuditableInfoValueObject auditableInfo, SlugValueObject slug, PasswordHashValueObject passwordHash, PasswordSaltValueObject passwordSalt)
         => new(
             id: IdValueObject.Build(),
             fullName: input.FullName,
             email: input.Email,
             document: input.Document,
             slug: slug,
+            passwordHash: passwordHash,
+            passwordSalt: passwordSalt,
+            phoneNumber: input.PhoneNumber,
             createdAt: DateTimeValueObject.Build(DateTime.UtcNow),
             createdCorrelationId: IdValueObject.Build(auditableInfo.CorrelationId.ToString()));
 
@@ -164,6 +198,9 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
             Email: customer.Email.Value,
             Document: customer.Document.Value,
             Slug: customer.Slug.Value,
+            PasswordHash: customer.PasswordHash.Value,
+            PasswordSalt: customer.PasswordSalt.Value,
+            PhoneNumber: customer.PhoneNumber.Value,
             CreatedAt: customer.CreatedAt.Value,
             CreatedCorrelationId: customer.CreatedCorrelationId.Value);
 
@@ -215,14 +252,12 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
         return MethodResult.Error([alreadyExistsNotification]);
     }
 
-    private MethodResult BuildErrorResult()
+    private static MethodResult BuildCanceledResult()
     {
-        RecordOutcome(CreateCustomerDiagnostics.OUTCOME_ERROR);
+        var canceledNotification = Notification.Error(
+            code: CREATE_CUSTOMER_CANCELED_NOTIFICATION_CODE,
+            message: CREATE_CUSTOMER_CANCELED_NOTIFICATION_MESSAGE);
 
-        var errorNotification = Notification.Error(
-            code: CREATE_CUSTOMER_ERROR_NOTIFICATION_CODE,
-            message: CREATE_CUSTOMER_ERROR_NOTIFICATION_MESSAGE);
-
-        return MethodResult.Error([errorNotification]);
+        return MethodResult.Error([canceledNotification]);
     }
 }

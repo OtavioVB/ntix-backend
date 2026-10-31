@@ -155,10 +155,11 @@ jobs:
       - name: Gerar as variáveis de ambiente no servidor
         env:
           MSSQL_SA_PASSWORD: ${{ secrets.VPS_MSSQL_SA_PASSWORD }}
+          PASSWORD_PRIVATE_KEY: ${{ secrets.VPS_PASSWORD_PRIVATE_KEY }}
           MSSQL_PID: ${{ vars.VPS_MSSQL_PID || 'Express' }}
         run: |
-          printf "MSSQL_SA_PASSWORD='%s'\nMSSQL_PID=%s\nWEBAPI_IMAGE=%s\nASPNETCORE_ENVIRONMENT=Production\n" \
-            "$MSSQL_SA_PASSWORD" "$MSSQL_PID" "$WEBAPI_IMAGE" \
+          printf "MSSQL_SA_PASSWORD='%s'\nPASSWORD_PRIVATE_KEY='%s'\nMSSQL_PID=%s\nWEBAPI_IMAGE=%s\nASPNETCORE_ENVIRONMENT=Production\n" \
+            "$MSSQL_SA_PASSWORD" "$PASSWORD_PRIVATE_KEY" "$MSSQL_PID" "$WEBAPI_IMAGE" \
             | ssh vps "umask 077 && cat > '$DEPLOY_PATH/devops/.env'"
 
       - name: Subir os serviços

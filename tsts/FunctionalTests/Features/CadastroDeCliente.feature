@@ -2,7 +2,7 @@
 Funcionalidade: Cadastro de cliente
   Para usar a plataforma da Ntix
   Como cliente
-  Quero me cadastrar informando meu nome completo, email e CPF
+  Quero me cadastrar informando meu nome completo, email, CPF, senha e, se quiser, meu celular
 
   Cenário: Cliente se cadastra com dados válidos
     Quando me cadastro com o nome "Maria da Silva", o email "maria@ntix.com" e o documento "529.982.247-25"
@@ -73,6 +73,52 @@ Funcionalidade: Cadastro de cliente
       | Maria da Silva | maria@ntix.com |                | O CPF não pode ser vazio.                                            |
       | Maria da Silva | maria@ntix.com | 52998224724    | O CPF informado não é válido.                                        |
       | Maria da Silva | maria@ntix.com | 111.111.111-11 | O CPF informado não é válido.                                        |
+
+  Cenário: A senha informada não fica guardada como foi escrita
+    Quando me cadastro com a senha "Senha@123"
+    Então meu cadastro é criado
+    E minha senha não fica guardada como foi escrita
+
+  Esquema do Cenário: Não é possível se cadastrar com uma senha fraca
+    Quando me cadastro com a senha "<senha>"
+    Então meu cadastro não é criado
+    E sou informado de que "<mensagem>"
+
+    Exemplos:
+      | senha     | mensagem                                 |
+      |           | A senha não pode ser vazia.              |
+      | Senha@1   | A senha deve ter ao menos 8 caracteres.  |
+      | senha@123 | A senha deve conter uma letra maiúscula. |
+      | SENHA@123 | A senha deve conter uma letra minúscula. |
+      | Senha@abc | A senha deve conter um número.           |
+      | Senha1234 | A senha deve conter um símbolo.          |
+
+  Cenário: O cliente pode se cadastrar sem informar o celular
+    Quando me cadastro sem informar o celular
+    Então meu cadastro é criado
+    E nenhum celular fica registrado
+
+  Esquema do Cenário: O cliente pode informar o celular com DDD e número
+    Quando me cadastro com o celular "<celular>"
+    Então meu cadastro é criado
+    E o celular "11987654321" fica registrado
+
+    Exemplos:
+      | celular         |
+      | 11987654321     |
+      | (11) 98765-4321 |
+
+  Esquema do Cenário: Não é possível se cadastrar com um celular sem DDD e número
+    Quando me cadastro com o celular "<celular>"
+    Então meu cadastro não é criado
+    E sou informado de que "O celular deve conter o DDD e o número, como (11) 98765-4321."
+
+    Exemplos:
+      | celular      |
+      | 98765-4321   |
+      | 1198765432   |
+      | 119876543210 |
+      | celular      |
 
   Esquema do Cenário: Uma solicitação sem as informações de auditoria é recusada
     Quando uma solicitação de cadastro chega sem "<informação>"

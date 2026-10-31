@@ -25,7 +25,7 @@ namespace FunctionalTests.Features
         private static string[] featureTags = ((string[])(null));
         
         private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("pt"), "Features", "Cadastro de cliente", "  Para usar a plataforma da Ntix\r\n  Como cliente\r\n  Quero me cadastrar informando" +
-                " meu nome completo, email e CPF", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+                " meu nome completo, email, CPF, senha e, se quiser, meu celular", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -106,7 +106,7 @@ namespace FunctionalTests.Features
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CadastroDeCliente.feature.ndjson", 24);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/CadastroDeCliente.feature.ndjson", 38);
         }
         
         async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
@@ -496,20 +496,15 @@ namespace FunctionalTests.Features
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableTheoryAttribute(DisplayName="Uma solicitação sem as informações de auditoria é recusada")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="A senha informada não fica guardada como foi escrita")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Cadastro de cliente")]
-        [global::Xunit.TraitAttribute("Description", "Uma solicitação sem as informações de auditoria é recusada")]
-        [global::Xunit.InlineDataAttribute("o identificador de correlação", "O header X-Correlation-Id é obrigatório.", "18", new string[0])]
-        [global::Xunit.InlineDataAttribute("o serviço de origem", "O header X-Origin-Service é obrigatório.", "19", new string[0])]
-        [global::Xunit.InlineDataAttribute("o momento da solicitação", "O header X-Requested-At é obrigatório.", "20", new string[0])]
-        public async global::System.Threading.Tasks.Task UmaSolicitacaoSemAsInformacoesDeAuditoriaERecusada(string informacao, string mensagem, string @__pickleIndex, string[] exampleTags)
+        [global::Xunit.TraitAttribute("Description", "A senha informada não fica guardada como foi escrita")]
+        public async global::System.Threading.Tasks.Task ASenhaInformadaNaoFicaGuardadaComoFoiEscrita()
         {
-            string[] tagsOfScenario = exampleTags;
+            string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            argumentsOfScenario.Add("informação", informacao);
-            argumentsOfScenario.Add("mensagem", mensagem);
-            string pickleIndex = @__pickleIndex;
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Uma solicitação sem as informações de auditoria é recusada", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string pickleIndex = "18";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("A senha informada não fica guardada como foi escrita", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 77
@@ -523,12 +518,204 @@ namespace FunctionalTests.Features
             {
                 await this.ScenarioStartAsync();
 #line 78
-    await testRunner.WhenAsync(string.Format("uma solicitação de cadastro chega sem \"{0}\"", informacao), ((string)(null)), ((global::Reqnroll.Table)(null)), "Quando ");
+    await testRunner.WhenAsync("me cadastro com a senha \"Senha@123\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Quando ");
 #line hidden
 #line 79
-    await testRunner.ThenAsync("meu cadastro não é criado", ((string)(null)), ((global::Reqnroll.Table)(null)), "Então ");
+    await testRunner.ThenAsync("meu cadastro é criado", ((string)(null)), ((global::Reqnroll.Table)(null)), "Então ");
 #line hidden
 #line 80
+    await testRunner.AndAsync("minha senha não fica guardada como foi escrita", ((string)(null)), ((global::Reqnroll.Table)(null)), "E ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableTheoryAttribute(DisplayName="Não é possível se cadastrar com uma senha fraca")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Cadastro de cliente")]
+        [global::Xunit.TraitAttribute("Description", "Não é possível se cadastrar com uma senha fraca")]
+        [global::Xunit.InlineDataAttribute("", "A senha não pode ser vazia.", "19", new string[0])]
+        [global::Xunit.InlineDataAttribute("Senha@1", "A senha deve ter ao menos 8 caracteres.", "20", new string[0])]
+        [global::Xunit.InlineDataAttribute("senha@123", "A senha deve conter uma letra maiúscula.", "21", new string[0])]
+        [global::Xunit.InlineDataAttribute("SENHA@123", "A senha deve conter uma letra minúscula.", "22", new string[0])]
+        [global::Xunit.InlineDataAttribute("Senha@abc", "A senha deve conter um número.", "23", new string[0])]
+        [global::Xunit.InlineDataAttribute("Senha1234", "A senha deve conter um símbolo.", "24", new string[0])]
+        public async global::System.Threading.Tasks.Task NaoEPossivelSeCadastrarComUmaSenhaFraca(string senha, string mensagem, string @__pickleIndex, string[] exampleTags)
+        {
+            string[] tagsOfScenario = exampleTags;
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            argumentsOfScenario.Add("senha", senha);
+            argumentsOfScenario.Add("mensagem", mensagem);
+            string pickleIndex = @__pickleIndex;
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Não é possível se cadastrar com uma senha fraca", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 82
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 83
+    await testRunner.WhenAsync(string.Format("me cadastro com a senha \"{0}\"", senha), ((string)(null)), ((global::Reqnroll.Table)(null)), "Quando ");
+#line hidden
+#line 84
+    await testRunner.ThenAsync("meu cadastro não é criado", ((string)(null)), ((global::Reqnroll.Table)(null)), "Então ");
+#line hidden
+#line 85
+    await testRunner.AndAsync(string.Format("sou informado de que \"{0}\"", mensagem), ((string)(null)), ((global::Reqnroll.Table)(null)), "E ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="O cliente pode se cadastrar sem informar o celular")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Cadastro de cliente")]
+        [global::Xunit.TraitAttribute("Description", "O cliente pode se cadastrar sem informar o celular")]
+        public async global::System.Threading.Tasks.Task OClientePodeSeCadastrarSemInformarOCelular()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "25";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("O cliente pode se cadastrar sem informar o celular", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 96
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 97
+    await testRunner.WhenAsync("me cadastro sem informar o celular", ((string)(null)), ((global::Reqnroll.Table)(null)), "Quando ");
+#line hidden
+#line 98
+    await testRunner.ThenAsync("meu cadastro é criado", ((string)(null)), ((global::Reqnroll.Table)(null)), "Então ");
+#line hidden
+#line 99
+    await testRunner.AndAsync("nenhum celular fica registrado", ((string)(null)), ((global::Reqnroll.Table)(null)), "E ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableTheoryAttribute(DisplayName="O cliente pode informar o celular com DDD e número")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Cadastro de cliente")]
+        [global::Xunit.TraitAttribute("Description", "O cliente pode informar o celular com DDD e número")]
+        [global::Xunit.InlineDataAttribute("11987654321", "26", new string[0])]
+        [global::Xunit.InlineDataAttribute("(11) 98765-4321", "27", new string[0])]
+        public async global::System.Threading.Tasks.Task OClientePodeInformarOCelularComDDDENumero(string celular, string @__pickleIndex, string[] exampleTags)
+        {
+            string[] tagsOfScenario = exampleTags;
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            argumentsOfScenario.Add("celular", celular);
+            string pickleIndex = @__pickleIndex;
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("O cliente pode informar o celular com DDD e número", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 101
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 102
+    await testRunner.WhenAsync(string.Format("me cadastro com o celular \"{0}\"", celular), ((string)(null)), ((global::Reqnroll.Table)(null)), "Quando ");
+#line hidden
+#line 103
+    await testRunner.ThenAsync("meu cadastro é criado", ((string)(null)), ((global::Reqnroll.Table)(null)), "Então ");
+#line hidden
+#line 104
+    await testRunner.AndAsync("o celular \"11987654321\" fica registrado", ((string)(null)), ((global::Reqnroll.Table)(null)), "E ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableTheoryAttribute(DisplayName="Não é possível se cadastrar com um celular sem DDD e número")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Cadastro de cliente")]
+        [global::Xunit.TraitAttribute("Description", "Não é possível se cadastrar com um celular sem DDD e número")]
+        [global::Xunit.InlineDataAttribute("98765-4321", "28", new string[0])]
+        [global::Xunit.InlineDataAttribute("1198765432", "29", new string[0])]
+        [global::Xunit.InlineDataAttribute("119876543210", "30", new string[0])]
+        [global::Xunit.InlineDataAttribute("celular", "31", new string[0])]
+        public async global::System.Threading.Tasks.Task NaoEPossivelSeCadastrarComUmCelularSemDDDENumero(string celular, string @__pickleIndex, string[] exampleTags)
+        {
+            string[] tagsOfScenario = exampleTags;
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            argumentsOfScenario.Add("celular", celular);
+            string pickleIndex = @__pickleIndex;
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Não é possível se cadastrar com um celular sem DDD e número", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 111
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 112
+    await testRunner.WhenAsync(string.Format("me cadastro com o celular \"{0}\"", celular), ((string)(null)), ((global::Reqnroll.Table)(null)), "Quando ");
+#line hidden
+#line 113
+    await testRunner.ThenAsync("meu cadastro não é criado", ((string)(null)), ((global::Reqnroll.Table)(null)), "Então ");
+#line hidden
+#line 114
+    await testRunner.AndAsync("sou informado de que \"O celular deve conter o DDD e o número, como (11) 98765-432" +
+                        "1.\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "E ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableTheoryAttribute(DisplayName="Uma solicitação sem as informações de auditoria é recusada")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Cadastro de cliente")]
+        [global::Xunit.TraitAttribute("Description", "Uma solicitação sem as informações de auditoria é recusada")]
+        [global::Xunit.InlineDataAttribute("o identificador de correlação", "O header X-Correlation-Id é obrigatório.", "32", new string[0])]
+        [global::Xunit.InlineDataAttribute("o serviço de origem", "O header X-Origin-Service é obrigatório.", "33", new string[0])]
+        [global::Xunit.InlineDataAttribute("o momento da solicitação", "O header X-Requested-At é obrigatório.", "34", new string[0])]
+        public async global::System.Threading.Tasks.Task UmaSolicitacaoSemAsInformacoesDeAuditoriaERecusada(string informacao, string mensagem, string @__pickleIndex, string[] exampleTags)
+        {
+            string[] tagsOfScenario = exampleTags;
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            argumentsOfScenario.Add("informação", informacao);
+            argumentsOfScenario.Add("mensagem", mensagem);
+            string pickleIndex = @__pickleIndex;
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Uma solicitação sem as informações de auditoria é recusada", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 123
+  this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 124
+    await testRunner.WhenAsync(string.Format("uma solicitação de cadastro chega sem \"{0}\"", informacao), ((string)(null)), ((global::Reqnroll.Table)(null)), "Quando ");
+#line hidden
+#line 125
+    await testRunner.ThenAsync("meu cadastro não é criado", ((string)(null)), ((global::Reqnroll.Table)(null)), "Então ");
+#line hidden
+#line 126
     await testRunner.AndAsync(string.Format("sou informado de que \"{0}\"", mensagem), ((string)(null)), ((global::Reqnroll.Table)(null)), "E ");
 #line hidden
             }
@@ -542,11 +729,11 @@ namespace FunctionalTests.Features
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "21";
+            string pickleIndex = "35";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Uma solicitação sem usuário executor é aceita", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 88
+#line 134
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -556,10 +743,10 @@ namespace FunctionalTests.Features
             else
             {
                 await this.ScenarioStartAsync();
-#line 89
+#line 135
     await testRunner.WhenAsync("uma solicitação de cadastro chega sem \"o usuário executor\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Quando ");
 #line hidden
-#line 90
+#line 136
     await testRunner.ThenAsync("meu cadastro é criado", ((string)(null)), ((global::Reqnroll.Table)(null)), "Então ");
 #line hidden
             }

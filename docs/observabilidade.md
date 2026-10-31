@@ -33,7 +33,8 @@ flowchart LR
 | 2. Contas criadas | `ntix_customers_registration_outcomes_total` | `outcome="created"` |
 
 - A conta só conta como criada depois do commit.
-- Cancelamentos pelo cliente entram só no passo 1 e aparecem em "Sem desfecho no período".
+- Cancelamentos pelo cliente entram só no passo 1, respondem 499 e aparecem em "Sem desfecho no período".
+- Erros por exceção são registrados no funil e propagados ao controller, e a API responde 500.
 - Requisições com JSON inválido são recusadas pelo framework antes do caso de uso e não entram no funil.
 - Os totais vêm do `increase()` do Prometheus, que é uma estimativa: em períodos curtos, a soma dos desfechos pode variar um pouco em relação às solicitações.
 
@@ -70,8 +71,12 @@ Cada requisição sorteia seu ramo, em paralelo com as demais. Os pesos mudam al
 
 O teste falha se alguma resposta não for reconhecida ou se um cenário receber um desfecho diferente do esperado. Erros são aceitos em qualquer cenário, por causa do passo 2.
 
+## Definição da senha
+
+A métrica `ntix_customers_password_hash_duration_seconds` mede o tempo das iterações de hash. A linha **Definição da senha** do dashboard do funil mostra o p95 em amarelo a partir de 250 ms e em vermelho a partir de 500 ms. Se ficar vermelho, o servidor está sem CPU para o número de iterações em `PasswordHashValueObject.ITERATIONS`.
+
 ## Traces e logs
 
-- Span `CreateCustomer`, com `ntix.outcome`, `ntix.customer_id` e os campos auditáveis, e spans `CustomerRepository.*` para cada comando no banco.
+- Span `CreateCustomer`, com `ntix.outcome`, `ntix.customer_id` e os campos auditáveis, spans `CreateCustomer.GeneratePasswordSalt` e `CreateCustomer.HashPassword`, este com `ntix.password.iterations`, e spans `CustomerRepository.*` para cada comando no banco.
 - Logs chegam ao Loki com `trace_id` e os campos auditáveis. Para filtrar um fluxo: `{service_name="ntix-webapi"} | CorrelationId="<uuid>"`.
 - Nenhum sinal traz email ou CPF completos, e spans com erro registram só o tipo da exceção.

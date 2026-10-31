@@ -11,6 +11,7 @@ const RATE = Number(__ENV.RATE || 150);
 const MIX_WINDOW_SECONDS = Number(__ENV.MIX_WINDOW_SECONDS || 30);
 
 const CUSTOMERS_ROUTE = "/api/v1/customers";
+const PASSWORD = "Senha@123";
 const HOMONYM_FULL_NAME = "Cliente Homonimo Funil";
 const HOMONYM_PERCENTAGE = 0.1;
 const SEED_CUSTOMERS = 20;
@@ -86,6 +87,7 @@ function buildUniqueCustomer(uniqueNumber) {
         fullName: `Cliente Funil ${uniqueNumber}`,
         email: `cliente.funil.${uniqueNumber}@ntix.com`,
         document: buildCpf(uniqueNumber),
+        password: PASSWORD,
     };
 }
 
@@ -100,6 +102,9 @@ function pickRandom(items) {
 function classifyResponse(response) {
     if (response.status === 200)
         return OUTCOME_CREATED;
+
+    if (response.status === 500)
+        return OUTCOME_ERROR;
 
     if (response.status !== 400)
         return OUTCOME_UNKNOWN;
@@ -119,9 +124,6 @@ function classifyResponse(response) {
 
     if (codes.includes("CUSTOMER_ALREADY_EXISTS"))
         return OUTCOME_ALREADY_EXISTS;
-
-    if (codes.includes("CREATE_CUSTOMER_ERROR"))
-        return OUTCOME_ERROR;
 
     return OUTCOME_VALIDATION_FAILED;
 }
@@ -229,6 +231,8 @@ function stopsAtValidation(data) {
         () => register({ ...customer, email: "email-invalido" }, OUTCOME_VALIDATION_FAILED),
         () => register({ ...customer, document: "11111111111" }, OUTCOME_VALIDATION_FAILED),
         () => register({ ...customer, document: "" }, OUTCOME_VALIDATION_FAILED),
+        () => register({ ...customer, password: "senha" }, OUTCOME_VALIDATION_FAILED),
+        () => register({ ...customer, phoneNumber: "98765-4321" }, OUTCOME_VALIDATION_FAILED),
         () => register(customer, OUTCOME_VALIDATION_FAILED, "X-Correlation-Id"),
         () => register(customer, OUTCOME_VALIDATION_FAILED, "X-Requested-At"),
     ];

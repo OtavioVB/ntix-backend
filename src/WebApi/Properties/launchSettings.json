@@ -4,6 +4,7 @@
       "commandName": "Project",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
+        "PasswordConfiguration__PrivateKey": "chave-local-somente-para-desenvolvimento",
         "SqlServerConfiguration__ConnectionString": "Server=localhost,1433;Database=ntix;User Id=sa;Password=Otavio@1234;Encrypt=True;TrustServerCertificate=True"
       },
       "dotnetRunMessages": true,
@@ -15,6 +16,7 @@
       "environmentVariables": {
         "ASPNETCORE_HTTPS_PORTS": "5000",
         "ASPNETCORE_HTTP_PORTS": "5001",
+        "PasswordConfiguration__PrivateKey": "chave-local-somente-para-desenvolvimento",
         "SqlServerConfiguration__ConnectionString": "Server=localhost,1433;Database=ntix;User Id=sa;Password=Otavio@1234;Encrypt=True;TrustServerCertificate=True"
       },
       "publishAllPorts": true,

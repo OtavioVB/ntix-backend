@@ -40,7 +40,7 @@ public sealed class CustomerRepositoryTests
     public async Task Given_NewCustomer_When_Creating_Should_PersistCustomer()
     {
         // Arrange
-        var customer = CustomerTestData.NewModel();
+        var customer = CustomerTestData.NewModel(phoneNumber: "11987654321");
 
         // Act
         var result = await CreateAsync(customer);
@@ -53,7 +53,25 @@ public sealed class CustomerRepositoryTests
         Assert.Equal(customer.FullName, persisted.FullName);
         Assert.Equal(customer.Document, persisted.Document);
         Assert.Equal(customer.Slug, persisted.Slug);
+        Assert.Equal(customer.PasswordHash, persisted.PasswordHash);
+        Assert.Equal(customer.PasswordSalt, persisted.PasswordSalt);
+        Assert.Equal(customer.PhoneNumber, persisted.PhoneNumber);
         Assert.Equal(customer.CreatedCorrelationId, persisted.CreatedCorrelationId);
+    }
+
+    [Fact]
+    public async Task Given_CustomerWithoutPhoneNumber_When_Creating_Should_PersistNull()
+    {
+        // Arrange
+        var customer = CustomerTestData.NewModel();
+
+        // Act
+        await CreateAsync(customer);
+
+        // Assert
+        var persisted = await _fixture.FindCustomerByEmailAsync(customer.Email);
+        Assert.NotNull(persisted);
+        Assert.Null(persisted.PhoneNumber);
     }
 
     [Fact]

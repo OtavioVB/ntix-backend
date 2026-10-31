@@ -1,3 +1,4 @@
+using Application.UseCases.Base.Configuration;
 using Application.UseCases.Base.Interfaces;
 using Application.UseCases.CreateCustomer;
 using Application.UseCases.CreateCustomer.Inputs;
@@ -10,6 +11,11 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddUseCasesConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
+        var passwordConfiguration = configuration.GetRequiredSection("PasswordConfiguration").Get<PasswordConfiguration>()!;
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(passwordConfiguration.PrivateKey);
+
+        services.AddSingleton(passwordConfiguration);
         services.AddMetrics();
         services.AddSingleton<CreateCustomerDiagnostics>();
         services.AddScoped<IUseCase<CreateCustomerUseCaseInput>, CreateCustomerUseCase>();

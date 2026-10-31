@@ -17,6 +17,9 @@ public sealed class CustomerRepository : ICustomerRepository
     private const int EMAIL_MAX_LENGTH = 256;
     private const int DOCUMENT_LENGTH = 11;
     private const int SLUG_MAX_LENGTH = 262;
+    private const int PASSWORD_HASH_LENGTH = 32;
+    private const int PASSWORD_SALT_LENGTH = 16;
+    private const int PHONE_NUMBER_LENGTH = 11;
 
     private const string EXISTS_BY_EMAIL_OR_DOCUMENT_SQL = """
         SELECT CASE
@@ -34,8 +37,8 @@ public sealed class CustomerRepository : ICustomerRepository
         """;
 
     private const string INSERT_SQL = """
-        INSERT INTO customers.Customer (id_customer, full_name, email, document, slug, created_at, created_correlation_id)
-        VALUES (@id_customer, @full_name, @email, @document, @slug, @created_at, @created_correlation_id);
+        INSERT INTO customers.Customer (id_customer, full_name, email, document, slug, password_hash, password_salt, phone_number, created_at, created_correlation_id)
+        VALUES (@id_customer, @full_name, @email, @document, @slug, @password_hash, @password_salt, @phone_number, @created_at, @created_correlation_id);
         """;
 
     private static readonly ActivitySource ACTIVITY_SOURCE = new("Ntix.SqlServer");
@@ -88,6 +91,9 @@ public sealed class CustomerRepository : ICustomerRepository
         command.Parameters.Add("@email", SqlDbType.NVarChar, EMAIL_MAX_LENGTH).Value = customer.Email;
         command.Parameters.Add("@document", SqlDbType.Char, DOCUMENT_LENGTH).Value = customer.Document;
         command.Parameters.Add("@slug", SqlDbType.VarChar, SLUG_MAX_LENGTH).Value = customer.Slug;
+        command.Parameters.Add("@password_hash", SqlDbType.Binary, PASSWORD_HASH_LENGTH).Value = customer.PasswordHash;
+        command.Parameters.Add("@password_salt", SqlDbType.Binary, PASSWORD_SALT_LENGTH).Value = customer.PasswordSalt;
+        command.Parameters.Add("@phone_number", SqlDbType.Char, PHONE_NUMBER_LENGTH).Value = (object?)customer.PhoneNumber ?? DBNull.Value;
         command.Parameters.Add("@created_at", SqlDbType.DateTime2).Value = customer.CreatedAt;
         command.Parameters.Add("@created_correlation_id", SqlDbType.UniqueIdentifier).Value = customer.CreatedCorrelationId;
 

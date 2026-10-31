@@ -13,6 +13,9 @@ BEGIN
         email                  NVARCHAR(256)    NOT NULL,
         document               CHAR(11)         NOT NULL,
         slug                   VARCHAR(262)     NOT NULL,
+        password_hash          BINARY(32)       NOT NULL,
+        password_salt          BINARY(16)       NOT NULL,
+        phone_number           CHAR(11)         NULL,
         created_at             DATETIME2(7)     NOT NULL,
         created_correlation_id UNIQUEIDENTIFIER NOT NULL
     );

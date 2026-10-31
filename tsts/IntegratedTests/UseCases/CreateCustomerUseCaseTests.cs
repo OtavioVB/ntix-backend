@@ -4,6 +4,8 @@ using Domain.CrossCutting.MethodResultContext;
 using Domain.ValueObjects;
 using IntegratedTests.Support;
 using Microsoft.Extensions.DependencyInjection;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace IntegratedTests.UseCases;
 
@@ -17,7 +19,7 @@ public sealed class CreateCustomerUseCaseTests
         _fixture = fixture;
     }
 
-    private async Task<MethodResult> ExecuteUseCaseAsync(string fullName, string email, string document, Guid? correlationId = null)
+    private async Task<MethodResult> ExecuteUseCaseAsync(string fullName, string email, string document, Guid? correlationId = null, string password = CustomerTestData.PASSWORD, string? phoneNumber = null)
     {
         using var scope = _fixture.Services.CreateScope();
 
@@ -27,8 +29,128 @@ public sealed class CreateCustomerUseCaseTests
             input: CreateCustomerUseCaseInput.Create(
                 fullName: fullName,
                 email: email,
-                document: document),
+                document: document,
+                password: password,
+                phoneNumber: phoneNumber),
             auditableInfo: CustomerTestData.NewAuditableInfo(correlationId));
+    }
+
+    [Fact]
+    public async Task Given_CanceledRequest_When_Executing_Should_ReturnCanceledNotificationAndNotPersistCustomer()
+    {
+        // Arrange
+        var email = CustomerTestData.NewEmail();
+        using var scope = _fixture.Services.CreateScope();
+        var useCase = scope.ServiceProvider.GetRequiredService<IUseCase<CreateCustomerUseCaseInput>>();
+
+        // Act
+        var result = await useCase.ExecuteAsync(
+            input: CreateCustomerUseCaseInput.Create(
+                fullName: CustomerTestData.NewFullName(),
+                email: email,
+                document: CustomerTestData.NewCpf(),
+                password: CustomerTestData.PASSWORD,
+                phoneNumber: null as string),
+            auditableInfo: CustomerTestData.NewAuditableInfo(),
+            cancellationToken: new CancellationToken(canceled: true));
+
+        // Assert
+        var notification = Assert.Single(result.Notifications);
+        Assert.Equal("CREATE_CUSTOMER_CANCELED", notification.Code);
+        Assert.Null(await _fixture.FindCustomerByEmailAsync(email));
+    }
+
+    [Fact]
+    public async Task Given_NewCustomer_When_Executing_Should_PersistHashOfPasswordSaltAndPrivateKey()
+    {
+        // Arrange
+        var email = CustomerTestData.NewEmail();
+
+        // Act
+        await ExecuteUseCaseAsync(CustomerTestData.NewFullName(), email, CustomerTestData.NewCpf());
+
+        // Assert
+        var customer = await _fixture.FindCustomerByEmailAsync(email);
+        Assert.NotNull(customer);
+        var passwordHash = Rfc2898DeriveBytes.Pbkdf2(CustomerTestData.PASSWORD, customer.PasswordSalt, PasswordHashValueObject.ITERATIONS, HashAlgorithmName.SHA256, PasswordHashValueObject.LENGTH);
+        Assert.Equal(HMACSHA256.HashData(Encoding.UTF8.GetBytes(CustomerTestData.PRIVATE_KEY), passwordHash), customer.PasswordHash);
+    }
+
+    [Fact]
+    public async Task Given_CustomersWithSamePassword_When_Executing_Should_PersistDifferentSaltsAndHashes()
+    {
+        // Arrange
+        var firstEmail = CustomerTestData.NewEmail();
+        var secondEmail = CustomerTestData.NewEmail();
+
+        // Act
+        await ExecuteUseCaseAsync(CustomerTestData.NewFullName(), firstEmail, CustomerTestData.NewCpf());
+        await ExecuteUseCaseAsync(CustomerTestData.NewFullName(), secondEmail, CustomerTestData.NewCpf());
+
+        // Assert
+        var first = await _fixture.FindCustomerByEmailAsync(firstEmail);
+        var second = await _fixture.FindCustomerByEmailAsync(secondEmail);
+        Assert.NotEqual(first!.PasswordSalt, second!.PasswordSalt);
+        Assert.NotEqual(first.PasswordHash, second.PasswordHash);
+    }
+
+    [Fact]
+    public async Task Given_WeakPassword_When_Executing_Should_ReturnErrorAndNotPersistCustomer()
+    {
+        // Arrange
+        var email = CustomerTestData.NewEmail();
+
+        // Act
+        var result = await ExecuteUseCaseAsync(CustomerTestData.NewFullName(), email, CustomerTestData.NewCpf(), password: "senha");
+
+        // Assert
+        Assert.True(result.IsError);
+        Assert.Null(await _fixture.FindCustomerByEmailAsync(email));
+    }
+
+    [Fact]
+    public async Task Given_PhoneNumber_When_Executing_Should_PersistOnlyDigits()
+    {
+        // Arrange
+        var email = CustomerTestData.NewEmail();
+
+        // Act
+        await ExecuteUseCaseAsync(CustomerTestData.NewFullName(), email, CustomerTestData.NewCpf(), phoneNumber: "(11) 98765-4321");
+
+        // Assert
+        var customer = await _fixture.FindCustomerByEmailAsync(email);
+        Assert.Equal("11987654321", customer?.PhoneNumber);
+    }
+
+    [Fact]
+    public async Task Given_NoPhoneNumber_When_Executing_Should_PersistCustomerWithoutPhoneNumber()
+    {
+        // Arrange
+        var email = CustomerTestData.NewEmail();
+
+        // Act
+        var result = await ExecuteUseCaseAsync(CustomerTestData.NewFullName(), email, CustomerTestData.NewCpf());
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        var customer = await _fixture.FindCustomerByEmailAsync(email);
+        Assert.NotNull(customer);
+        Assert.Null(customer.PhoneNumber);
+    }
+
+    [Fact]
+    public async Task Given_InvalidPhoneNumber_When_Executing_Should_ReturnErrorAndNotPersistCustomer()
+    {
+        // Arrange
+        var email = CustomerTestData.NewEmail();
+
+        // Act
+        var result = await ExecuteUseCaseAsync(CustomerTestData.NewFullName(), email, CustomerTestData.NewCpf(), phoneNumber: "987654321");
+
+        // Assert
+        var notification = Assert.Single(result.Notifications);
+        Assert.Equal("PHONE_NUMBER_FORMAT_INVALID", notification.Code);
+        Assert.Null(await _fixture.FindCustomerByEmailAsync(email));
     }
 
     [Fact]

@@ -13,7 +13,7 @@ namespace IntegratedTests.Support;
 public sealed class SqlServerFixture : IAsyncLifetime
 {
     private const string SELECT_CUSTOMER_BY_EMAIL_SQL = """
-        SELECT id_customer, full_name, email, document, slug, created_at, created_correlation_id
+        SELECT id_customer, full_name, email, document, slug, password_hash, password_salt, phone_number, created_at, created_correlation_id
         FROM customers.Customer
         WHERE email = @email;
         """;
@@ -31,6 +31,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["SqlServerConfiguration:ConnectionString"] = _database.ConnectionString,
+                ["PasswordConfiguration:PrivateKey"] = CustomerTestData.PRIVATE_KEY,
             })
             .Build();
 
@@ -60,8 +61,11 @@ public sealed class SqlServerFixture : IAsyncLifetime
             Email: reader.GetString(2),
             Document: reader.GetString(3),
             Slug: reader.GetString(4),
-            CreatedAt: reader.GetDateTime(5),
-            CreatedCorrelationId: reader.GetGuid(6));
+            PasswordHash: reader.GetFieldValue<byte[]>(5),
+            PasswordSalt: reader.GetFieldValue<byte[]>(6),
+            PhoneNumber: await reader.IsDBNullAsync(7) ? null : reader.GetString(7),
+            CreatedAt: reader.GetDateTime(8),
+            CreatedCorrelationId: reader.GetGuid(9));
     }
 
     public async Task DisposeAsync()

@@ -265,6 +265,47 @@
       "targets": [
         { "refId": "A", "queryType": "traceql", "query": "{resource.service.name=\"$service\" && name=\"CreateCustomer\"}", "limit": 20 }
       ]
+    },
+
+    { "type": "row", "title": "Definição da senha", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 58 }, "panels": [] },
+    {
+      "type": "stat",
+      "title": "Tempo das iterações de hash (p95)",
+      "description": "Amarelo a partir de 250 ms e vermelho a partir de 500 ms, o limite de p95 do cadastro inteiro.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 59 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.25 }, { "color": "red", "value": 0.5 } ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "instant": true, "expr": "histogram_quantile(0.95, sum by (le) (rate(ntix_customers_password_hash_duration_seconds_bucket{service_name=\"$service\"}[$__range])))" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Tempo das iterações de hash ao longo do tempo",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 59 },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": { "fillOpacity": 10, "thresholdsStyle": { "mode": "line" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.25 }, { "color": "red", "value": 0.5 } ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "legendFormat": "p50", "expr": "histogram_quantile(0.50, sum by (le) (rate(ntix_customers_password_hash_duration_seconds_bucket{service_name=\"$service\"}[$__rate_interval])))" },
+        { "refId": "B", "legendFormat": "p95", "expr": "histogram_quantile(0.95, sum by (le) (rate(ntix_customers_password_hash_duration_seconds_bucket{service_name=\"$service\"}[$__rate_interval])))" }
+      ]
     }
   ]
 }

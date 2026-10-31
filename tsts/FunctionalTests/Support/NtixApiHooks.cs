@@ -17,6 +17,7 @@ public sealed class NtixApiHooks
         Database = await SqlServerTestDatabase.CreateAsync();
 
         Environment.SetEnvironmentVariable(SqlServerTestDatabase.CONNECTION_STRING_ENVIRONMENT_VARIABLE, Database.ConnectionString);
+        Environment.SetEnvironmentVariable("PasswordConfiguration__PrivateKey", "chave-de-teste");
         Environment.SetEnvironmentVariable("OTEL_SDK_DISABLED", bool.TrueString);
 
         Factory = new WebApplicationFactory<Program>();

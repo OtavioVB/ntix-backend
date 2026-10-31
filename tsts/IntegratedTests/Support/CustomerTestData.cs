@@ -1,11 +1,15 @@
 using Domain.ValueObjects;
 using Infra.SqlServer.Repositories.Customers.Models;
 using System.Globalization;
+using System.Security.Cryptography;
 
 namespace IntegratedTests.Support;
 
 public static class CustomerTestData
 {
+    public const string PASSWORD = "Senha@123";
+    public const string PRIVATE_KEY = "chave-de-teste";
+
     private const int CPF_BASE_LENGTH = 9;
 
     public static string NewEmail()
@@ -31,13 +35,16 @@ public static class CustomerTestData
             executionUser: "user-123",
             requestedAt: DateTime.UtcNow.ToString(AuditableInfoValueObject.REQUESTED_AT_FORMAT, CultureInfo.InvariantCulture));
 
-    public static CustomerModel NewModel(string? email = null, string? document = null, string? slug = null)
+    public static CustomerModel NewModel(string? email = null, string? document = null, string? slug = null, string? phoneNumber = null)
         => new(
             Id: Guid.NewGuid(),
             FullName: NewFullName(),
             Email: email ?? NewEmail(),
             Document: document ?? NewCpf(),
             Slug: slug ?? $"cliente-{Guid.NewGuid():N}",
+            PasswordHash: RandomNumberGenerator.GetBytes(PasswordHashValueObject.LENGTH),
+            PasswordSalt: RandomNumberGenerator.GetBytes(PasswordSaltValueObject.LENGTH),
+            PhoneNumber: phoneNumber,
             CreatedAt: DateTime.UtcNow,
             CreatedCorrelationId: Guid.NewGuid());
 

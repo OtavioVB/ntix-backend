@@ -64,7 +64,7 @@ Agrega `CorrelationId`, `OriginService`, `ExecutionUser` e `RequestedAt`. `Build
 
 - `IUseCase<TInput>`, com `ExecuteAsync(input, auditableInfo, cancellationToken)`.
 - O caso de uso orquestra: abre o escopo de log auditável, valida input e `auditableInfo` juntos, abre a transação, chama domínio e repositório, faz commit só quando a regra permite, registra os logs e devolve a notificação.
-- Toda recusa de negócio depois de abrir a transação faz rollback. O `catch` faz rollback em qualquer exceção, sem deixar uma falha do rollback esconder a original, registra o log de erro e devolve a notificação de erro; cancelamento é relançado depois do rollback.
+- Toda recusa de negócio depois de abrir a transação faz rollback. O `catch` faz rollback em qualquer exceção, sem deixar uma falha do rollback esconder a original, registra o log de erro e o desfecho e relança a exceção para o controller; cancelamento não é relançado: depois do rollback, devolve uma notificação de cancelamento.
 - Input: `sealed record` com value objects dos dados do negócio, construtor privado, `static Create(...)` e `GetInputValidation()`, que agrega os `MethodResult` deles. Os dados auditáveis não entram no input.
 
 ## Logs
@@ -88,7 +88,7 @@ Agrega `CorrelationId`, `OriginService`, `ExecutionUser` e `RequestedAt`. `Build
 - Caso de uso injetado no método: `[FromServices] IUseCase<Input> useCase`.
 - Headers auditáveis com `[FromHeader]`, convertidos em `AuditableInfoValueObject.Build(...)` e passados ao caso de uso.
 - Payload `sealed record <Acao>V1Request` em `Controllers/Payloads`.
-- O controller só converte payload em input, chama o caso de uso e traduz: `IsError` vira `BadRequest(result.Notifications)`; sucesso vira `Ok(result.Notifications)`.
+- O controller só converte payload em input, chama o caso de uso e traduz: notificação de cancelamento vira 499; `IsError` vira `BadRequest(result.Notifications)`; sucesso vira `Ok(result.Notifications)`. Exceção não é capturada no controller e vira 500.
 - `SuppressImplicitRequiredAttributeForNonNullableReferenceTypes` fica ligado no `Program`: campo ausente chega ao value object e vira notificação, em vez de `ProblemDetails` do framework.
 
 ## Injeção de dependência e configuração
