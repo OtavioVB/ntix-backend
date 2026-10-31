@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Métricas das aplicações chegam via OTLP (collector -> /api/v1/otlp).
+# Atributos de resource promovidos a labels em todas as séries.
+otlp:
+  promote_resource_attributes:
+    - service.name
+    - service.instance.id
+    - service.version
+    - deployment.environment.name
+
+storage:
+  tsdb:
+    out_of_order_time_window: 30m  # tolera o atraso do batch do collector
+
+# Saúde da própria stack de observabilidade
+scrape_configs:
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8888"]
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: tempo
+    static_configs:
+      - targets: ["tempo:3200"]
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]

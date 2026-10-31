@@ -1,0 +1,139 @@
+services:
+  ntix-sqlserver-local:
+    image: mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
+    container_name: ntix-sqlserver-local
+    restart: unless-stopped
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Defina MSSQL_SA_PASSWORD em devops/.env (veja devops/.env.example)}"
+    volumes:
+      - ntix-sqlserver-volume:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    mem_limit: 2048m
+    cpus: 2.0
+    networks:
+      - ntix-network-local
+
+  ntix-sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
+    container_name: ntix-sqlserver-init
+    entrypoint: ["/bin/bash", "/ntix/init-database.sh"]
+    environment:
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Defina MSSQL_SA_PASSWORD em devops/.env (veja devops/.env.example)}"
+      NTIX_SQL_HOST: ntix-sqlserver-local
+      NTIX_DATABASE: ntix
+    volumes:
+      - ../data:/ntix/data:ro
+      - ./sqlserver/init-database.sh:/ntix/init-database.sh:ro
+    depends_on:
+      ntix-sqlserver-local:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - ntix-network-local
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.128.0
+    container_name: ntix-otel-collector-local
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./observability/otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "13133:13133"
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+    restart: unless-stopped
+    networks:
+      - ntix-network-local
+
+  prometheus:
+    image: prom/prometheus:v3.4.1
+    container_name: ntix-prometheus-local
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-otlp-receiver
+      - --web.enable-remote-write-receiver
+      - --enable-feature=exemplar-storage
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ntix-prometheus-volume:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - ntix-network-local
+
+  tempo:
+    image: grafana/tempo:2.8.1
+    container_name: ntix-tempo-local
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    user: "0"
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - ntix-tempo-volume:/var/tempo
+    ports:
+      - "3200:3200"
+    restart: unless-stopped
+    networks:
+      - ntix-network-local
+
+  loki:
+    image: grafana/loki:3.5.1
+    container_name: ntix-loki-local
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    user: "0"
+    volumes:
+      - ./observability/loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - ntix-loki-volume:/loki
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+    networks:
+      - ntix-network-local
+
+  grafana:
+    image: grafana/grafana:12.0.2
+    container_name: ntix-grafana-local
+    environment:
+      # Ambiente local: acesso anônimo como Admin, publicado só em 127.0.0.1.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ntix-grafana-volume:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+    restart: unless-stopped
+    networks:
+      - ntix-network-local
+
+networks:
+  ntix-network-local:
+    driver: bridge
+
+volumes:
+  ntix-sqlserver-volume:
+  ntix-prometheus-volume:
+  ntix-tempo-volume:
+  ntix-loki-volume:
+  ntix-grafana-volume:

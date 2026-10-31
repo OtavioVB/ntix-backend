@@ -1,0 +1,33 @@
+<Solution>
+  <Folder Name="/data/">
+    <File Path="data/customers/001-create-customer-table.sql" />
+    <File Path="data/customers/002-create-customer-indexes.sql" />
+  </Folder>
+  <Folder Name="/devops/">
+    <File Path="devops/docker-compose.yml" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/README.md" />
+  </Folder>
+  <Folder Name="/docs/rfcs/">
+    <File Path="docs/rfcs/0000-template.md" />
+    <File Path="docs/rfcs/0001-sql-server-como-banco-de-dados.md" />
+    <File Path="docs/rfcs/0002-abstracoes-microsoft-extensions.md" />
+    <File Path="docs/rfcs/0003-bibliotecas-de-teste.md" />
+    <File Path="docs/rfcs/0004-sql-nativo-no-lugar-do-ef-core.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Application/Application.csproj" Id="05d9fcdd-45ea-45ab-ba50-b245ac4a825f" />
+    <Project Path="src/Domain/Domain.csproj" Id="445af0d7-58c3-4792-a894-4817e253ab6f" />
+    <Project Path="src/Infra/Infra.csproj" Id="09599af6-692d-407e-bd78-dffddc25e5ba" />
+    <Project Path="src/WebApi/WebApi.csproj" Id="c9e51fcd-2750-4dc6-8bcc-9c98a16e2336" />
+  </Folder>
+  <Folder Name="/tsts/">
+    <Project Path="tsts/FunctionalTests/FunctionalTests.csproj" Id="264a6b9c-e7fa-425e-8b49-199f69814ad4" />
+    <Project Path="tsts/IntegratedTests/IntegratedTests.csproj" Id="8d3f4f25-9321-4707-8a13-c186f01b30e5" />
+    <Project Path="tsts/UnitTests/UnitTests.csproj" Id="19031148-2754-4547-8438-5225d9ea536a" />
+  </Folder>
+  <Folder Name="/tsts/LoadTests/">
+    <File Path="tsts/LoadTests/customers-create-tests.js" />
+  </Folder>
+</Solution>
