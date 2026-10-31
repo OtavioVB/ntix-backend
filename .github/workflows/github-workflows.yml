@@ -67,9 +67,17 @@ jobs:
       - name: Rodar testes integrados
         run: dotnet test tsts/IntegratedTests/IntegratedTests.csproj --configuration ${{ env.BUILD_CONFIGURATION }}
 
+  static-analysis:
+    name: Análise estática
+    needs: [unit-tests, integrated-tests]
+    uses: ./.github/workflows/static-analysis.yml
+    secrets:
+      MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   functional-tests:
     name: Testes funcionais
-    needs: [unit-tests, integrated-tests]
+    needs: static-analysis
     runs-on: ubuntu-latest
     services:
       sqlserver:

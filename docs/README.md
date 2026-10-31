@@ -47,9 +47,32 @@ Para gerar tráfego em cada ramo do funil de cadastro, use `tsts/LoadTests/custo
 
 ## Integração contínua
 
-O workflow `.github/workflows/github-workflows.yml` roda em push e pull request para `main` e pode ser disparado manualmente em **Actions > CI > Run workflow**: build, testes unitários e integrados em paralelo e, depois, testes funcionais. Os testes de carga não fazem parte da esteira.
+O workflow `.github/workflows/github-workflows.yml` roda em push e pull request para `main` e pode ser disparado manualmente em **Actions > CI > Run workflow**: build, testes unitários e integrados em paralelo, análise estática e, depois, testes funcionais. Os testes de carga não fazem parte da esteira.
 
 Configure em **Settings > Secrets and variables > Actions** o secret `MSSQL_SA_PASSWORD`. Ele é a senha de um SQL Server descartável, criado para cada job, e não pode conter `;`, porque compõe a connection string. O SQL Server exige ao menos 8 caracteres, com maiúsculas, minúsculas, números e símbolos.
+
+## Análise estática
+
+O CI chama o workflow `.github/workflows/static-analysis.yml` depois dos testes unitários e integrados e antes dos testes funcionais, em todo commit na `main` e em pull requests. Ele também pode ser disparado manualmente. O workflow compila a solução, roda os testes unitários e integrados com cobertura e envia o resultado ao SonarQube Cloud. Se a execução falhar, os testes funcionais e o deploy não rodam. A cobertura não inclui os testes funcionais.
+
+Em **Settings > Secrets and variables > Actions**, além do secret `MSSQL_SA_PASSWORD`, configure:
+
+| Tipo | Nome | Conteúdo |
+|---|---|---|
+| Secret | `SONAR_TOKEN` | API Key gerada no SonarQube Cloud |
+| Variável | `SONAR_PROJECT_KEY` | Chave do projeto no SonarQube Cloud |
+| Variável | `SONAR_ORGANIZATION` | Chave da organização no SonarQube Cloud |
+
+No SonarQube Cloud, desligue a análise automática em **Administration > Analysis Method**.
+
+Os parâmetros ficam no bloco `env` do workflow:
+
+| Variável | Parâmetro do Sonar | Efeito |
+|---|---|---|
+| `SONAR_COVERAGE_EXCLUSIONS` | `sonar.coverage.exclusions` | Arquivos fora do cálculo de cobertura |
+| `SONAR_EXCLUSIONS` | `sonar.exclusions` | Arquivos fora da identificação de issues |
+| `SONAR_IGNORED_RULE` e `SONAR_IGNORED_RULE_FILES` | `sonar.issue.ignore.multicriteria` | Regra ignorada em um conjunto de arquivos |
+| `SONAR_CPD_EXCLUSIONS` | `sonar.cpd.exclusions` | Arquivos fora da detecção de duplicação |
 
 ## Implantação na VPS
 

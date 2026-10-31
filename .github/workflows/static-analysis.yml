@@ -1,0 +1,98 @@
+name: Análise estática
+
+on:
+  workflow_call:
+    secrets:
+      MSSQL_SA_PASSWORD:
+        required: true
+      SONAR_TOKEN:
+        required: true
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 10.0.x
+  BUILD_CONFIGURATION: Release
+  SONAR_SCANNER_VERSION: 12.0.0
+  SONAR_HOST_URL: https://sonarcloud.io
+  # Arquivos fora do cálculo de cobertura: inicialização, configuração e modelos sem regra de negócio.
+  SONAR_COVERAGE_EXCLUSIONS: "**/Program.cs,**/ServiceCollectionExtensions.cs,**/Observability/**,**/Configuration/**,**/Payloads/**,**/Models/**,**/Inputs/**,**/*Log.cs,**/*Diagnostics.cs"
+  # Arquivos fora da identificação de issues: artefatos de build, código gerado e testes de carga.
+  SONAR_EXCLUSIONS: "**/bin/**,**/obj/**,**/*.g.cs,**/*.feature.cs,**/LoadTests/**"
+  # Arquivos fora da detecção de duplicação: contratos parecidos por natureza e cenários de teste.
+  SONAR_CPD_EXCLUSIONS: "**/Payloads/**,**/Models/**,**/Inputs/**,tsts/**"
+  # Regra ignorada nos testes: os nomes Given_[Cenário]_When_[Comportamento]_Should_[ResultadoEsperado] usam sublinhado.
+  SONAR_IGNORED_RULE: csharpsquid:S100
+  SONAR_IGNORED_RULE_FILES: "tsts/**/*"
+
+jobs:
+  sonar:
+    name: SonarQube Cloud
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b -o /dev/null"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 30s
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+      SqlServerConfiguration__ConnectionString: Server=localhost,1433;Database=ntix;User Id=sa;Password=${{ secrets.MSSQL_SA_PASSWORD }};Encrypt=True;TrustServerCertificate=True
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # O Sonar usa o histórico completo do Git para atribuir issues e identificar código novo.
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Instalar o SonarScanner
+        run: dotnet tool install --global dotnet-sonarscanner --version "$SONAR_SCANNER_VERSION"
+
+      - name: Iniciar a análise
+        run: |
+          dotnet sonarscanner begin \
+            /k:"$SONAR_PROJECT_KEY" \
+            /o:"$SONAR_ORGANIZATION" \
+            /d:sonar.host.url="$SONAR_HOST_URL" \
+            /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml" \
+            /d:sonar.cs.vstest.reportsPaths="TestResults/**/*.trx" \
+            /d:sonar.coverage.exclusions="$SONAR_COVERAGE_EXCLUSIONS" \
+            /d:sonar.exclusions="$SONAR_EXCLUSIONS" \
+            /d:sonar.cpd.exclusions="$SONAR_CPD_EXCLUSIONS" \
+            /d:sonar.issue.ignore.multicriteria="e1" \
+            /d:sonar.issue.ignore.multicriteria.e1.ruleKey="$SONAR_IGNORED_RULE" \
+            /d:sonar.issue.ignore.multicriteria.e1.resourceKey="$SONAR_IGNORED_RULE_FILES"
+
+      - name: Compilar a solução
+        run: dotnet build ntix.slnx --configuration "$BUILD_CONFIGURATION"
+
+      - name: Rodar os testes com cobertura
+        run: |
+          for project in UnitTests IntegratedTests; do
+            dotnet test "tsts/$project/$project.csproj" \
+              --configuration "$BUILD_CONFIGURATION" \
+              --no-build \
+              --logger trx \
+              --results-directory TestResults \
+              --collect:"XPlat Code Coverage" \
+              -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+          done
+
+      - name: Enviar a análise
+        run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"

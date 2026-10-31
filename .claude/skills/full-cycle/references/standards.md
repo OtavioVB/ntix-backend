@@ -40,11 +40,12 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Nenhum sinal pode expor dado pessoal completo, nem em mensagem de exceção copiada para um span.
 
 ### Integração contínua
-- GitHub Actions: build, testes unitários e integrados em paralelo e, depois, testes funcionais.
+- GitHub Actions: build, testes unitários e integrados em paralelo, análise estática e, depois, testes funcionais.
 - Valores sensíveis da esteira vêm de secrets do repositório, nunca do arquivo do workflow.
 - Deploy em VPS via SSH, depois dos testes: acesso por secrets, variáveis de ambiente geradas no servidor a cada deploy e API em contêiner construído pelo `Dockerfile`.
 - O deploy verifica as dependências do servidor e instala o que faltar antes de usá-las.
 - Na VPS só a API é pública. Banco e observabilidade escutam em `127.0.0.1`.
+- Análise estática em workflow próprio (`static-analysis.yml`), chamado pelo `github-workflows.yml` a cada commit na `main`, com Sonar e cobertura pelo Coverlet ([RFC 0006](../../../../docs/rfcs/0006-analise-estatica-com-sonar-e-coverlet.md)). Exclusões de cobertura, de issues e de duplicação ficam configuradas na pipeline, e a API Key do Sonar vem do GitHub.
 
 ### Nomes
 - Use o nome mais simples que descreva o negócio: `Customer`, não `CustomerAccount`.
@@ -87,7 +88,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Projetos: `src/WebApi`, `src/Application`, `src/Domain`, `src/Infra`.
 - Testes em `tsts/` (é esse o nome da pasta): `UnitTests`, `IntegratedTests`, `FunctionalTests`.
 - `WebApi` usa controllers (`AddControllers`/`MapControllers`) e `AddOpenApi`.
-- Versões atuais: xUnit 2.9.3, Reqnroll.xUnit 3.3.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4.
+- Versões atuais: xUnit 2.9.3, Reqnroll.xUnit 3.3.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, coverlet.msbuild 6.0.4.
 - `devops/docker-compose.yml` sobe as dependências locais; os segredos ficam em `devops/.env`, ignorado pelo Git, com modelo em `devops/.env.example`.
 - Bibliotecas de teste NSubstitute e `Mvc.Testing`, asserções com o `Assert` do xUnit ([RFCs](../../../../docs/rfcs)).
 - O Dockerfile de uma aplicação copia o `.csproj` de cada projeto de que ela depende antes do `dotnet restore`.
@@ -103,6 +104,8 @@ Assumidas por Claude. Valem até o usuário dizer o contrário; ao confirmar, mo
 - Headers auditáveis: `X-Correlation-Id`, `X-Origin-Service` e `X-Requested-At` são obrigatórios; `X-Execution-User` é opcional, como o usuário na referência, porque o cadastro é anônimo.
 - `ExecutionUser` é um identificador e aparece sem ofuscação nos logs, então quem chama não deve enviar nele um dado pessoal, como um email.
 - Slug não aparece nos logs, porque revela o nome completo do cliente.
+- O Sonar da esteira é o SonarQube Cloud, e a API Key é o secret `SONAR_TOKEN`, exposto ao job como variável de ambiente.
+- A esteira gera a cobertura com o `coverlet.collector`, e o `coverlet.msbuild` fica disponível para `dotnet test /p:CollectCoverage=true`.
 - Enquanto só houver um endpoint, o controller lê os headers com `[FromHeader]` e o caso de uso valida o `AuditableInfoValueObject`, sem middleware.
 
 ## Decisões em aberto

@@ -4,6 +4,8 @@
     <File Path="data/customers/002-create-customer-indexes.sql" />
   </Folder>
   <Folder Name="/devops/">
+    <File Path=".github/workflows/github-workflows.yml" />
+    <File Path=".github/workflows/static-analysis.yml" />
     <File Path="devops/docker-compose.yml" />
   </Folder>
   <Folder Name="/docs/">
@@ -15,6 +17,7 @@
     <File Path="docs/rfcs/0002-abstracoes-microsoft-extensions.md" />
     <File Path="docs/rfcs/0003-bibliotecas-de-teste.md" />
     <File Path="docs/rfcs/0004-sql-nativo-no-lugar-do-ef-core.md" />
+    <File Path="docs/rfcs/0006-analise-estatica-com-sonar-e-coverlet.md" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Application/Application.csproj" Id="05d9fcdd-45ea-45ab-ba50-b245ac4a825f" />
@@ -29,5 +32,6 @@
   </Folder>
   <Folder Name="/tsts/LoadTests/">
     <File Path="tsts/LoadTests/customers-create-tests.js" />
+    <File Path="tsts/LoadTests/customers-funnel-tests.js" />
   </Folder>
 </Solution>
