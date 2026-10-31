@@ -45,6 +45,12 @@ k6 run -e BASE_URL=http://localhost:5001 tsts/LoadTests/customers-create-tests.j
 
 Para gerar tráfego em cada ramo do funil de cadastro, use `tsts/LoadTests/customers-funnel-tests.js`, descrito em [observabilidade.md](observabilidade.md).
 
+## Integração contínua
+
+O workflow `.github/workflows/github-workflows.yml` roda em push e pull request para `main` e pode ser disparado manualmente em **Actions > CI > Run workflow**: build, testes unitários e integrados em paralelo e, depois, testes funcionais. Os testes de carga não fazem parte da esteira.
+
+Configure em **Settings > Secrets and variables > Actions** o secret `MSSQL_SA_PASSWORD`. Ele é a senha de um SQL Server descartável, criado para cada job, e não pode conter `;`, porque compõe a connection string. O SQL Server exige ao menos 8 caracteres, com maiúsculas, minúsculas, números e símbolos.
+
 ## Banco de dados
 
 O esquema fica em scripts idempotentes em `data/<schema>/NNN-descricao.sql`, aplicados em ordem de caminho. Para mudar o esquema, adicione um novo script.

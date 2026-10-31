@@ -39,6 +39,10 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Caso de uso de negócio tem funil em métricas do Prometheus e dashboard próprio: um contador de solicitações e um contador de desfechos.
 - Nenhum sinal pode expor dado pessoal completo, nem em mensagem de exceção copiada para um span.
 
+### Integração contínua
+- GitHub Actions: build, testes unitários e integrados em paralelo e, depois, testes funcionais.
+- Valores sensíveis da esteira vêm de secrets do repositório, nunca do arquivo do workflow.
+
 ### Nomes
 - Use o nome mais simples que descreva o negócio: `Customer`, não `CustomerAccount`.
 
