@@ -30,7 +30,7 @@ public sealed class NtixApiHooks
         Environment.SetEnvironmentVariable("EmailVerificationConfiguration__LinkBaseUrl", "https://painel.ntix.com/verificar-email");
 
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-            builder.ConfigureTestServices(services => services.AddSingleton<IEmailSender>(_ => EmailSender)));
+            builder.ConfigureTestServices(services => services.AddTransient<IEmailSender>(_ => EmailSender)));
     }
 
     [AfterTestRun]
