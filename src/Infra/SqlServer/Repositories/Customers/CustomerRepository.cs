@@ -1,3 +1,4 @@
+using Infra.SqlServer.Base.Configuration;
 using Infra.SqlServer.Base.UnitOfWork;
 using Infra.SqlServer.Repositories.Customers.Enums;
 using Infra.SqlServer.Repositories.Customers.Interfaces;
@@ -41,13 +42,35 @@ public sealed class CustomerRepository : ICustomerRepository
         VALUES (@id_customer, @full_name, @email, @document, @slug, @password_hash, @password_salt, @phone_number, @created_at, @created_correlation_id);
         """;
 
+    private const string FIND_CREDENTIALS_BY_EMAIL_SQL = """
+        SELECT customer.id_customer, customer.password_hash, customer.password_salt,
+            CASE
+                WHEN EXISTS (SELECT 1 FROM producers.ProducerCustomer WHERE customer_id = customer.id_customer AND producer_id = @producer_id)
+                THEN 1 ELSE 0
+            END
+        FROM customers.Customer AS customer
+        WHERE customer.email = @email;
+        """;
+
+    private const string FIND_CREDENTIALS_BY_DOCUMENT_SQL = """
+        SELECT customer.id_customer, customer.password_hash, customer.password_salt,
+            CASE
+                WHEN EXISTS (SELECT 1 FROM producers.ProducerCustomer WHERE customer_id = customer.id_customer AND producer_id = @producer_id)
+                THEN 1 ELSE 0
+            END
+        FROM customers.Customer AS customer
+        WHERE customer.document = @document;
+        """;
+
     private static readonly ActivitySource ACTIVITY_SOURCE = new("Ntix.SqlServer");
 
     private readonly SqlServerUnitOfWork _unitOfWork;
+    private readonly SqlServerConfiguration _configuration;
 
-    public CustomerRepository(SqlServerUnitOfWork unitOfWork)
+    public CustomerRepository(SqlServerUnitOfWork unitOfWork, SqlServerConfiguration configuration)
     {
         _unitOfWork = unitOfWork;
+        _configuration = configuration;
     }
 
     // Span manual: nunca registra parâmetros nem a mensagem da SqlException, que traz o valor duplicado.
@@ -109,5 +132,47 @@ public sealed class CustomerRepository : ICustomerRepository
                 ? CustomerCreationResult.SlugAlreadyExists
                 : CustomerCreationResult.EmailOrDocumentAlreadyExists;
         }
+    }
+
+    public async Task<CustomerCredentialsModel?> FindCredentialsByEmailAsync(string email, Guid producerId, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(FindCredentialsByEmailAsync));
+
+        await using var connection = new SqlConnection(_configuration.ConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new SqlCommand(FIND_CREDENTIALS_BY_EMAIL_SQL, connection);
+
+        command.Parameters.Add("@email", SqlDbType.NVarChar, EMAIL_MAX_LENGTH).Value = email;
+        command.Parameters.Add("@producer_id", SqlDbType.UniqueIdentifier).Value = producerId;
+
+        return await ReadCredentialsAsync(command, cancellationToken);
+    }
+
+    public async Task<CustomerCredentialsModel?> FindCredentialsByDocumentAsync(string document, Guid producerId, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(FindCredentialsByDocumentAsync));
+
+        await using var connection = new SqlConnection(_configuration.ConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new SqlCommand(FIND_CREDENTIALS_BY_DOCUMENT_SQL, connection);
+
+        command.Parameters.Add("@document", SqlDbType.Char, DOCUMENT_LENGTH).Value = document;
+        command.Parameters.Add("@producer_id", SqlDbType.UniqueIdentifier).Value = producerId;
+
+        return await ReadCredentialsAsync(command, cancellationToken);
+    }
+
+    private static async Task<CustomerCredentialsModel?> ReadCredentialsAsync(SqlCommand command, CancellationToken cancellationToken)
+    {
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        if (!await reader.ReadAsync(cancellationToken))
+            return null;
+
+        return new CustomerCredentialsModel(
+            Id: reader.GetGuid(0),
+            PasswordHash: reader.GetFieldValue<byte[]>(1),
+            PasswordSalt: reader.GetFieldValue<byte[]>(2),
+            IsLinkedToProducer: reader.GetInt32(3) == 1);
     }
 }

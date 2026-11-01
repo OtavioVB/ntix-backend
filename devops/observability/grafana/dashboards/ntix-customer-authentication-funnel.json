@@ -1,0 +1,74 @@
+{
+  "uid": "ntix-customer-authentication-funnel",
+  "title": "Ntix Funil de Autenticação de Cliente",
+  "description": "Acompanhamento de negócio: das solicitações de autenticação até os clientes autenticados, com os motivos de recusa.",
+  "tags": ["ntix", "negocio", "funil"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Serviço",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(ntix_customers_authentication_requests_total, service_name)", "refId": "service" },
+        "definition": "label_values(ntix_customers_authentication_requests_total, service_name)",
+        "refresh": 2,
+        "current": { "text": "ntix-webapi", "value": "ntix-webapi" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "bargauge",
+      "title": "Funil de autenticação",
+      "description": "Passo 1: solicitações. Passo 2: para onde cada solicitação foi.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 11, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "left",
+        "reduceOptions": { "calcs": ["lastNotNull"], "values": false }
+      },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "min": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "instant": true, "legendFormat": "Solicitações", "expr": "round(sum(increase(ntix_customers_authentication_requests_total{service_name=\"$service\"}[$__range]))) or vector(0)" },
+        { "refId": "B", "instant": true, "legendFormat": "Pararam na validação inicial", "expr": "round(sum(increase(ntix_customers_authentication_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__range]))) or vector(0)" },
+        { "refId": "C", "instant": true, "legendFormat": "Login não encontrado", "expr": "round(sum(increase(ntix_customers_authentication_outcomes_total{service_name=\"$service\", outcome=\"customer_not_found\"}[$__range]))) or vector(0)" },
+        { "refId": "D", "instant": true, "legendFormat": "Senha incorreta", "expr": "round(sum(increase(ntix_customers_authentication_outcomes_total{service_name=\"$service\", outcome=\"invalid_password\"}[$__range]))) or vector(0)" },
+        { "refId": "E", "instant": true, "legendFormat": "Sem vínculo com o produtor", "expr": "round(sum(increase(ntix_customers_authentication_outcomes_total{service_name=\"$service\", outcome=\"not_linked_to_producer\"}[$__range]))) or vector(0)" },
+        { "refId": "F", "instant": true, "legendFormat": "Erros por exceção", "expr": "round(sum(increase(ntix_customers_authentication_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__range]))) or vector(0)" },
+        { "refId": "G", "instant": true, "legendFormat": "Clientes autenticados", "expr": "round(sum(increase(ntix_customers_authentication_outcomes_total{service_name=\"$service\", outcome=\"authenticated\"}[$__range]))) or vector(0)" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 11 },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 80, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{outcome}}", "expr": "sum by (outcome) (increase(ntix_customers_authentication_outcomes_total{service_name=\"$service\"}[$__rate_interval]))" }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Logs da autenticação de cliente",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 11, "w": 24, "x": 0, "y": 20 },
+      "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" },
+      "targets": [
+        { "refId": "A", "expr": "{service_name=\"$service\"} | scope_name=\"Application.UseCases.AuthenticateCustomer.AuthenticateCustomerUseCase\"" }
+      ]
+    }
+  ]
+}

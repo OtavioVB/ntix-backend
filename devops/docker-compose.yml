@@ -140,6 +140,7 @@ services:
       OTEL_SERVICE_NAME: ntix-webapi
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      JwtConfiguration__SecretKey: "${JWT_SECRET_KEY:?Defina JWT_SECRET_KEY em devops/.env (veja devops/.env.example)}"
       PasswordConfiguration__PrivateKey: "${PASSWORD_PRIVATE_KEY:?Defina PASSWORD_PRIVATE_KEY em devops/.env (veja devops/.env.example)}"
       SqlServerConfiguration__ConnectionString: "Server=ntix-sqlserver-local,1433;Database=ntix;User Id=sa;Password=${MSSQL_SA_PASSWORD:?Defina MSSQL_SA_PASSWORD em devops/.env (veja devops/.env.example)};Encrypt=True;TrustServerCertificate=True"
     ports:

@@ -28,4 +28,10 @@ public readonly struct PasswordSaltValueObject
             isValid: true,
             salt: RandomNumberGenerator.GetBytes(LENGTH),
             methodResult: MethodResult.Success());
+
+    public static PasswordSaltValueObject Build(byte[] salt)
+        => new(
+            isValid: true,
+            salt: salt,
+            methodResult: MethodResult.Success());
 }

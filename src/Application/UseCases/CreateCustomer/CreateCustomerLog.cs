@@ -5,26 +5,26 @@ namespace Application.UseCases.CreateCustomer;
 internal static partial class CreateCustomerLog
 {
     [LoggerMessage(EventId = 1001, Level = LogLevel.Information,
-        Message = "Cliente {CustomerId} cadastrado com o email {ObfuscatedEmail} e o CPF {ObfuscatedCpf}.")]
-    public static partial void Created(ILogger logger, Guid customerId, string obfuscatedEmail, string obfuscatedCpf);
+        Message = "[{MethodName}] Customer has been created. Input = {@Input}.")]
+    public static partial void Created(ILogger logger, string methodName, object input);
 
     [LoggerMessage(EventId = 1002, Level = LogLevel.Warning,
-        Message = "Cadastro de cliente recusado: já existe um cliente com o email {ObfuscatedEmail} ou o CPF {ObfuscatedCpf}.")]
-    public static partial void AlreadyExists(ILogger logger, string obfuscatedEmail, string obfuscatedCpf);
+        Message = "[{MethodName}] Customer creation has been refused because email or document already exists. Input = {@Input}.")]
+    public static partial void AlreadyExists(ILogger logger, string methodName, object input);
 
     [LoggerMessage(EventId = 1003, Level = LogLevel.Warning,
-        Message = "Cadastro de cliente recusado por dados inválidos: {NotificationCodes}.")]
-    public static partial void InvalidData(ILogger logger, string notificationCodes);
+        Message = "[{MethodName}] Customer creation has been refused because input is invalid. Input = {@Input}.")]
+    public static partial void InvalidData(ILogger logger, string methodName, object input);
 
     [LoggerMessage(EventId = 1004, Level = LogLevel.Information,
-        Message = "Slug ocupado por um cadastro simultâneo do email {ObfuscatedEmail}: gerando outra versão.")]
-    public static partial void SlugTaken(ILogger logger, string obfuscatedEmail);
+        Message = "[{MethodName}] Customer slug has been taken by a concurrent creation, generating another version. Input = {@Input}.")]
+    public static partial void SlugTaken(ILogger logger, string methodName, object input);
 
     [LoggerMessage(EventId = 1005, Level = LogLevel.Error,
-        Message = "Falha inesperada ao cadastrar o cliente.")]
-    public static partial void Failed(ILogger logger, Exception exception);
+        Message = "[{MethodName}] Customer creation has been failed. Input = {@Input}.")]
+    public static partial void Failed(ILogger logger, string methodName, object input, Exception exception);
 
     [LoggerMessage(EventId = 1006, Level = LogLevel.Error,
-        Message = "Falha ao desfazer a transação do cadastro de cliente.")]
-    public static partial void RollbackFailed(ILogger logger, Exception exception);
+        Message = "[{MethodName}] Customer creation rollback has been failed. Input = {@Input}.")]
+    public static partial void RollbackFailed(ILogger logger, string methodName, object input, Exception exception);
 }

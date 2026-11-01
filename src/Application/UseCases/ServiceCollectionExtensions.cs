@@ -1,3 +1,6 @@
+using Application.UseCases.AuthenticateCustomer;
+using Application.UseCases.AuthenticateCustomer.Inputs;
+using Application.UseCases.AuthenticateCustomer.Outputs;
 using Application.UseCases.Base.Configuration;
 using Application.UseCases.Base.Interfaces;
 using Application.UseCases.CreateCustomer;
@@ -19,6 +22,8 @@ public static class ServiceCollectionExtensions
         services.AddMetrics();
         services.AddSingleton<CreateCustomerDiagnostics>();
         services.AddScoped<IUseCase<CreateCustomerUseCaseInput>, CreateCustomerUseCase>();
+        services.AddSingleton<AuthenticateCustomerDiagnostics>();
+        services.AddScoped<IUseCase<AuthenticateCustomerUseCaseInput, AuthenticateCustomerUseCaseOutput>, AuthenticateCustomerUseCase>();
 
         return services;
     }

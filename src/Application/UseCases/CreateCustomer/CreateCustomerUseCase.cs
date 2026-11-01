@@ -84,7 +84,10 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
 
             while (creationResult == CustomerCreationResult.SlugAlreadyExists)
             {
-                CreateCustomerLog.SlugTaken(_logger, input.Email.GetObfuscatedValue());
+                CreateCustomerLog.SlugTaken(
+                    logger: _logger,
+                    methodName: nameof(CreateCustomerUseCase),
+                    input: new { Email = input.Email.GetObfuscatedValue() });
 
                 customer = BuildCustomer(input, auditableInfo, await GetAvailableSlugAsync(baseSlug.BuildRandomVersion(), cancellationToken), passwordHash, passwordSalt);
                 creationResult = await _customerRepository.CreateAsync(BuildCustomerModel(customer), cancellationToken);
@@ -104,7 +107,11 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
             if (ex is OperationCanceledException || cancellationToken.IsCancellationRequested)
                 return BuildCanceledResult();
 
-            CreateCustomerLog.Failed(_logger, ex);
+            CreateCustomerLog.Failed(
+                logger: _logger,
+                methodName: nameof(CreateCustomerUseCase),
+                input: new { ExceptionType = ex.GetType().Name },
+                exception: ex);
 
             // Só o tipo: a mensagem de uma exceção de banco pode trazer dados pessoais.
             Activity.Current?.SetStatus(ActivityStatusCode.Error, ex.GetType().Name);
@@ -174,7 +181,11 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
         }
         catch (Exception ex)
         {
-            CreateCustomerLog.RollbackFailed(_logger, ex);
+            CreateCustomerLog.RollbackFailed(
+                logger: _logger,
+                methodName: nameof(CreateCustomerUseCase),
+                input: new { ExceptionType = ex.GetType().Name },
+                exception: ex);
         }
     }
 
@@ -212,9 +223,13 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
 
         CreateCustomerLog.Created(
             logger: _logger,
-            customerId: customer.Id.Value,
-            obfuscatedEmail: customer.Email.GetObfuscatedValue(),
-            obfuscatedCpf: customer.Document.GetObfuscatedValue());
+            methodName: nameof(CreateCustomerUseCase),
+            input: new
+            {
+                CustomerId = customer.Id.Value,
+                Email = customer.Email.GetObfuscatedValue(),
+                Document = customer.Document.GetObfuscatedValue(),
+            });
 
         var successNotification = Notification.Success(
             code: CREATE_CUSTOMER_SUCCESS_NOTIFICATION_CODE,
@@ -229,7 +244,8 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
 
         CreateCustomerLog.InvalidData(
             logger: _logger,
-            notificationCodes: string.Join(", ", validationResult.Notifications.Select(notification => notification.Code)));
+            methodName: nameof(CreateCustomerUseCase),
+            input: new { NotificationCodes = string.Join(", ", validationResult.Notifications.Select(notification => notification.Code)) });
 
         return validationResult;
     }
@@ -242,8 +258,12 @@ public sealed class CreateCustomerUseCase : IUseCase<CreateCustomerUseCaseInput>
 
         CreateCustomerLog.AlreadyExists(
             logger: _logger,
-            obfuscatedEmail: input.Email.GetObfuscatedValue(),
-            obfuscatedCpf: input.Document.GetObfuscatedValue());
+            methodName: nameof(CreateCustomerUseCase),
+            input: new
+            {
+                Email = input.Email.GetObfuscatedValue(),
+                Document = input.Document.GetObfuscatedValue(),
+            });
 
         var alreadyExistsNotification = Notification.Error(
             code: CUSTOMER_ALREADY_EXISTS_NOTIFICATION_CODE,

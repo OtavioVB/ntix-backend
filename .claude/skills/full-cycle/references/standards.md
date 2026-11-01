@@ -32,6 +32,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - SQL Server ([RFC 0001](../../../../docs/rfcs/0001-sql-server-como-banco-de-dados.md)), acessado com SQL nativo, sem EF Core, porque performance é critério de implementação ([RFC 0004](../../../../docs/rfcs/0004-sql-nativo-no-lugar-do-ef-core.md)).
 - Tabelas e índices ficam em scripts na pasta `data/`.
 - Unit of Work: o caso de uso faz rollback em qualquer exceção e só faz commit quando a regra de negócio permite a criação.
+- Regra de negócio que apenas consulta e não precisa de lock não abre transação nem usa o Unit of Work: só faz a consulta.
 - Evite consultas com `LIKE`. Prefira consultas exatas sobre índices.
 
 ### Exceções
@@ -59,6 +60,8 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Slug único: o primeiro usa só o nome; se já existir, gera-se uma versão aleatória de 5 letras ou números, verifica-se na base e usa-se a primeira livre.
 - Senha do cliente: obrigatória, com ao menos 8 caracteres, uma letra maiúscula, uma minúscula, um número e um símbolo. É persistida como hash que combina a chave privada do servidor com o hash da senha, e cada cliente tem o próprio salt.
 - Celular do cliente: opcional, com DDD e número.
+- Autenticação do cliente: e-mail ou CPF, nunca os dois na mesma requisição, com a senha e o vínculo com o `ProducerId` enviado. O JWT dura até 4 horas e carrega o ID do produtor.
+- Login inexistente, senha errada e falta de vínculo devolvem 401 com a mesma mensagem, para não revelar quais contas existem. Dados malformados devolvem 400.
 
 ### Padrões de código
 - Seguir os padrões dos projetos de referência `Tech.Aquisition.Customers` e `ntix`, resumidos em [code-patterns.md](code-patterns.md).
@@ -70,6 +73,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 
 ### Logs
 - Todo caso de uso registra logs semânticos, com informações relevantes para o negócio (o que foi criado, o que foi recusado e por quê).
+- Formato do time, em inglês: `[{MethodName}] Customer authentication has been failed. Input = {@Input}.`. `MethodName` é o nome da classe que registra o log, e `Input` é um objeto dinâmico com as informações daquele log.
 - Dado pessoal em log aparece só parcialmente, para atender à LGPD. A ofuscação é um método do value object do dado (`EmailValueObject.GetObfuscatedValue()`, `CpfValueObject.GetObfuscatedValue()`), para o padrão ficar fixo no domínio.
 
 ### Escopo de uma entrega
@@ -82,7 +86,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Unitários: xUnit, padrão AAA, nomes `Given_[Cenário]_When_[Comportamento]_Should_[ResultadoEsperado]`.
 - Integrados: xUnit, usando as dependências criadas, padrão AAA, mesma nomenclatura.
 - Funcionais: Reqnroll e Gherkin em português (`# language: pt`), com definições semânticas ao negócio.
-- Carga: k6. O cadastro de conta usa o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros.
+- Carga: k6. O cadastro de conta usa o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros. A autenticação usa até 50 usuários virtuais, p95 abaixo de 1 s e menos de 1% de erros.
 
 ### Dependências
 - Dependência nova é responsabilidade de Claude, com explicação prévia e RFC que a justifique.
@@ -117,10 +121,14 @@ Assumidas por Claude. Valem até o usuário dizer o contrário; ao confirmar, mo
 - Celular tem exatamente 11 dígitos (2 de DDD e 9 de número), aceita `(`, `)`, `-` e espaços na entrada e é persistido só com dígitos. Não há validação da lista de DDDs nem do nono dígito, e o celular não aparece nos logs.
 - O 4XX do cancelamento é o 499, e a exceção que chega ao controller não é capturada e vira 500.
 - O número de iterações é fixo, então "extrapolar" é medido pelo tempo do hash: p95 amarelo a partir de 250 ms e vermelho a partir de 500 ms. As iterações ficam no hash, porque gerar o salt não itera.
+- A senha enviada na autenticação passa pelas regras do `PasswordValueObject`, então uma senha fora da política devolve 400 sem consultar a base.
+- JWT assinado com HS256, com a chave em `JwtConfiguration__SecretKey` e as claims `sub` (cliente) e `producer_id` ([RFC 0007](../../../../docs/rfcs/0007-emissao-de-jwt-com-identitymodel.md)).
+- Caso de uso com saída usa `IUseCase<TInput, TOutput>` e `MethodResult<TOutput>`.
+- `Producer` e `ProducerCustomer` ficam no schema `producers`, com as colunas de auditoria de criação, como `Customer`.
 - Enquanto só houver um endpoint, o controller lê os headers com `[FromHeader]` e o caso de uso valida o `AuditableInfoValueObject`, sem middleware.
 
 ## Decisões em aberto
 
 Pergunte ao usuário quando um requisito depender de uma delas. Não presuma a resposta.
 
-1. **Carga em novos fluxos**: o perfil moderado foi definido só para o cadastro de conta. Pergunte o perfil de cada novo fluxo.
+1. **Carga em novos fluxos**: os perfis foram definidos só para o cadastro de conta e a autenticação. Pergunte o perfil de cada novo fluxo.

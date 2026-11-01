@@ -18,6 +18,7 @@ public sealed class NtixApiHooks
 
         Environment.SetEnvironmentVariable(SqlServerTestDatabase.CONNECTION_STRING_ENVIRONMENT_VARIABLE, Database.ConnectionString);
         Environment.SetEnvironmentVariable("PasswordConfiguration__PrivateKey", "chave-de-teste");
+        Environment.SetEnvironmentVariable("JwtConfiguration__SecretKey", "chave-jwt-de-teste-com-mais-de-32-bytes");
         Environment.SetEnvironmentVariable("OTEL_SDK_DISABLED", bool.TrueString);
 
         Factory = new WebApplicationFactory<Program>();
@@ -32,5 +33,5 @@ public sealed class NtixApiHooks
 
     [BeforeScenario]
     public Task RemoveCustomersFromPreviousScenarios()
-        => Database.ExecuteAsync("DELETE FROM customers.Customer;");
+        => Database.ExecuteAsync("DELETE FROM producers.ProducerCustomer; DELETE FROM producers.Producer; DELETE FROM customers.Customer;");
 }

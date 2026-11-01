@@ -1,4 +1,5 @@
 using Application.UseCases;
+using Infra.Jwt.Base.TokenGenerator;
 using Infra.SqlServer.Base.UnitOfWork;
 using Infra.SqlServer.Repositories.Customers;
 using Infra.SqlServer.Repositories.Customers.Models;
@@ -18,6 +19,16 @@ public sealed class SqlServerFixture : IAsyncLifetime
         WHERE email = @email;
         """;
 
+    private const string INSERT_PRODUCER_SQL = """
+        INSERT INTO producers.Producer (id_producer, name, email, phone, producer_type, slug, status, created_at, created_correlation_id)
+        VALUES (@id_producer, 'Produtor de Teste', @email, '11987654321', 'COMPANY', @slug, 'ACTIVE', @created_at, NEWID());
+        """;
+
+    private const string INSERT_PRODUCER_CUSTOMER_SQL = """
+        INSERT INTO producers.ProducerCustomer (id_producer_customer, producer_id, customer_id, created_at, created_correlation_id)
+        VALUES (@id_producer_customer, @producer_id, @customer_id, @created_at, NEWID());
+        """;
+
     private SqlServerTestDatabase? _database;
     private ServiceProvider? _serviceProvider;
 
@@ -32,6 +43,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
             {
                 ["SqlServerConfiguration:ConnectionString"] = _database.ConnectionString,
                 ["PasswordConfiguration:PrivateKey"] = CustomerTestData.PRIVATE_KEY,
+                ["JwtConfiguration:SecretKey"] = CustomerTestData.JWT_SECRET_KEY,
             })
             .Build();
 
@@ -39,6 +51,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
             .AddLogging()
             .AddSqlServerConfiguration(configuration)
             .AddCustomerRepositoryConfiguration(configuration)
+            .AddJwtConfiguration(configuration)
             .AddUseCasesConfiguration(configuration)
             .BuildServiceProvider();
     }
@@ -67,6 +80,28 @@ public sealed class SqlServerFixture : IAsyncLifetime
             CreatedAt: reader.GetDateTime(8),
             CreatedCorrelationId: reader.GetGuid(9));
     }
+
+    public async Task<Guid> CreateProducerAsync()
+    {
+        var producerId = Guid.NewGuid();
+
+        await _database!.ExecuteAsync(
+            INSERT_PRODUCER_SQL,
+            new SqlParameter("@id_producer", producerId),
+            new SqlParameter("@email", $"{producerId:N}@ntix.com"),
+            new SqlParameter("@slug", $"produtor-{producerId:N}"),
+            new SqlParameter("@created_at", DateTime.UtcNow));
+
+        return producerId;
+    }
+
+    public async Task LinkCustomerToProducerAsync(Guid customerId, Guid producerId)
+        => await _database!.ExecuteAsync(
+            INSERT_PRODUCER_CUSTOMER_SQL,
+            new SqlParameter("@id_producer_customer", Guid.NewGuid()),
+            new SqlParameter("@producer_id", producerId),
+            new SqlParameter("@customer_id", customerId),
+            new SqlParameter("@created_at", DateTime.UtcNow));
 
     public async Task DisposeAsync()
     {

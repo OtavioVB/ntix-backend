@@ -4,7 +4,7 @@ Extraídos dos projetos de referência indicados pelo usuário (`C:\Users\otavi\
 
 ## Geral
 
-- Código em inglês. Mensagens de notificação ao usuário e logs em português.
+- Código e logs em inglês. Mensagens de notificação ao usuário em português.
 - Namespace de arquivo (`namespace X;`), classes `sealed` por padrão, campos `_camelCase`, dependências por construtor.
 - Argumentos nomeados em chamadas com vários parâmetros.
 - Constantes em `SCREAMING_SNAKE_CASE`. Enums de negócio também, com valores explícitos começando em 1.
@@ -63,13 +63,14 @@ Agrega `CorrelationId`, `OriginService`, `ExecutionUser` e `RequestedAt`. `Build
 ## Casos de uso
 
 - `IUseCase<TInput>`, com `ExecuteAsync(input, auditableInfo, cancellationToken)`.
-- O caso de uso orquestra: abre o escopo de log auditável, valida input e `auditableInfo` juntos, abre a transação, chama domínio e repositório, faz commit só quando a regra permite, registra os logs e devolve a notificação.
+- O caso de uso orquestra: abre o escopo de log auditável, valida input e `auditableInfo` juntos, abre a transação (só se gravar ou precisar de lock), chama domínio e repositório, faz commit só quando a regra permite, registra os logs e devolve a notificação.
 - Toda recusa de negócio depois de abrir a transação faz rollback. O `catch` faz rollback em qualquer exceção, sem deixar uma falha do rollback esconder a original, registra o log de erro e o desfecho e relança a exceção para o controller; cancelamento não é relançado: depois do rollback, devolve uma notificação de cancelamento.
 - Input: `sealed record` com value objects dos dados do negócio, construtor privado, `static Create(...)` e `GetInputValidation()`, que agrega os `MethodResult` deles. Os dados auditáveis não entram no input.
 
 ## Logs
 
-- Cada caso de uso tem seu `<Acao>Log`: `internal static partial class` com `[LoggerMessage]`, `EventId` explícito e mensagem que descreve o fato de negócio.
+- Cada caso de uso tem seu `<Acao>Log`: `internal static partial class` com `[LoggerMessage]`, `EventId` explícito e mensagem que descreve o fato de negócio no formato `[{MethodName}] Customer authentication has been failed. Input = {@Input}.`.
+- A assinatura recebe `string methodName` e `object input`. Quem chama passa `nameof(<Classe>)` e um objeto anônimo: `input: new { CustomerId = customer.Id.Value, Email = customer.Email.GetObfuscatedValue() }`. Log de exceção leva no `Input` só o tipo dela, e a exceção vai no parâmetro `exception`.
 - Sucesso em `Information`, recusa de negócio em `Warning`, falha inesperada em `Error`.
 - Os campos auditáveis não se repetem nas mensagens: `logger.BeginAuditableScope(auditableInfo)` abre um escopo com eles, e `Logging:Console:IncludeScopes` fica ligado no `appsettings`.
 - Só `GetObfuscatedValue()` para dado pessoal, e nada que o revele indiretamente, como o nome completo ou o slug.
@@ -109,7 +110,7 @@ Infra/SqlServer/
 ```
 
 - Scripts idempotentes, aplicados em ordem de caminho por `devops/sqlserver/init-database.sh` e pelos testes. Tabela em `<schema>.<Entidade>`, colunas em `snake_case`, chave `id_<entidade>`.
-- `IUnitOfWork` tem `BeginTransactionAsync`, `CommitAsync` e `RollbackAsync`. O repositório cria comandos com `SqlServerUnitOfWork.CreateCommand`, sempre dentro da transação. Descartar o `UnitOfWork` sem commit desfaz a transação.
+- `IUnitOfWork` tem `BeginTransactionAsync`, `CommitAsync` e `RollbackAsync`. Quem grava cria comandos com `SqlServerUnitOfWork.CreateCommand`, sempre dentro da transação. Descartar o `UnitOfWork` sem commit desfaz a transação. Consulta sem necessidade de lock, fora de um fluxo transacional, abre a própria conexão no repositório, com `SqlServerConfiguration`, e o caso de uso não recebe `IUnitOfWork`.
 - Parâmetros sempre tipados, com o tipo e o tamanho da coluna (`SqlDbType.VarChar, 262`), para evitar conversão implícita que impede o uso do índice. Nada de `LIKE` quando uma consulta exata resolve.
 - `<Agregado>Model` é um `sealed record` de tipos primitivos. A `Application` faz a conversão a partir da entidade.
 - Unicidade é garantida por índice único nomeado (`UX_<Tabela>_<Coluna>`). A consulta prévia só antecipa a resposta. O repositório traduz o erro 2601 do SQL Server para um enum de resultado, em vez de propagar a exceção. Esse erro desfaz só a instrução, então a transação continua utilizável.

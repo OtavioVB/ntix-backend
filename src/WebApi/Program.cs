@@ -1,4 +1,5 @@
 using Application.UseCases;
+using Infra.Jwt.Base.TokenGenerator;
 using Infra.SqlServer.Base.UnitOfWork;
 using Infra.SqlServer.Repositories.Customers;
 using WebApi.Observability;
@@ -21,7 +22,8 @@ public class Program
 
         builder.Services
             .AddSqlServerConfiguration(builder.Configuration)
-            .AddCustomerRepositoryConfiguration(builder.Configuration);
+            .AddCustomerRepositoryConfiguration(builder.Configuration)
+            .AddJwtConfiguration(builder.Configuration);
 
         builder.Services
             .AddUseCasesConfiguration(builder.Configuration);

@@ -9,6 +9,7 @@ public static class CustomerTestData
 {
     public const string PASSWORD = "Senha@123";
     public const string PRIVATE_KEY = "chave-de-teste";
+    public const string JWT_SECRET_KEY = "chave-jwt-de-teste-com-mais-de-32-bytes";
 
     private const int CPF_BASE_LENGTH = 9;
 

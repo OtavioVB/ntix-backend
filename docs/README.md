@@ -89,6 +89,7 @@ A cada deploy, `devops/vps/ensure-dependencies.sh` verifica `curl`, `tar`, `gzip
 | `VPS_KNOWN_HOSTS` | Chave pública do servidor, gerada com `ssh-keyscan -p <porta> <host>` e conferida antes de salvar |
 | `VPS_MSSQL_SA_PASSWORD` | Senha do SQL Server da VPS, sem `;` e sem `'` |
 | `VPS_PASSWORD_PRIVATE_KEY` | Chave privada combinada ao hash das senhas dos clientes, sem `'`. Gere com `openssl rand -base64 32` |
+| `VPS_JWT_SECRET_KEY` | Chave que assina os tokens JWT, com ao menos 32 bytes e sem `'`. Gere com `openssl rand -base64 32` |
 
 A variável de repositório `VPS_MSSQL_PID` é opcional e define a edição do SQL Server. O padrão é `Express`, porque a edição `Developer` não pode ser usada em produção. Para outra edição, é preciso ter a licença.
 
@@ -102,7 +103,7 @@ ssh -L 3000:localhost:3000 <usuario>@<host>
 
 A senha do SQL Server é definida quando o volume é criado. Depois disso, trocar o secret sem alterar a senha no banco faz a API perder o acesso.
 
-Trocar `VPS_PASSWORD_PRIVATE_KEY` invalida as senhas já cadastradas, porque o hash depende dela.
+Trocar `VPS_PASSWORD_PRIVATE_KEY` invalida as senhas já cadastradas, porque o hash depende dela. Trocar `VPS_JWT_SECRET_KEY` invalida os tokens já emitidos.
 
 ## Banco de dados
 

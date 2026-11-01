@@ -551,6 +551,18 @@ public sealed class CreateCustomerUseCaseTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_NewCustomer_When_Executing_Should_WriteLogInTeamFormat()
+    {
+        // Arrange & Act
+        await _useCase.ExecuteAsync(BuildInput(), BuildAuditableInfo());
+
+        // Assert
+        var log = Assert.Single(_logger.Logs);
+        Assert.StartsWith("[CreateCustomerUseCase] Customer has been created. Input = ", log.Message);
+        Assert.EndsWith(".", log.Message);
+    }
+
+    [Fact]
     public async Task Given_ValidAuditableInfo_When_Executing_Should_OpenLogScopeWithAuditableFields()
     {
         // Arrange & Act
