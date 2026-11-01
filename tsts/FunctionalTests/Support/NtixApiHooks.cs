@@ -1,4 +1,7 @@
+using Infra.Resend.Base.EmailSender.Interfaces;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Reqnroll;
 using TestSupport;
 using WebApi;
@@ -10,6 +13,7 @@ public sealed class NtixApiHooks
 {
     public static WebApplicationFactory<Program> Factory { get; private set; } = null!;
     public static SqlServerTestDatabase Database { get; private set; } = null!;
+    public static FakeEmailSender EmailSender { get; private set; } = new();
 
     [BeforeTestRun]
     public static async Task StartApi()
@@ -21,7 +25,12 @@ public sealed class NtixApiHooks
         Environment.SetEnvironmentVariable("JwtConfiguration__SecretKey", "chave-jwt-de-teste-com-mais-de-32-bytes");
         Environment.SetEnvironmentVariable("OTEL_SDK_DISABLED", bool.TrueString);
 
-        Factory = new WebApplicationFactory<Program>();
+        Environment.SetEnvironmentVariable("ResendConfiguration__ApiKey", "chave-de-teste");
+        Environment.SetEnvironmentVariable("ResendConfiguration__From", "Ntix <nao-responda@ntix.com>");
+        Environment.SetEnvironmentVariable("EmailVerificationConfiguration__LinkBaseUrl", "https://painel.ntix.com/verificar-email");
+
+        Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services => services.AddSingleton<IEmailSender>(_ => EmailSender)));
     }
 
     [AfterTestRun]
@@ -33,5 +42,9 @@ public sealed class NtixApiHooks
 
     [BeforeScenario]
     public Task RemoveCustomersFromPreviousScenarios()
-        => Database.ExecuteAsync("DELETE FROM producers.ProducerCustomer; DELETE FROM producers.Producer; DELETE FROM customers.Customer;");
+    {
+        EmailSender = new FakeEmailSender();
+
+        return Database.ExecuteAsync("DELETE FROM producers.EmailVerification; DELETE FROM producers.ProducerUser; DELETE FROM producers.ProducerCustomer; DELETE FROM producers.Producer; DELETE FROM customers.Customer;");
+    }
 }

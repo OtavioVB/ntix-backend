@@ -90,8 +90,11 @@ A cada deploy, `devops/vps/ensure-dependencies.sh` verifica `curl`, `tar`, `gzip
 | `VPS_MSSQL_SA_PASSWORD` | Senha do SQL Server da VPS, sem `;` e sem `'` |
 | `VPS_PASSWORD_PRIVATE_KEY` | Chave privada combinada ao hash das senhas dos clientes, sem `'`. Gere com `openssl rand -base64 32` |
 | `VPS_JWT_SECRET_KEY` | Chave que assina os tokens JWT, com ao menos 32 bytes e sem `'`. Gere com `openssl rand -base64 32` |
+| `VPS_RESEND_API_KEY` | Chave de API da Resend, sem `'` |
 
 A variável de repositório `VPS_MSSQL_PID` é opcional e define a edição do SQL Server. O padrão é `Express`, porque a edição `Developer` não pode ser usada em produção. Para outra edição, é preciso ter a licença.
+
+As variáveis de repositório `VPS_RESEND_FROM` (remetente de um domínio verificado na Resend) e `VPS_EMAIL_VERIFICATION_LINK_BASE_URL` (página que recebe o link de verificação) são obrigatórias.
 
 A connection string da API, o endpoint de telemetria e as demais configurações são resolvidos pelo `docker-compose.yml` a partir desse `.env`, a cada deploy.
 

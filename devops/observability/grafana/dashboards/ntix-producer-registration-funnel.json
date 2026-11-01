@@ -1,0 +1,122 @@
+{
+  "uid": "ntix-producer-registration-funnel",
+  "title": "Ntix Funil de Cadastro de Produtor",
+  "description": "Acompanhamento de negócio: das solicitações de cadastro até as produtoras criadas, com os motivos de saída do funil e o envio do email de verificação.",
+  "tags": ["ntix", "negocio", "funil"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Serviço",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(ntix_producers_registration_requests_total, service_name)", "refId": "service" },
+        "definition": "label_values(ntix_producers_registration_requests_total, service_name)",
+        "refresh": 2,
+        "current": { "text": "ntix-webapi", "value": "ntix-webapi" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Solicitações de cadastro",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "instant": true, "expr": "round(sum(increase(ntix_producers_registration_requests_total{service_name=\"$service\"}[$__range]))) or vector(0)" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Produtoras criadas",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "instant": true, "expr": "round(sum(increase(ntix_producers_registration_outcomes_total{service_name=\"$service\", outcome=\"created\"}[$__range]))) or vector(0)" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Pararam na validação inicial",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "orange" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "instant": true, "expr": "round(sum(increase(ntix_producers_registration_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__range]))) or vector(0)" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Email já cadastrado",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "yellow" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "instant": true, "expr": "round(sum(increase(ntix_producers_registration_outcomes_total{service_name=\"$service\", outcome=\"already_exists\"}[$__range]))) or vector(0)" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Erros",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 16, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "red" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "instant": true, "expr": "round(sum(increase(ntix_producers_registration_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__range]))) or vector(0)" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Emails de verificação que falharam",
+      "description": "O cadastro fica gravado, mas o usuário não recebe o link.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 20, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "red" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "instant": true, "expr": "round(sum(increase(ntix_producers_registration_verification_emails_total{service_name=\"$service\", outcome=\"failed\"}[$__range]))) or vector(0)" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por minuto",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 5 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{outcome}}", "expr": "sum by (outcome) (increase(ntix_producers_registration_outcomes_total{service_name=\"$service\"}[1m]))" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Definição da senha (p95)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.25 }, { "color": "red", "value": 0.5 }] },
+          "custom": { "thresholdsStyle": { "mode": "line" } }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "legendFormat": "p95", "expr": "histogram_quantile(0.95, sum by (le) (rate(ntix_producers_password_hash_duration_seconds_bucket{service_name=\"$service\"}[5m])))" }
+      ]
+    }
+  ]
+}

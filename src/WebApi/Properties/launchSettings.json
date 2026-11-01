@@ -4,6 +4,9 @@
       "commandName": "Project",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
+        "EmailVerificationConfiguration__LinkBaseUrl": "http://localhost:3001/verificar-email",
+        "ResendConfiguration__ApiKey": "chave-resend-local-somente-para-desenvolvimento",
+        "ResendConfiguration__From": "Ntix <onboarding@resend.dev>",
         "JwtConfiguration__SecretKey": "chave-jwt-local-somente-para-desenvolvimento",
         "PasswordConfiguration__PrivateKey": "chave-local-somente-para-desenvolvimento",
         "SqlServerConfiguration__ConnectionString": "Server=localhost,1433;Database=ntix;User Id=sa;Password=Otavio@1234;Encrypt=True;TrustServerCertificate=True"
@@ -17,6 +20,9 @@
       "environmentVariables": {
         "ASPNETCORE_HTTPS_PORTS": "5000",
         "ASPNETCORE_HTTP_PORTS": "5001",
+        "EmailVerificationConfiguration__LinkBaseUrl": "http://localhost:3001/verificar-email",
+        "ResendConfiguration__ApiKey": "chave-resend-local-somente-para-desenvolvimento",
+        "ResendConfiguration__From": "Ntix <onboarding@resend.dev>",
         "JwtConfiguration__SecretKey": "chave-jwt-local-somente-para-desenvolvimento",
         "PasswordConfiguration__PrivateKey": "chave-local-somente-para-desenvolvimento",
         "SqlServerConfiguration__ConnectionString": "Server=localhost,1433;Database=ntix;User Id=sa;Password=Otavio@1234;Encrypt=True;TrustServerCertificate=True"

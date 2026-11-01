@@ -1,8 +1,10 @@
 using Application.UseCases;
 using Infra.Jwt.Base.TokenGenerator;
+using Infra.Resend.Base.EmailSender.Interfaces;
 using Infra.SqlServer.Base.UnitOfWork;
 using Infra.SqlServer.Repositories.Customers;
 using Infra.SqlServer.Repositories.Customers.Models;
+using Infra.SqlServer.Repositories.Producers;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +35,8 @@ public sealed class SqlServerFixture : IAsyncLifetime
     private ServiceProvider? _serviceProvider;
 
     public IServiceProvider Services => _serviceProvider!;
+    public SqlServerTestDatabase Database => _database!;
+    public FakeEmailSender EmailSender { get; } = new();
 
     public async Task InitializeAsync()
     {
@@ -44,6 +48,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
                 ["SqlServerConfiguration:ConnectionString"] = _database.ConnectionString,
                 ["PasswordConfiguration:PrivateKey"] = CustomerTestData.PRIVATE_KEY,
                 ["JwtConfiguration:SecretKey"] = CustomerTestData.JWT_SECRET_KEY,
+                ["EmailVerificationConfiguration:LinkBaseUrl"] = "https://painel.ntix.com/verificar-email",
             })
             .Build();
 
@@ -51,7 +56,9 @@ public sealed class SqlServerFixture : IAsyncLifetime
             .AddLogging()
             .AddSqlServerConfiguration(configuration)
             .AddCustomerRepositoryConfiguration(configuration)
+            .AddProducerRepositoryConfiguration(configuration)
             .AddJwtConfiguration(configuration)
+            .AddSingleton<IEmailSender>(EmailSender)
             .AddUseCasesConfiguration(configuration)
             .BuildServiceProvider();
     }

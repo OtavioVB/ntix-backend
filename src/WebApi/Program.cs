@@ -1,7 +1,9 @@
 using Application.UseCases;
 using Infra.Jwt.Base.TokenGenerator;
+using Infra.Resend.Base.EmailSender;
 using Infra.SqlServer.Base.UnitOfWork;
 using Infra.SqlServer.Repositories.Customers;
+using Infra.SqlServer.Repositories.Producers;
 using WebApi.Observability;
 
 namespace WebApi;
@@ -23,7 +25,9 @@ public class Program
         builder.Services
             .AddSqlServerConfiguration(builder.Configuration)
             .AddCustomerRepositoryConfiguration(builder.Configuration)
-            .AddJwtConfiguration(builder.Configuration);
+            .AddProducerRepositoryConfiguration(builder.Configuration)
+            .AddJwtConfiguration(builder.Configuration)
+            .AddResendConfiguration(builder.Configuration);
 
         builder.Services
             .AddUseCasesConfiguration(builder.Configuration);

@@ -57,7 +57,11 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 
 ### Regras de negócio
 - Não invente regra que não foi estipulada, mesmo que pareça uma proteção técnica, como um limite de tentativas.
-- Slug único: o primeiro usa só o nome; se já existir, gera-se uma versão aleatória de 5 letras ou números, verifica-se na base e usa-se a primeira livre.
+- Slug único: o primeiro usa só o nome; se já existir, gera-se uma versão aleatória de 5 letras ou números, verifica-se na base e usa-se a primeira livre. Vale também para o produtor, no lugar do sufixo sequencial da RN07 do REQ1.
+- Cadastro de produtor: produtora e usuário administrador entram em `PENDING` e são gravados com Unit of Work, na mesma transação, com commit decidido pelo caso de uso, no lugar da stored procedure da RN23 do REQ1.
+- Escopo do REQ1: cadastro, token e envio do link de verificação. O endpoint de verificação e o login do usuário do produtor (critérios 6 e 7) ficam para um requisito próprio.
+- O documento é opcional no cadastro inicial da produtora, e documento repetido é recusado. O `custom_domain` não entra no cadastro: é configurado internamente pelo backoffice, em requisito próprio.
+- Email pela Resend ([RFC 0008](../../../../docs/rfcs/0008-envio-de-email-com-resend.md)). O link de verificação vale 24 horas. O envio ocorre depois do commit, e a falha não desfaz o cadastro: vai para log e métrica.
 - Senha do cliente: obrigatória, com ao menos 8 caracteres, uma letra maiúscula, uma minúscula, um número e um símbolo. É persistida como hash que combina a chave privada do servidor com o hash da senha, e cada cliente tem o próprio salt.
 - Celular do cliente: opcional, com DDD e número.
 - Autenticação do cliente: e-mail ou CPF, nunca os dois na mesma requisição, com a senha e o vínculo com o `ProducerId` enviado. O JWT dura até 4 horas e carrega o ID do produtor.
@@ -86,7 +90,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Unitários: xUnit, padrão AAA, nomes `Given_[Cenário]_When_[Comportamento]_Should_[ResultadoEsperado]`.
 - Integrados: xUnit, usando as dependências criadas, padrão AAA, mesma nomenclatura.
 - Funcionais: Reqnroll e Gherkin em português (`# language: pt`), com definições semânticas ao negócio.
-- Carga: k6. O cadastro de conta usa o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros. A autenticação usa até 50 usuários virtuais, p95 abaixo de 1 s e menos de 1% de erros.
+- Carga: k6. O cadastro de conta usa o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros. A autenticação e o cadastro de produtor usam até 50 usuários virtuais, p95 abaixo de 1 s e menos de 1% de erros.
 
 ### Dependências
 - Dependência nova é responsabilidade de Claude, com explicação prévia e RFC que a justifique.
@@ -125,6 +129,12 @@ Assumidas por Claude. Valem até o usuário dizer o contrário; ao confirmar, mo
 - JWT assinado com HS256, com a chave em `JwtConfiguration__SecretKey` e as claims `sub` (cliente) e `producer_id` ([RFC 0007](../../../../docs/rfcs/0007-emissao-de-jwt-com-identitymodel.md)).
 - Caso de uso com saída usa `IUseCase<TInput, TOutput>` e `MethodResult<TOutput>`.
 - `Producer` e `ProducerCustomer` ficam no schema `producers`, com as colunas de auditoria de criação, como `Customer`.
+- Telefone da produtora: aceita `(`, `)`, `-` e espaços na entrada, exige `+` e código do país, sem assumir `+55`, e tem de 8 a 15 dígitos. Não aparece nos logs.
+- Palavras reservadas de slug: só os exemplos do REQ1 (`www`, `api`, `admin`, `app`, `hub`), até a lista definitiva. Sempre recebem a versão aleatória.
+- Slug de produtora segue a RN06 (`BuildSubdomain`: qualquer outro caractere vira `-`, até 63 caracteres). O slug de cliente mantém a regra anterior (`Build`).
+- Token de verificação: 32 bytes aleatórios em hexadecimal no link, e só o SHA-256 no banco, em `producers.EmailVerification`.
+- Documento da produtora é CPF ou CNPJ, inclusive o CNPJ alfanumérico, guardado sem pontuação. `producer_type` continua nulo mesmo com documento informado.
+- Testes integrados e funcionais substituem `IEmailSender` por `FakeEmailSender`, para não enviar emails reais. O teste de carga roda com uma chave da Resend inválida.
 - Enquanto só houver um endpoint, o controller lê os headers com `[FromHeader]` e o caso de uso valida o `AuditableInfoValueObject`, sem middleware.
 
 ## Decisões em aberto

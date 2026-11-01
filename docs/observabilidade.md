@@ -20,6 +20,7 @@ flowchart LR
 | Dashboard | Conteúdo |
 |---|---|
 | **Ntix Funil de Cadastro de Cliente** | Funil de negócio, conversão, evolução, logs e traces do cadastro |
+| **Ntix Funil de Cadastro de Produtor** | Funil de negócio, falhas no envio do email de verificação e tempo da definição da senha |
 | **Ntix WebApi** | Tráfego, latência, erros, concorrência, memória, GC, thread pool, logs e traces |
 
 ## Funil de cadastro de cliente

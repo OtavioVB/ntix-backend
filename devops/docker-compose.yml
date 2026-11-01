@@ -142,6 +142,9 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       JwtConfiguration__SecretKey: "${JWT_SECRET_KEY:?Defina JWT_SECRET_KEY em devops/.env (veja devops/.env.example)}"
       PasswordConfiguration__PrivateKey: "${PASSWORD_PRIVATE_KEY:?Defina PASSWORD_PRIVATE_KEY em devops/.env (veja devops/.env.example)}"
+      ResendConfiguration__ApiKey: "${RESEND_API_KEY:?Defina RESEND_API_KEY em devops/.env (veja devops/.env.example)}"
+      ResendConfiguration__From: "${RESEND_FROM:?Defina RESEND_FROM em devops/.env (veja devops/.env.example)}"
+      EmailVerificationConfiguration__LinkBaseUrl: "${EMAIL_VERIFICATION_LINK_BASE_URL:?Defina EMAIL_VERIFICATION_LINK_BASE_URL em devops/.env (veja devops/.env.example)}"
       SqlServerConfiguration__ConnectionString: "Server=ntix-sqlserver-local,1433;Database=ntix;User Id=sa;Password=${MSSQL_SA_PASSWORD:?Defina MSSQL_SA_PASSWORD em devops/.env (veja devops/.env.example)};Encrypt=True;TrustServerCertificate=True"
     ports:
       - "8080:8080"

@@ -5,6 +5,8 @@ using Application.UseCases.Base.Configuration;
 using Application.UseCases.Base.Interfaces;
 using Application.UseCases.CreateCustomer;
 using Application.UseCases.CreateCustomer.Inputs;
+using Application.UseCases.CreateProducer;
+using Application.UseCases.CreateProducer.Inputs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,12 +20,20 @@ public static class ServiceCollectionExtensions
 
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordConfiguration.PrivateKey);
 
+        var emailVerificationConfiguration = configuration.GetRequiredSection("EmailVerificationConfiguration").Get<EmailVerificationConfiguration>()!;
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(emailVerificationConfiguration.LinkBaseUrl);
+
         services.AddSingleton(passwordConfiguration);
+        services.AddSingleton(emailVerificationConfiguration);
         services.AddMetrics();
         services.AddSingleton<CreateCustomerDiagnostics>();
         services.AddScoped<IUseCase<CreateCustomerUseCaseInput>, CreateCustomerUseCase>();
         services.AddSingleton<AuthenticateCustomerDiagnostics>();
         services.AddScoped<IUseCase<AuthenticateCustomerUseCaseInput, AuthenticateCustomerUseCaseOutput>, AuthenticateCustomerUseCase>();
+
+        services.AddSingleton<CreateProducerDiagnostics>();
+        services.AddScoped<IUseCase<CreateProducerUseCaseInput>, CreateProducerUseCase>();
 
         return services;
     }
