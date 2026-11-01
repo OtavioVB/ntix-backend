@@ -33,8 +33,9 @@ public sealed record AuthenticateCustomerUseCaseInput
 
     public static AuthenticateCustomerUseCaseInput Create(string? email, string? document, PasswordValueObject password, string? producerId)
         => new(
-            email: string.IsNullOrWhiteSpace(email) ? null : EmailValueObject.Build(email),
-            document: string.IsNullOrWhiteSpace(document) ? null : CpfValueObject.Build(document),
+            // Cast explícito: sem ele, o null passaria pela conversão implícita de string? e viraria um value object inválido.
+            email: string.IsNullOrWhiteSpace(email) ? (EmailValueObject?)null : EmailValueObject.Build(email),
+            document: string.IsNullOrWhiteSpace(document) ? (CpfValueObject?)null : CpfValueObject.Build(document),
             password: password,
             // IdValueObject gera um novo ID quando recebe vazio, o que aqui esconderia a ausência do produtor.
             producerId: IdValueObject.Build(producerId),

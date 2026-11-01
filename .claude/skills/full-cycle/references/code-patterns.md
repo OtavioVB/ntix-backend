@@ -48,7 +48,7 @@ Regras de fluxo não usam exceção: tudo retorna `MethodResult` ou `MethodResul
 - `Build` aceita `null` e o trata como vazio.
 - Construtor privado, `MAX_LENGTH` público quando houver limite.
 - Coleta as notificações numa lista, uma por regra violada, e guarda o valor normalizado só quando válido.
-- `implicit operator` a partir de `string?`, para o controller passar o payload direto.
+- `implicit operator` a partir de `string?`, para o controller passar o payload direto. Em campo opcional, use `cond ? (EmailValueObject?)null : EmailValueObject.Build(value)`: sem o cast, o `null` passa pela conversão implícita e vira um value object inválido, sem erro de compilação.
 - Comportamento fica junto do dado e devolve outra instância, sem alterar a atual: `slug.BuildRandomVersion()`.
 - Dado pessoal expõe `GetObfuscatedValue()`, com formato fixo: email `ma***@ntix.com`, CPF `***.982.247-**`. Em log, use sempre esse método, nunca `Value`.
 
