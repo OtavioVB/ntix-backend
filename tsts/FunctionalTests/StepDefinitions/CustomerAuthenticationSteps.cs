@@ -37,6 +37,7 @@ public sealed class CustomerAuthenticationSteps
     private readonly HttpClient _client = NtixApiHooks.Factory.CreateClient();
 
     private HttpResponseMessage? _response;
+    private TokenResponse? _token;
     private Guid _producerId;
 
     private sealed record NotificationResponse(string Code, string Message, string Type);
@@ -122,24 +123,21 @@ public sealed class CustomerAuthenticationSteps
     {
         Assert.Equal(HttpStatusCode.OK, _response!.StatusCode);
 
-        var token = await _response.Content.ReadFromJsonAsync<TokenResponse>();
+        // O corpo da resposta só pode ser lido uma vez: os próximos passos usam o token guardado aqui.
+        _token = await _response.Content.ReadFromJsonAsync<TokenResponse>();
 
-        Assert.False(string.IsNullOrWhiteSpace(token!.AccessToken));
-        Assert.Equal("Bearer", token.TokenType);
+        Assert.False(string.IsNullOrWhiteSpace(_token!.AccessToken));
+        Assert.Equal("Bearer", _token.TokenType);
     }
 
     [Then("meu acesso identifica a loja do produtor")]
-    public async Task ThenTokenIdentifiesProducer()
-    {
-        var token = await ReadTokenAsync();
-
-        Assert.Equal(_producerId.ToString(), token.GetClaim(JwtTokenGenerator.PRODUCER_ID_CLAIM).Value);
-    }
+    public void ThenTokenIdentifiesProducer()
+        => Assert.Equal(_producerId.ToString(), ReadToken().GetClaim(JwtTokenGenerator.PRODUCER_ID_CLAIM).Value);
 
     [Then("meu acesso dura {int} horas")]
-    public async Task ThenTokenLasts(int hours)
+    public void ThenTokenLasts(int hours)
     {
-        var token = await ReadTokenAsync();
+        var token = ReadToken();
 
         Assert.Equal(TimeSpan.FromHours(hours), token.ValidTo - token.IssuedAt);
     }
@@ -164,10 +162,6 @@ public sealed class CustomerAuthenticationSteps
         Assert.Contains(notifications!, notification => notification.Message == message);
     }
 
-    private async Task<JsonWebToken> ReadTokenAsync()
-    {
-        var response = await _response!.Content.ReadFromJsonAsync<TokenResponse>();
-
-        return new JsonWebToken(response!.AccessToken);
-    }
+    private JsonWebToken ReadToken()
+        => new(_token!.AccessToken);
 }
