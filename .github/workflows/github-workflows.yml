@@ -18,6 +18,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    environment: Staging
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -30,6 +31,7 @@ jobs:
     name: Testes unitários
     needs: build
     runs-on: ubuntu-latest
+    environment: Staging
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -42,6 +44,7 @@ jobs:
     name: Testes integrados
     needs: build
     runs-on: ubuntu-latest
+    environment: Staging
     services:
       postgresql:
         image: postgres:18.1-alpine
@@ -78,6 +81,7 @@ jobs:
     name: Testes funcionais
     needs: static-analysis
     runs-on: ubuntu-latest
+    environment: Staging
     services:
       postgresql:
         image: postgres:18.1-alpine
@@ -107,6 +111,7 @@ jobs:
     needs: functional-tests
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    environment: Production
     concurrency: deploy-vps
     env:
       WEBAPI_IMAGE: ntix-webapi:${{ github.sha }}
@@ -160,7 +165,8 @@ jobs:
         run: docker save "$WEBAPI_IMAGE" | gzip | ssh vps 'gunzip | docker load'
 
       - name: Enviar a configuração dos serviços
-        run: tar czf - devops data | ssh vps "mkdir -p '$DEPLOY_PATH' && tar xzf - -C '$DEPLOY_PATH'"
+        # Substitui as pastas por inteiro: arquivos removidos do repositório não podem continuar no servidor.
+        run: tar czf - devops data | ssh vps "mkdir -p '$DEPLOY_PATH' && rm -rf '$DEPLOY_PATH/devops' '$DEPLOY_PATH/data' && tar xzf - -C '$DEPLOY_PATH'"
 
       - name: Gerar as variáveis de ambiente no servidor
         env:

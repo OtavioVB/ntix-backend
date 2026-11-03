@@ -45,6 +45,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 
 ### Integração contínua
 - GitHub Actions: build, testes unitários e integrados em paralelo, análise estática e, depois, testes funcionais.
+- Jobs de build, testes e análise estática no environment `Staging` do GitHub; o deploy no environment `Production`.
 - Valores sensíveis da esteira vêm de secrets do repositório, nunca do arquivo do workflow.
 - Deploy em VPS via SSH, depois dos testes: acesso por secrets, variáveis de ambiente geradas no servidor a cada deploy e API em contêiner construído pelo `Dockerfile`.
 - O deploy verifica as dependências do servidor e instala o que faltar antes de usá-las.

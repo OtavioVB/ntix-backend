@@ -76,6 +76,8 @@ Os parâmetros ficam no bloco `env` do workflow:
 
 ## Implantação na VPS
 
+Os jobs de build, testes e análise estática rodam no environment **Staging** do GitHub, e o job **Implantar na VPS** roda no environment **Production**. Os dois são criados automaticamente na primeira execução e podem ser configurados em **Settings > Environments**, com aprovação manual antes do deploy, restrição à `main` e secrets próprios de cada ambiente.
+
 Depois dos testes funcionais, em push para `main` ou disparo manual em `main`, o job **Implantar na VPS** constrói a imagem da API com `src/WebApi/Dockerfile`, envia a imagem e a configuração por SSH, gera `devops/.env` no servidor e sobe todos os serviços em `~/ntix`.
 
 A cada deploy, `devops/vps/ensure-dependencies.sh` verifica `curl`, `tar`, `gzip`, Docker e Docker Compose no servidor e instala o que faltar. Para instalar, o usuário de SSH precisa ser root ou ter sudo sem senha. Também é preciso ter acesso à internet e um sistema com `apt`, `dnf` ou `yum`. Todas as imagens, inclusive a do PostgreSQL, existem para amd64 e arm64.
