@@ -1,4 +1,4 @@
-namespace Infra.SqlServer.Repositories.Customers.Models;
+namespace Infra.PostgreSql.Repositories.Customers.Models;
 
 public sealed record CustomerModel(
     Guid Id,

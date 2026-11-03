@@ -59,11 +59,11 @@ Cada requisição sorteia seu ramo, em paralelo com as demais. Os pesos mudam al
 2. Para exercitar **Erros por exceção**, pare o banco no meio da execução, em outro terminal, e religue depois de cerca de 30 segundos:
 
    ```bash
-   docker stop ntix-sqlserver-local
+   docker stop ntix-postgresql-local
    ```
 
    ```bash
-   docker start ntix-sqlserver-local
+   docker start ntix-postgresql-local
    ```
 
 3. Ao terminar, aguarde cerca de 30 segundos e abra o dashboard do funil com um período que cubra toda a execução, como **Last 15 minutes**.

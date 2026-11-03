@@ -1,6 +1,6 @@
 # RFC 0001: SQL Server como banco de dados
 
-- **Status**: Aceita. A escolha do SQL Server continua valendo; o uso de EF Core e migrations foi substituído pela [RFC 0004](0004-sql-nativo-no-lugar-do-ef-core.md)
+- **Status**: Substituída pela [RFC 0006](0006-postgresql-no-lugar-do-sql-server.md): o banco passou a ser PostgreSQL, porque a VPS é ARM64
 - **Data**: 2026-10-31
 - **Requisito**: Cadastro de conta de clientes na plataforma Ntix
 

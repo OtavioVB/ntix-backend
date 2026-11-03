@@ -1,4 +1,4 @@
-namespace Infra.SqlServer.Repositories.Customers.Enums;
+namespace Infra.PostgreSql.Repositories.Customers.Enums;
 
 public enum CustomerCreationResult
 {

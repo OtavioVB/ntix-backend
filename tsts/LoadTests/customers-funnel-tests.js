@@ -3,7 +3,7 @@ import { check } from "k6";
 import { Counter } from "k6/metrics";
 
 // Gera tráfego em cada ramo do funil de cadastro de cliente e imprime os totais para comparar com o dashboard.
-// O ramo de erro por exceção depende de parar o SQL Server durante a execução: veja docs/observabilidade.md.
+// O ramo de erro por exceção depende de parar o PostgreSQL durante a execução: veja docs/observabilidade.md.
 
 const BASE_URL = __ENV.BASE_URL;
 const DURATION = __ENV.DURATION || "5m";

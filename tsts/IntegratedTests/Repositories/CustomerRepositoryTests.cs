@@ -1,18 +1,18 @@
-using Infra.SqlServer.Base.UnitOfWork.Interfaces;
-using Infra.SqlServer.Repositories.Customers.Enums;
-using Infra.SqlServer.Repositories.Customers.Interfaces;
-using Infra.SqlServer.Repositories.Customers.Models;
+using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
+using Infra.PostgreSql.Repositories.Customers.Enums;
+using Infra.PostgreSql.Repositories.Customers.Interfaces;
+using Infra.PostgreSql.Repositories.Customers.Models;
 using IntegratedTests.Support;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IntegratedTests.Repositories;
 
-[Collection(SqlServerCollection.NAME)]
+[Collection(PostgreSqlCollection.NAME)]
 public sealed class CustomerRepositoryTests
 {
-    private readonly SqlServerFixture _fixture;
+    private readonly PostgreSqlFixture _fixture;
 
-    public CustomerRepositoryTests(SqlServerFixture fixture)
+    public CustomerRepositoryTests(PostgreSqlFixture fixture)
     {
         _fixture = fixture;
     }

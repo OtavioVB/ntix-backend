@@ -1,5 +1,5 @@
 using Domain.ValueObjects;
-using Infra.SqlServer.Repositories.Customers.Models;
+using Infra.PostgreSql.Repositories.Customers.Models;
 using System.Globalization;
 using System.Security.Cryptography;
 

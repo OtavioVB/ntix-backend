@@ -1,6 +1,6 @@
 using Application.UseCases;
-using Infra.SqlServer.Base.UnitOfWork;
-using Infra.SqlServer.Repositories.Customers;
+using Infra.PostgreSql.Base.UnitOfWork;
+using Infra.PostgreSql.Repositories.Customers;
 using WebApi.Observability;
 
 namespace WebApi;
@@ -20,7 +20,7 @@ public class Program
         builder.Services.AddOpenApi();
 
         builder.Services
-            .AddSqlServerConfiguration(builder.Configuration)
+            .AddPostgreSqlConfiguration(builder.Configuration)
             .AddCustomerRepositoryConfiguration(builder.Configuration);
 
         builder.Services

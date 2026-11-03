@@ -9,14 +9,14 @@ namespace FunctionalTests.Support;
 public sealed class NtixApiHooks
 {
     public static WebApplicationFactory<Program> Factory { get; private set; } = null!;
-    public static SqlServerTestDatabase Database { get; private set; } = null!;
+    public static PostgreSqlTestDatabase Database { get; private set; } = null!;
 
     [BeforeTestRun]
     public static async Task StartApi()
     {
-        Database = await SqlServerTestDatabase.CreateAsync();
+        Database = await PostgreSqlTestDatabase.CreateAsync();
 
-        Environment.SetEnvironmentVariable(SqlServerTestDatabase.CONNECTION_STRING_ENVIRONMENT_VARIABLE, Database.ConnectionString);
+        Environment.SetEnvironmentVariable(PostgreSqlTestDatabase.CONNECTION_STRING_ENVIRONMENT_VARIABLE, Database.ConnectionString);
         Environment.SetEnvironmentVariable("PasswordConfiguration__PrivateKey", "chave-de-teste");
         Environment.SetEnvironmentVariable("OTEL_SDK_DISABLED", bool.TrueString);
 
@@ -32,5 +32,5 @@ public sealed class NtixApiHooks
 
     [BeforeScenario]
     public Task RemoveCustomersFromPreviousScenarios()
-        => Database.ExecuteAsync("DELETE FROM customers.Customer;");
+        => Database.ExecuteAsync("DELETE FROM customers.customer;");
 }

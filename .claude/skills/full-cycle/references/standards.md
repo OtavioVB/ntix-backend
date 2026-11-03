@@ -29,7 +29,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 `Infra` não referencia `Domain`: o repositório troca dados por um modelo de persistência próprio, com tipos primitivos, e a `Application` converte entre a entidade e esse modelo.
 
 ### Persistência
-- SQL Server ([RFC 0001](../../../../docs/rfcs/0001-sql-server-como-banco-de-dados.md)), acessado com SQL nativo, sem EF Core, porque performance é critério de implementação ([RFC 0004](../../../../docs/rfcs/0004-sql-nativo-no-lugar-do-ef-core.md)).
+- PostgreSQL ([RFC 0006](../../../../docs/rfcs/0006-postgresql-no-lugar-do-sql-server.md)), acessado com SQL nativo e `Npgsql`, sem EF Core, porque performance é critério de implementação ([RFC 0004](../../../../docs/rfcs/0004-sql-nativo-no-lugar-do-ef-core.md)). O SQL Server foi descartado porque a VPS é ARM64.
 - Tabelas e índices ficam em scripts na pasta `data/`.
 - Unit of Work: o caso de uso faz rollback em qualquer exceção e só faz commit quando a regra de negócio permite a criação.
 - Evite consultas com `LIKE`. Prefira consultas exatas sobre índices.
@@ -48,6 +48,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Valores sensíveis da esteira vêm de secrets do repositório, nunca do arquivo do workflow.
 - Deploy em VPS via SSH, depois dos testes: acesso por secrets, variáveis de ambiente geradas no servidor a cada deploy e API em contêiner construído pelo `Dockerfile`.
 - O deploy verifica as dependências do servidor e instala o que faltar antes de usá-las.
+- O deploy detecta a arquitetura e os recursos do servidor e ajusta imagens e limites a eles. Antes de adotar uma imagem, confira se ela existe para a arquitetura do servidor: a VPS de produção é ARM64.
 - Na VPS só a API é pública. Banco e observabilidade escutam em `127.0.0.1`.
 - Análise estática em workflow próprio (`static-analysis.yml`), chamado pelo `github-workflows.yml` a cada commit na `main`, com Sonar e cobertura pelo Coverlet ([RFC 0006](../../../../docs/rfcs/0006-analise-estatica-com-sonar-e-coverlet.md)). Exclusões de cobertura, de issues e de duplicação ficam configuradas na pipeline, e a API Key do Sonar vem do GitHub.
 

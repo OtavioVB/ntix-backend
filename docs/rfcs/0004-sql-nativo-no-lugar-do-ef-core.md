@@ -1,6 +1,6 @@
 # RFC 0004: SQL nativo no lugar do EF Core
 
-- **Status**: Aceita
+- **Status**: Aceita. O SQL nativo continua; o driver `Microsoft.Data.SqlClient` foi substituído pelo `Npgsql` na [RFC 0006](0006-postgresql-no-lugar-do-sql-server.md)
 - **Data**: 2026-10-31
 - **Requisito**: Cadastro de cliente na plataforma Ntix
 

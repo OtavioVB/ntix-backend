@@ -1,16 +1,16 @@
-using Infra.SqlServer.Base.UnitOfWork.Interfaces;
-using Infra.SqlServer.Repositories.Customers.Interfaces;
+using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
+using Infra.PostgreSql.Repositories.Customers.Interfaces;
 using IntegratedTests.Support;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IntegratedTests.UnitOfWork;
 
-[Collection(SqlServerCollection.NAME)]
-public sealed class SqlServerUnitOfWorkTests
+[Collection(PostgreSqlCollection.NAME)]
+public sealed class PostgreSqlUnitOfWorkTests
 {
-    private readonly SqlServerFixture _fixture;
+    private readonly PostgreSqlFixture _fixture;
 
-    public SqlServerUnitOfWorkTests(SqlServerFixture fixture)
+    public PostgreSqlUnitOfWorkTests(PostgreSqlFixture fixture)
     {
         _fixture = fixture;
     }

@@ -35,7 +35,7 @@ public sealed class EmailValueObjectTests
 
 xUnit, AAA e a mesma nomenclatura, usando as dependências criadas para o requisito, no ar via `devops/docker-compose.yml`. Verifique o comportamento contra a dependência real (o que foi gravado, lido ou enviado), não só o retorno do método, incluindo concorrência quando a regra depender dela.
 
-`tsts/Shared/SqlServerTestDatabase`, vinculado aos projetos integrados e funcionais, cria um banco exclusivo por execução, aplica os scripts de `data/` e o remove no final. Os dados de cada teste são únicos, para os testes não dependerem da ordem de execução.
+`tsts/UnitTests/PostgreSqlTestDatabase`, usado pelos projetos integrados e funcionais, cria um banco exclusivo por execução, aplica os scripts de `data/` e o remove no final. Os dados de cada teste são únicos, para os testes não dependerem da ordem de execução.
 
 ```csharp
 public sealed class OrderRepositoryTests

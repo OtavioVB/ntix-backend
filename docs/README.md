@@ -2,8 +2,8 @@
 
 ## Rodando localmente
 
-1. Copie `devops/.env.example` para `devops/.env` e defina a senha local do SQL Server e a chave privada das senhas dos clientes.
-2. Suba o banco. O serviço `ntix-sqlserver-init` cria o banco `ntix` e aplica os scripts de `data/`:
+1. Copie `devops/.env.example` para `devops/.env` e defina a senha local do PostgreSQL e a chave privada das senhas dos clientes.
+2. Suba o banco. O serviço `ntix-postgresql-init` cria o banco `ntix` e aplica os scripts de `data/`:
 
    ```bash
    docker compose -f devops/docker-compose.yml up -d
@@ -12,7 +12,7 @@
 3. Informe a conexão à aplicação e aos testes, com a mesma senha:
 
    ```powershell
-   $env:SqlServerConfiguration__ConnectionString = "Server=localhost,1433;Database=ntix;User Id=sa;Password=<senha>;Encrypt=True;TrustServerCertificate=True"
+   $env:PostgreSqlConfiguration__ConnectionString = "Host=localhost;Port=5432;Database=ntix;Username=ntix;Password=<senha>"
    ```
 
 4. Suba a API:
@@ -27,7 +27,7 @@
 dotnet test tsts/UnitTests
 ```
 
-Os testes integrados e funcionais usam o SQL Server do passo 2 e a variável do passo 3. Cada execução cria um banco próprio, aplica os scripts de `data/` e o remove no final:
+Os testes integrados e funcionais usam o PostgreSQL do passo 2 e a variável do passo 3. Cada execução cria um banco próprio, aplica os scripts de `data/` e o remove no final:
 
 ```bash
 dotnet test tsts/IntegratedTests
@@ -49,13 +49,13 @@ Para gerar tráfego em cada ramo do funil de cadastro, use `tsts/LoadTests/custo
 
 O workflow `.github/workflows/github-workflows.yml` roda em push e pull request para `main` e pode ser disparado manualmente em **Actions > CI > Run workflow**: build, testes unitários e integrados em paralelo, análise estática e, depois, testes funcionais. Os testes de carga não fazem parte da esteira.
 
-Configure em **Settings > Secrets and variables > Actions** o secret `MSSQL_SA_PASSWORD`. Ele é a senha de um SQL Server descartável, criado para cada job, e não pode conter `;`, porque compõe a connection string. O SQL Server exige ao menos 8 caracteres, com maiúsculas, minúsculas, números e símbolos.
+Configure em **Settings > Secrets and variables > Actions** o secret `POSTGRES_PASSWORD`. Ele é a senha de um PostgreSQL descartável, criado para cada job, e não pode conter `;`, porque compõe a connection string.
 
 ## Análise estática
 
 O CI chama o workflow `.github/workflows/static-analysis.yml` depois dos testes unitários e integrados e antes dos testes funcionais, em todo commit na `main` e em pull requests. Ele também pode ser disparado manualmente. O workflow compila a solução, roda os testes unitários e integrados com cobertura e envia o resultado ao SonarQube Cloud. Se a execução falhar, os testes funcionais e o deploy não rodam. A cobertura não inclui os testes funcionais.
 
-Em **Settings > Secrets and variables > Actions**, além do secret `MSSQL_SA_PASSWORD`, configure:
+Em **Settings > Secrets and variables > Actions**, além do secret `POSTGRES_PASSWORD`, configure:
 
 | Tipo | Nome | Conteúdo |
 |---|---|---|
@@ -78,7 +78,9 @@ Os parâmetros ficam no bloco `env` do workflow:
 
 Depois dos testes funcionais, em push para `main` ou disparo manual em `main`, o job **Implantar na VPS** constrói a imagem da API com `src/WebApi/Dockerfile`, envia a imagem e a configuração por SSH, gera `devops/.env` no servidor e sobe todos os serviços em `~/ntix`.
 
-A cada deploy, `devops/vps/ensure-dependencies.sh` verifica `curl`, `tar`, `gzip`, Docker e Docker Compose no servidor e instala o que faltar. Para instalar, o usuário de SSH precisa ser root ou ter sudo sem senha. Também é preciso ter acesso à internet e um sistema com `apt`, `dnf` ou `yum`. Recomenda-se ao menos 6 GB de memória, porque o SQL Server sozinho reserva até 2 GB.
+A cada deploy, `devops/vps/ensure-dependencies.sh` verifica `curl`, `tar`, `gzip`, Docker e Docker Compose no servidor e instala o que faltar. Para instalar, o usuário de SSH precisa ser root ou ter sudo sem senha. Também é preciso ter acesso à internet e um sistema com `apt`, `dnf` ou `yum`. Todas as imagens, inclusive a do PostgreSQL, existem para amd64 e arm64.
+
+A imagem da API é construída para a arquitetura detectada no servidor, x86_64 ou ARM64.
 
 | Secret | Conteúdo |
 |---|---|
@@ -87,10 +89,8 @@ A cada deploy, `devops/vps/ensure-dependencies.sh` verifica `curl`, `tar`, `gzip
 | `VPS_USER` | Usuário de SSH |
 | `VPS_SSH_PRIVATE_KEY` | Chave privada exclusiva para o deploy |
 | `VPS_KNOWN_HOSTS` | Chave pública do servidor, gerada com `ssh-keyscan -p <porta> <host>` e conferida antes de salvar |
-| `VPS_MSSQL_SA_PASSWORD` | Senha do SQL Server da VPS, sem `;` e sem `'` |
+| `VPS_POSTGRES_PASSWORD` | Senha do PostgreSQL da VPS, sem `;` e sem `'` |
 | `VPS_PASSWORD_PRIVATE_KEY` | Chave privada combinada ao hash das senhas dos clientes, sem `'`. Gere com `openssl rand -base64 32` |
-
-A variável de repositório `VPS_MSSQL_PID` é opcional e define a edição do SQL Server. O padrão é `Express`, porque a edição `Developer` não pode ser usada em produção. Para outra edição, é preciso ter a licença.
 
 A connection string da API, o endpoint de telemetria e as demais configurações são resolvidos pelo `docker-compose.yml` a partir desse `.env`, a cada deploy.
 
@@ -100,7 +100,9 @@ Só a API fica pública, na porta 8080. Os demais serviços escutam em `127.0.0.
 ssh -L 3000:localhost:3000 <usuario>@<host>
 ```
 
-A senha do SQL Server é definida quando o volume é criado. Depois disso, trocar o secret sem alterar a senha no banco faz a API perder o acesso.
+A senha do PostgreSQL é definida quando o volume é criado. Depois disso, trocar o secret sem alterar a senha no banco faz a API perder o acesso.
+
+Na primeira implantação com PostgreSQL em um servidor que já tinha o SQL Server, o deploy remove os contêineres antigos, mas o volume `devops_ntix-sqlserver-volume` continua ocupando disco. Como não havia dados de produção, ele pode ser apagado com `docker volume rm devops_ntix-sqlserver-volume`.
 
 Trocar `VPS_PASSWORD_PRIVATE_KEY` invalida as senhas já cadastradas, porque o hash depende dela.
 

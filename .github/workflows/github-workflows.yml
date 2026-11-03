@@ -43,22 +43,21 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
+      postgresql:
+        image: postgres:18.1-alpine
         env:
-          ACCEPT_EULA: "Y"
-          MSSQL_PID: Developer
-          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+          POSTGRES_USER: ntix
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ntix
         ports:
-          - 1433:1433
+          - 5432:5432
         options: >-
-          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b -o /dev/null"
+          --health-cmd "pg_isready --username ntix --dbname ntix"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 20
-          --health-start-period 30s
+          --health-retries 10
     env:
-      SqlServerConfiguration__ConnectionString: Server=localhost,1433;Database=ntix;User Id=sa;Password=${{ secrets.MSSQL_SA_PASSWORD }};Encrypt=True;TrustServerCertificate=True
+      PostgreSqlConfiguration__ConnectionString: Host=localhost;Port=5432;Database=ntix;Username=ntix;Password=${{ secrets.POSTGRES_PASSWORD }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -72,7 +71,7 @@ jobs:
     needs: [unit-tests, integrated-tests]
     uses: ./.github/workflows/static-analysis.yml
     secrets:
-      MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   functional-tests:
@@ -80,22 +79,21 @@ jobs:
     needs: static-analysis
     runs-on: ubuntu-latest
     services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
+      postgresql:
+        image: postgres:18.1-alpine
         env:
-          ACCEPT_EULA: "Y"
-          MSSQL_PID: Developer
-          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+          POSTGRES_USER: ntix
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ntix
         ports:
-          - 1433:1433
+          - 5432:5432
         options: >-
-          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b -o /dev/null"
+          --health-cmd "pg_isready --username ntix --dbname ntix"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 20
-          --health-start-period 30s
+          --health-retries 10
     env:
-      SqlServerConfiguration__ConnectionString: Server=localhost,1433;Database=ntix;User Id=sa;Password=${{ secrets.MSSQL_SA_PASSWORD }};Encrypt=True;TrustServerCertificate=True
+      PostgreSqlConfiguration__ConnectionString: Host=localhost;Port=5432;Database=ntix;Username=ntix;Password=${{ secrets.POSTGRES_PASSWORD }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -143,8 +141,20 @@ jobs:
           ssh vps 'bash -s' < devops/vps/ensure-dependencies.sh
           ssh vps 'docker version --format "Docker {{.Server.Version}}" && docker compose version'
 
+      - name: Detectar a arquitetura do servidor
+        run: |
+          architecture="$(ssh vps 'uname -m')"
+
+          case "$architecture" in
+            x86_64) platform="linux/amd64" ;;
+            aarch64 | arm64) platform="linux/arm64" ;;
+            *) echo "::error::Arquitetura do servidor não suportada: $architecture"; exit 1 ;;
+          esac
+
+          echo "VPS_PLATFORM=$platform" >> "$GITHUB_ENV"
+
       - name: Construir a imagem da API
-        run: docker build --file src/WebApi/Dockerfile --tag "$WEBAPI_IMAGE" .
+        run: docker buildx build --platform "$VPS_PLATFORM" --file src/WebApi/Dockerfile --tag "$WEBAPI_IMAGE" --load .
 
       - name: Enviar a imagem para o servidor
         run: docker save "$WEBAPI_IMAGE" | gzip | ssh vps 'gunzip | docker load'
@@ -154,12 +164,11 @@ jobs:
 
       - name: Gerar as variáveis de ambiente no servidor
         env:
-          MSSQL_SA_PASSWORD: ${{ secrets.VPS_MSSQL_SA_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ secrets.VPS_POSTGRES_PASSWORD }}
           PASSWORD_PRIVATE_KEY: ${{ secrets.VPS_PASSWORD_PRIVATE_KEY }}
-          MSSQL_PID: ${{ vars.VPS_MSSQL_PID || 'Express' }}
         run: |
-          printf "MSSQL_SA_PASSWORD='%s'\nPASSWORD_PRIVATE_KEY='%s'\nMSSQL_PID=%s\nWEBAPI_IMAGE=%s\nASPNETCORE_ENVIRONMENT=Production\n" \
-            "$MSSQL_SA_PASSWORD" "$PASSWORD_PRIVATE_KEY" "$MSSQL_PID" "$WEBAPI_IMAGE" \
+          printf "POSTGRES_PASSWORD='%s'\nPASSWORD_PRIVATE_KEY='%s'\nWEBAPI_IMAGE=%s\nASPNETCORE_ENVIRONMENT=Production\n" \
+            "$POSTGRES_PASSWORD" "$PASSWORD_PRIVATE_KEY" "$WEBAPI_IMAGE" \
             | ssh vps "umask 077 && cat > '$DEPLOY_PATH/devops/.env'"
 
       - name: Subir os serviços

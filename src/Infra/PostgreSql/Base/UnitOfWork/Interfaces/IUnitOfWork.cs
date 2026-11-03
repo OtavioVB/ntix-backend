@@ -1,4 +1,4 @@
-namespace Infra.SqlServer.Base.UnitOfWork.Interfaces;
+namespace Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 
 public interface IUnitOfWork
 {

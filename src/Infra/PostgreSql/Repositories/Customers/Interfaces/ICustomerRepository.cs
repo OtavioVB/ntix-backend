@@ -1,7 +1,7 @@
-using Infra.SqlServer.Repositories.Customers.Enums;
-using Infra.SqlServer.Repositories.Customers.Models;
+using Infra.PostgreSql.Repositories.Customers.Enums;
+using Infra.PostgreSql.Repositories.Customers.Models;
 
-namespace Infra.SqlServer.Repositories.Customers.Interfaces;
+namespace Infra.PostgreSql.Repositories.Customers.Interfaces;
 
 public interface ICustomerRepository
 {

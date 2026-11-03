@@ -1,8 +1,8 @@
-using Infra.SqlServer.Repositories.Customers.Interfaces;
+using Infra.PostgreSql.Repositories.Customers.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Infra.SqlServer.Repositories.Customers;
+namespace Infra.PostgreSql.Repositories.Customers;
 
 public static class ServiceCollectionExtensions
 {

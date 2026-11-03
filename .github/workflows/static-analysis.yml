@@ -3,7 +3,7 @@ name: Análise estática
 on:
   workflow_call:
     secrets:
-      MSSQL_SA_PASSWORD:
+      POSTGRES_PASSWORD:
         required: true
       SONAR_TOKEN:
         required: true
@@ -32,25 +32,24 @@ jobs:
     name: SonarQube Cloud
     runs-on: ubuntu-latest
     services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
+      postgresql:
+        image: postgres:18.1-alpine
         env:
-          ACCEPT_EULA: "Y"
-          MSSQL_PID: Developer
-          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+          POSTGRES_USER: ntix
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ntix
         ports:
-          - 1433:1433
+          - 5432:5432
         options: >-
-          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b -o /dev/null"
+          --health-cmd "pg_isready --username ntix --dbname ntix"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 20
-          --health-start-period 30s
+          --health-retries 10
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
       SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-      SqlServerConfiguration__ConnectionString: Server=localhost,1433;Database=ntix;User Id=sa;Password=${{ secrets.MSSQL_SA_PASSWORD }};Encrypt=True;TrustServerCertificate=True
+      PostgreSqlConfiguration__ConnectionString: Host=localhost;Port=5432;Database=ntix;Username=ntix;Password=${{ secrets.POSTGRES_PASSWORD }}
     steps:
       - uses: actions/checkout@v7
         with:

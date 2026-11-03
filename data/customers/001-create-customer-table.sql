@@ -1,23 +1,17 @@
 -- Schema e tabela do cadastro de clientes.
 -- Idempotente: pode ser executado mais de uma vez.
 
-IF SCHEMA_ID('customers') IS NULL
-    EXEC('CREATE SCHEMA customers');
-GO
+CREATE SCHEMA IF NOT EXISTS customers;
 
-IF OBJECT_ID('customers.Customer', 'U') IS NULL
-BEGIN
-    CREATE TABLE customers.Customer (
-        id_customer            UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_Customer PRIMARY KEY CLUSTERED,
-        full_name              NVARCHAR(256)    NOT NULL,
-        email                  NVARCHAR(256)    NOT NULL,
-        document               CHAR(11)         NOT NULL,
-        slug                   VARCHAR(262)     NOT NULL,
-        password_hash          BINARY(32)       NOT NULL,
-        password_salt          BINARY(16)       NOT NULL,
-        phone_number           CHAR(11)         NULL,
-        created_at             DATETIME2(7)     NOT NULL,
-        created_correlation_id UNIQUEIDENTIFIER NOT NULL
-    );
-END;
-GO
+CREATE TABLE IF NOT EXISTS customers.customer (
+    id_customer            UUID          NOT NULL CONSTRAINT pk_customer PRIMARY KEY,
+    full_name              VARCHAR(256)  NOT NULL,
+    email                  VARCHAR(256)  NOT NULL,
+    document               CHAR(11)      NOT NULL,
+    slug                   VARCHAR(262)  NOT NULL,
+    password_hash          BYTEA         NOT NULL CONSTRAINT ck_customer_password_hash_length CHECK (octet_length(password_hash) = 32),
+    password_salt          BYTEA         NOT NULL CONSTRAINT ck_customer_password_salt_length CHECK (octet_length(password_salt) = 16),
+    phone_number           CHAR(11)      NULL,
+    created_at             TIMESTAMPTZ   NOT NULL,
+    created_correlation_id UUID          NOT NULL
+);

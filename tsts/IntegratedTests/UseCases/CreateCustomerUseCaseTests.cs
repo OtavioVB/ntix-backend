@@ -9,12 +9,12 @@ using System.Text;
 
 namespace IntegratedTests.UseCases;
 
-[Collection(SqlServerCollection.NAME)]
+[Collection(PostgreSqlCollection.NAME)]
 public sealed class CreateCustomerUseCaseTests
 {
-    private readonly SqlServerFixture _fixture;
+    private readonly PostgreSqlFixture _fixture;
 
-    public CreateCustomerUseCaseTests(SqlServerFixture fixture)
+    public CreateCustomerUseCaseTests(PostgreSqlFixture fixture)
     {
         _fixture = fixture;
     }

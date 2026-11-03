@@ -97,23 +97,23 @@ Agrega `CorrelationId`, `OriginService`, `ExecutionUser` e `RequestedAt`. `Build
 - O `Program` da camada de apresentação compõe esses métodos.
 - Configuração tipada: `sealed record <Tecnologia>Configuration`, lida com `configuration.GetRequiredSection("<Tecnologia>Configuration").Get<T>()!`.
 
-## Persistência (SQL nativo + SQL Server)
+## Persistência (SQL nativo + PostgreSQL)
 
 ```
 data/<schema>/NNN-descricao.sql
-Infra/SqlServer/
+Infra/PostgreSql/
   Base/{Configuration,UnitOfWork}/
   Repositories/<Agregado>s/
     <Agregado>Repository.cs, ServiceCollectionExtensions.cs
     {Interfaces,Models,Enums}/
 ```
 
-- Scripts idempotentes, aplicados em ordem de caminho por `devops/sqlserver/init-database.sh` e pelos testes. Tabela em `<schema>.<Entidade>`, colunas em `snake_case`, chave `id_<entidade>`.
-- `IUnitOfWork` tem `BeginTransactionAsync`, `CommitAsync` e `RollbackAsync`. O repositório cria comandos com `SqlServerUnitOfWork.CreateCommand`, sempre dentro da transação. Descartar o `UnitOfWork` sem commit desfaz a transação.
-- Parâmetros sempre tipados, com o tipo e o tamanho da coluna (`SqlDbType.VarChar, 262`), para evitar conversão implícita que impede o uso do índice. Nada de `LIKE` quando uma consulta exata resolve.
+- Scripts idempotentes (`IF NOT EXISTS`), aplicados em ordem de caminho por `devops/postgresql/init-database.sh` e pelos testes. Tabela em `<schema>.<entidade>`, nomes em minúsculas e `snake_case`, chave `id_<entidade>`.
+- `IUnitOfWork` tem `BeginTransactionAsync`, `CommitAsync` e `RollbackAsync`. O repositório cria comandos com `PostgreSqlUnitOfWork.CreateCommand`, sempre dentro da transação. Descartar o `UnitOfWork` sem commit desfaz a transação.
+- Parâmetros sempre tipados, com o tipo e o tamanho da coluna (`NpgsqlDbType.Varchar, 262`), para evitar conversão implícita que impede o uso do índice. Nada de `LIKE` quando uma consulta exata resolve.
 - `<Agregado>Model` é um `sealed record` de tipos primitivos. A `Application` faz a conversão a partir da entidade.
-- Unicidade é garantida por índice único nomeado (`UX_<Tabela>_<Coluna>`). A consulta prévia só antecipa a resposta. O repositório traduz o erro 2601 do SQL Server para um enum de resultado, em vez de propagar a exceção. Esse erro desfaz só a instrução, então a transação continua utilizável.
-- Connection string nunca fica em `appsettings`: vem de `SqlServerConfiguration__ConnectionString` ou de user secrets.
+- Unicidade é garantida por índice único nomeado (`ux_<tabela>_<coluna>`). A consulta prévia só antecipa a resposta. O repositório traduz o erro `23505` pelo `ConstraintName` para um enum de resultado, em vez de propagar a exceção. No PostgreSQL, um erro invalida a transação inteira: crie um savepoint antes do comando que pode violar a constraint e volte até ele no conflito.
+- Connection string nunca fica em `appsettings`: vem de `PostgreSqlConfiguration__ConnectionString` ou de user secrets.
 
 ## Infraestrutura
 

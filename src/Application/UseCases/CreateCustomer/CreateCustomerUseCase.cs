@@ -6,10 +6,10 @@ using Domain.BoundedContexts.CustomerContext.Entities;
 using Domain.CrossCutting.MethodResultContext;
 using Domain.CrossCutting.NotificationContext;
 using Domain.ValueObjects;
-using Infra.SqlServer.Base.UnitOfWork.Interfaces;
-using Infra.SqlServer.Repositories.Customers.Enums;
-using Infra.SqlServer.Repositories.Customers.Interfaces;
-using Infra.SqlServer.Repositories.Customers.Models;
+using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
+using Infra.PostgreSql.Repositories.Customers.Enums;
+using Infra.PostgreSql.Repositories.Customers.Interfaces;
+using Infra.PostgreSql.Repositories.Customers.Models;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 

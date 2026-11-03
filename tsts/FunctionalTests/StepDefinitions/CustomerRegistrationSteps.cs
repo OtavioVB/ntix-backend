@@ -1,6 +1,6 @@
 using Domain.ValueObjects;
 using FunctionalTests.Support;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Reqnroll;
 using System.Globalization;
 using System.Net;
@@ -13,11 +13,11 @@ namespace FunctionalTests.StepDefinitions;
 public sealed class CustomerRegistrationSteps
 {
     private const string CUSTOMERS_ROUTE = "api/v1/customers";
-    private const string COUNT_CUSTOMERS_SQL = "SELECT COUNT(*) FROM customers.Customer;";
-    private const string SELECT_SLUG_BY_EMAIL_SQL = "SELECT slug FROM customers.Customer WHERE email = @email;";
-    private const string SELECT_PASSWORD_HASH_BY_EMAIL_SQL = "SELECT password_hash FROM customers.Customer WHERE email = @email;";
-    private const string COUNT_CUSTOMERS_BY_EMAIL_AND_PHONE_NUMBER_SQL = "SELECT COUNT(*) FROM customers.Customer WHERE email = @email AND phone_number = @phone_number;";
-    private const string COUNT_CUSTOMERS_BY_EMAIL_WITHOUT_PHONE_NUMBER_SQL = "SELECT COUNT(*) FROM customers.Customer WHERE email = @email AND phone_number IS NULL;";
+    private const string COUNT_CUSTOMERS_SQL = "SELECT COUNT(*)::int FROM customers.customer;";
+    private const string SELECT_SLUG_BY_EMAIL_SQL = "SELECT slug FROM customers.customer WHERE email = @email;";
+    private const string SELECT_PASSWORD_HASH_BY_EMAIL_SQL = "SELECT password_hash FROM customers.customer WHERE email = @email;";
+    private const string COUNT_CUSTOMERS_BY_EMAIL_AND_PHONE_NUMBER_SQL = "SELECT COUNT(*)::int FROM customers.customer WHERE email = @email AND phone_number = @phone_number;";
+    private const string COUNT_CUSTOMERS_BY_EMAIL_WITHOUT_PHONE_NUMBER_SQL = "SELECT COUNT(*)::int FROM customers.customer WHERE email = @email AND phone_number IS NULL;";
 
     private const string FULL_NAME = "Maria da Silva";
     private const string EMAIL = "maria@ntix.com";
@@ -68,7 +68,7 @@ public sealed class CustomerRegistrationSteps
     private Task<string> GetRegisteredSlugAsync()
         => NtixApiHooks.Database.ScalarAsync<string>(
             SELECT_SLUG_BY_EMAIL_SQL,
-            new SqlParameter("@email", _registeredEmail!.Trim().ToLowerInvariant()));
+            new NpgsqlParameter("@email", _registeredEmail!.Trim().ToLowerInvariant()));
 
     [Given("que já existe um cliente com o nome {string}, o email {string} e o documento {string}")]
     public async Task GivenExistingCustomer(string fullName, string email, string document)
@@ -154,7 +154,7 @@ public sealed class CustomerRegistrationSteps
     {
         var passwordHash = await NtixApiHooks.Database.ScalarAsync<byte[]>(
             SELECT_PASSWORD_HASH_BY_EMAIL_SQL,
-            new SqlParameter("@email", _registeredEmail));
+            new NpgsqlParameter("@email", _registeredEmail));
 
         Assert.NotEqual(Encoding.UTF8.GetBytes(_registeredPassword!), passwordHash);
         Assert.DoesNotContain(_registeredPassword!, Encoding.UTF8.GetString(passwordHash));
@@ -164,12 +164,12 @@ public sealed class CustomerRegistrationSteps
     public async Task ThenPhoneNumberIsRegistered(string phoneNumber)
         => Assert.Equal(1, await NtixApiHooks.Database.ScalarAsync<int>(
             COUNT_CUSTOMERS_BY_EMAIL_AND_PHONE_NUMBER_SQL,
-            new SqlParameter("@email", _registeredEmail),
-            new SqlParameter("@phone_number", phoneNumber)));
+            new NpgsqlParameter("@email", _registeredEmail),
+            new NpgsqlParameter("@phone_number", phoneNumber)));
 
     [Then("nenhum celular fica registrado")]
     public async Task ThenNoPhoneNumberIsRegistered()
         => Assert.Equal(1, await NtixApiHooks.Database.ScalarAsync<int>(
             COUNT_CUSTOMERS_BY_EMAIL_WITHOUT_PHONE_NUMBER_SQL,
-            new SqlParameter("@email", _registeredEmail)));
+            new NpgsqlParameter("@email", _registeredEmail)));
 }
