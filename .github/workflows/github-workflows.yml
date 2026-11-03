@@ -164,7 +164,7 @@ jobs:
         run: |
           printf "MSSQL_SA_PASSWORD='%s'\nPASSWORD_PRIVATE_KEY='%s'\nJWT_SECRET_KEY='%s'\nRESEND_API_KEY='%s'\nRESEND_FROM='%s'\nEMAIL_VERIFICATION_LINK_BASE_URL='%s'\nMSSQL_PID=%s\nWEBAPI_IMAGE=%s\nASPNETCORE_ENVIRONMENT=Production\n" \
             "$MSSQL_SA_PASSWORD" "$PASSWORD_PRIVATE_KEY" "$JWT_SECRET_KEY" "$RESEND_API_KEY" "$RESEND_FROM" "$EMAIL_VERIFICATION_LINK_BASE_URL" "$MSSQL_PID" "$WEBAPI_IMAGE" \
-            | ssh vps "umask 077 && cat > '$DEPLOY_PATH/devops/.env'"
+            | ssh vps "umask 077 && cat > '$DEPLOY_PATH/devops/.env' && echo \"SQLSERVER_CPUS=\$(( \$(nproc) < 2 ? \$(nproc) : 2 ))\" >> '$DEPLOY_PATH/devops/.env'"
 
       - name: Subir os serviços
         run: ssh vps "cd '$DEPLOY_PATH' && docker compose -f devops/docker-compose.yml --profile app up -d --remove-orphans"
