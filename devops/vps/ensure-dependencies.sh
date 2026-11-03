@@ -90,5 +90,13 @@ if [ -z "$installed_node_major" ] || [ "$installed_node_major" -lt "$NODE_MAJOR"
     "${SUDO[@]}" env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs
 fi
 
+# Certbot: emite e renova o certificado HTTPS do gateway (o snap já agenda a renovação automática).
+if ! command -v certbot >/dev/null; then
+    echo "[ntix] Instalando o Certbot..."
+    require_root_access "o Certbot"
+    "${SUDO[@]}" snap install --classic certbot
+    "${SUDO[@]}" ln -sf /snap/bin/certbot /usr/local/bin/certbot
+fi
+
 # Verificação final em uma nova sessão: a entrada no grupo docker só vale a partir do próximo login.
 echo "[ntix] Dependências verificadas."
