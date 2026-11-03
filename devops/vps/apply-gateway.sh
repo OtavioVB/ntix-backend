@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # Sobrescreve a configuração do nginx com a pasta gateway/ do repositório e recarrega.
-# Emite o certificado HTTPS do IP público na primeira vez. Uso: apply-gateway.sh <pasta> <ip público>
+# Emite o certificado HTTPS dos domínios quando ele não existe ou não cobre todos. Uso: apply-gateway.sh <pasta>
 set -euo pipefail
 
 GATEWAY_DIR="${1:?Informe a pasta com os arquivos do gateway}"
-PUBLIC_IP="${2:?Informe o IP público do servidor}"
-# 80: validação do Let's Encrypt. 8080: API. 8081: frontend.
-GATEWAY_PORTS=(80 8080 8081)
+# Precisam apontar para este servidor no DNS antes da emissão: o Let's Encrypt valida cada um pela porta 80.
+CERT_DOMAINS=(ntix.com.br www.ntix.com.br api.ntix.com.br)
+CERT_NAME="ntix.com.br"
+CERT_FILE="/etc/letsencrypt/live/$CERT_NAME/fullchain.pem"
+# 80: validação do Let's Encrypt e redirecionamento. 443: HTTPS.
+GATEWAY_PORTS=(80 443)
 NGINX_CONF_DIR="/etc/nginx/conf.d"
 ACME_WEBROOT="/var/www/acme"
-CERT_NAME="ntix"
-CERT_DIR="/etc/letsencrypt/live/$CERT_NAME"
 if [ "$(id -u)" -eq 0 ]; then SUDO=(); else SUDO=(sudo -n); fi
 
 # Os deploys da API e do frontend rodam em paralelo: um aplica o gateway por vez.
@@ -32,6 +33,8 @@ done
 
 # O site padrão do pacote também escuta na 80 e disputaria a validação com acme.conf.
 "${SUDO[@]}" rm -f /etc/nginx/sites-enabled/default
+# O nginx.conf do pacote ainda aceita TLS 1.0 e 1.1. A diretiva fica lá (redefinir em conf.d é erro), restrita aqui.
+"${SUDO[@]}" sed -i -E 's/^(\s*)ssl_protocols .*;/\1ssl_protocols TLSv1.2 TLSv1.3;/' /etc/nginx/nginx.conf
 "${SUDO[@]}" install -d -m 755 "$ACME_WEBROOT"
 "${SUDO[@]}" cp -a "$NGINX_CONF_DIR/." "$BACKUP_DIR/"
 
@@ -54,15 +57,25 @@ replace_config() {
     "${SUDO[@]}" systemctl reload nginx
 }
 
-# Primeira emissão: o nginx não sobe com 'listen ssl' sem certificado, então serve só a validação até emitir.
-if ! "${SUDO[@]}" test -f "$CERT_DIR/fullchain.pem"; then
-    echo "[ntix] Emitindo o certificado HTTPS para $PUBLIC_IP..."
+certificate_covers_all_domains() {
+    local names
+    names="$("${SUDO[@]}" openssl x509 -in "$CERT_FILE" -noout -ext subjectAltName 2>/dev/null)" || return 1
+    for domain in "${CERT_DOMAINS[@]}"; do
+        grep -q "DNS:$domain\(,\|$\)" <<<"$names" || return 1
+    done
+}
+
+# Primeira emissão (ou domínio novo): o nginx não sobe com 'listen ssl' sem certificado, então serve só a validação.
+if ! certificate_covers_all_domains; then
+    echo "[ntix] Emitindo o certificado HTTPS para ${CERT_DOMAINS[*]}..."
     replace_config "$GATEWAY_DIR/acme.conf"
+    domain_args=()
+    for domain in "${CERT_DOMAINS[@]}"; do domain_args+=(-d "$domain"); done
     if ! "${SUDO[@]}" certbot certonly --webroot --webroot-path "$ACME_WEBROOT" \
-        --cert-name "$CERT_NAME" --ip-address "$PUBLIC_IP" --preferred-profile shortlived \
+        --cert-name "$CERT_NAME" "${domain_args[@]}" --expand \
         --non-interactive --agree-tos --register-unsafely-without-email \
         --deploy-hook "systemctl reload nginx"; then
-        echo "[ntix] Falha ao emitir o certificado. A porta 80 está liberada no firewall da nuvem?" >&2
+        echo "[ntix] Falha ao emitir o certificado. Os domínios apontam para este servidor e a porta 80 está liberada?" >&2
         restore_backup
         exit 1
     fi

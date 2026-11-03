@@ -168,17 +168,13 @@ jobs:
         run: ssh vps "cd '$DEPLOY_PATH' && docker compose -f devops/docker-compose.yml --profile app up -d --remove-orphans"
 
       - name: Aplicar a configuração do gateway
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: ssh vps "bash '$DEPLOY_PATH/devops/vps/apply-gateway.sh' '$DEPLOY_PATH/gateway' '$VPS_HOST'"
+        run: ssh vps "bash '$DEPLOY_PATH/devops/vps/apply-gateway.sh' '$DEPLOY_PATH/gateway'"
 
       - name: Verificar a API
-        # Chama pelo IP público, conectando em 127.0.0.1: valida o certificado sem depender de hairpin NAT.
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
+        # Chama pelo domínio, conectando em 127.0.0.1: valida o certificado sem depender de hairpin NAT.
         run: |
           ssh vps "for attempt in \$(seq 1 30); do
-            curl --fail --silent --output /dev/null --connect-to '$VPS_HOST:8080:127.0.0.1:8080' 'https://$VPS_HOST:8080/openapi/v1.json' && exit 0
+            curl --fail --silent --output /dev/null --connect-to 'api.ntix.com.br:443:127.0.0.1:443' 'https://api.ntix.com.br/openapi/v1.json' && exit 0
             sleep 5
           done
           docker logs --tail 50 ntix-webapi
@@ -223,11 +219,7 @@ jobs:
         run: ssh vps "bash '$DEPLOY_PATH/devops/vps/deploy-web.sh' '$DEPLOY_PATH/web'"
 
       - name: Aplicar a configuração do gateway
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: ssh vps "bash '$DEPLOY_PATH/devops/vps/apply-gateway.sh' '$DEPLOY_PATH/gateway' '$VPS_HOST'"
+        run: ssh vps "bash '$DEPLOY_PATH/devops/vps/apply-gateway.sh' '$DEPLOY_PATH/gateway'"
 
       - name: Verificar o frontend
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: ssh vps "curl --fail --silent --output /dev/null --connect-to '$VPS_HOST:8081:127.0.0.1:8081' 'https://$VPS_HOST:8081/'"
+        run: ssh vps "curl --fail --silent --output /dev/null --connect-to 'ntix.com.br:443:127.0.0.1:443' 'https://ntix.com.br/'"
