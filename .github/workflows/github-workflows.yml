@@ -120,26 +120,13 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Configurar acesso SSH
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/vps_key
-          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/vps_key ~/.ssh/known_hosts
-          cat > ~/.ssh/config <<CONFIG
-          Host vps
-            HostName $VPS_HOST
-            Port $VPS_PORT
-            User $VPS_USER
-            IdentityFile ~/.ssh/vps_key
-            IdentitiesOnly yes
-            StrictHostKeyChecking yes
-          CONFIG
+        uses: ./.github/actions/setup-vps-ssh
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          user: ${{ secrets.VPS_USER }}
+          private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
 
       - name: Verificar e instalar as dependências do servidor
         run: |
@@ -166,19 +153,22 @@ jobs:
 
       - name: Enviar a configuração dos serviços
         # Substitui as pastas por inteiro: arquivos removidos do repositório não podem continuar no servidor.
-        run: tar czf - devops data | ssh vps "mkdir -p '$DEPLOY_PATH' && rm -rf '$DEPLOY_PATH/devops' '$DEPLOY_PATH/data' && tar xzf - -C '$DEPLOY_PATH'"
+        run: tar czf - devops data gateway | ssh vps "mkdir -p '$DEPLOY_PATH' && rm -rf '$DEPLOY_PATH/devops' '$DEPLOY_PATH/data' '$DEPLOY_PATH/gateway' && tar xzf - -C '$DEPLOY_PATH'"
 
       - name: Gerar as variáveis de ambiente no servidor
         env:
           POSTGRES_PASSWORD: ${{ secrets.VPS_POSTGRES_PASSWORD }}
           PASSWORD_PRIVATE_KEY: ${{ secrets.VPS_PASSWORD_PRIVATE_KEY }}
         run: |
-          printf "POSTGRES_PASSWORD='%s'\nPASSWORD_PRIVATE_KEY='%s'\nWEBAPI_IMAGE=%s\nASPNETCORE_ENVIRONMENT=Production\n" \
+          printf "POSTGRES_PASSWORD='%s'\nPASSWORD_PRIVATE_KEY='%s'\nWEBAPI_IMAGE=%s\nASPNETCORE_ENVIRONMENT=Production\nWEBAPI_PORT_BINDING=127.0.0.1:5080\n" \
             "$POSTGRES_PASSWORD" "$PASSWORD_PRIVATE_KEY" "$WEBAPI_IMAGE" \
             | ssh vps "umask 077 && cat > '$DEPLOY_PATH/devops/.env'"
 
       - name: Subir os serviços
         run: ssh vps "cd '$DEPLOY_PATH' && docker compose -f devops/docker-compose.yml --profile app up -d --remove-orphans"
+
+      - name: Aplicar a configuração do gateway
+        run: ssh vps "bash '$DEPLOY_PATH/devops/vps/apply-gateway.sh' '$DEPLOY_PATH/gateway'"
 
       - name: Verificar a API
         run: |
@@ -192,3 +182,43 @@ jobs:
       - name: Remover imagens antigas da API
         run: |
           ssh vps "docker image ls ntix-webapi --format '{{.Repository}}:{{.Tag}}' | grep -v '$WEBAPI_IMAGE' | xargs -r docker image rm || true"
+
+  deploy-web:
+    name: Implantar o frontend na VPS
+    # Roda em paralelo com o deploy da API: os scripts da VPS se serializam onde disputam recursos.
+    needs: functional-tests
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: Production
+    concurrency: deploy-vps-web
+    env:
+      DEPLOY_PATH: ntix-web
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configurar acesso SSH
+        uses: ./.github/actions/setup-vps-ssh
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          user: ${{ secrets.VPS_USER }}
+          private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
+
+      - name: Verificar e instalar as dependências do servidor
+        run: |
+          ssh vps 'bash -s' < devops/vps/ensure-dependencies.sh
+          ssh vps 'echo "Node $(node --version), npm $(npm --version)"'
+
+      - name: Enviar o frontend e a configuração do gateway
+        # Substitui as pastas por inteiro: arquivos removidos do repositório não podem continuar no servidor.
+        run: tar czf - web devops/vps gateway | ssh vps "mkdir -p '$DEPLOY_PATH' && rm -rf '$DEPLOY_PATH/web' '$DEPLOY_PATH/devops' '$DEPLOY_PATH/gateway' && tar xzf - -C '$DEPLOY_PATH'"
+
+      - name: Instalar as dependências, gerar o build e publicar
+        run: ssh vps "bash '$DEPLOY_PATH/devops/vps/deploy-web.sh' '$DEPLOY_PATH/web'"
+
+      - name: Aplicar a configuração do gateway
+        run: ssh vps "bash '$DEPLOY_PATH/devops/vps/apply-gateway.sh' '$DEPLOY_PATH/gateway'"
+
+      - name: Verificar o frontend
+        run: ssh vps 'curl --fail --silent --output /dev/null http://127.0.0.1:8081/'

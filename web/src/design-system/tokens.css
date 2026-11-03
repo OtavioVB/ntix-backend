@@ -1,0 +1,246 @@
+/* ==========================================================================
+   Ntix Design System: tokens
+   Camadas: primitivos -> marca (whitelabel) -> cena (imersão) -> semânticos.
+   Componentes só consomem tokens semânticos. Documentação: docs/design-system.md
+   ========================================================================== */
+
+@layer n-tokens, n-base, n-components, n-immersion, n-page;
+
+@layer n-tokens {
+  :root {
+    /* --- Primitivos: ouro --------------------------------------------- */
+    --n-gold-50: #fbf6e3;
+    --n-gold-100: #f5e8b8;
+    --n-gold-200: #ecd77f;
+    --n-gold-300: #e3c44b;
+    --n-gold-400: #d9af28;
+    --n-gold-500: #c99b14; /* cor da marca */
+    --n-gold-600: #a67e0d;
+    --n-gold-700: #7f5f0a;
+    --n-gold-800: #5e470c;
+    --n-gold-900: #40310d;
+
+    /* --- Primitivos: grafite ------------------------------------------ */
+    --n-graphite-0: #ffffff;
+    --n-graphite-50: #f4f4f2;
+    --n-graphite-100: #e8e8e6;
+    --n-graphite-200: #d4d5d6;
+    --n-graphite-300: #b4b6bb;
+    --n-graphite-400: #92959b;
+    --n-graphite-500: #696c73;
+    --n-graphite-600: #53565c;
+    --n-graphite-700: #41444a;
+    --n-graphite-800: #35383d;
+    --n-graphite-850: #2a2c31; /* cinza escuro da marca */
+    --n-graphite-900: #232529;
+    --n-graphite-950: #1b1d20;
+
+    /* --- Primitivos: feedback ----------------------------------------- */
+    --n-success-300: #7fd1a0;
+    --n-success-700: #1c6b42;
+    --n-danger-300: #f4a39a;
+    --n-danger-700: #a8322a;
+
+    /* --- Tipografia --------------------------------------------------- */
+    --n-font-sans: "Archivo Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --n-font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+    --n-text-xs: 0.75rem;
+    --n-text-sm: 0.875rem;
+    --n-text-md: 1rem;
+    --n-text-lg: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+    --n-text-xl: clamp(1.25rem, 1.1rem + 0.6vw, 1.625rem);
+    --n-display-sm: clamp(1.75rem, 1.4rem + 1.6vw, 2.75rem);
+    --n-display-md: clamp(2.5rem, 1.8rem + 3.4vw, 5rem);
+    --n-display-lg: clamp(3.25rem, 0.8rem + 6.1vw, 7.25rem);
+
+    /* --- Espaço (base 4) ---------------------------------------------- */
+    --n-space-1: 0.25rem;
+    --n-space-2: 0.5rem;
+    --n-space-3: 0.75rem;
+    --n-space-4: 1rem;
+    --n-space-5: 1.5rem;
+    --n-space-6: 2rem;
+    --n-space-7: 3rem;
+    --n-space-8: 4rem;
+    --n-space-9: 6rem;
+    --n-space-10: clamp(5rem, 3rem + 8vw, 10rem);
+    --n-gutter: clamp(1rem, 0.2rem + 3.4vw, 3rem);
+    --n-page-max: 90rem;
+
+    /* --- Forma -------------------------------------------------------- */
+    --n-radius-sm: 4px;
+    --n-radius-md: 8px;
+    --n-radius-lg: 14px;
+    --n-notch: 11px; /* raio da picotagem do ingresso */
+
+    /* --- Movimento ---------------------------------------------------- */
+    --n-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --n-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --n-dur-fast: 140ms;
+    --n-dur-base: 260ms;
+    --n-dur-slow: 700ms;
+    --n-dur-scene: 1200ms;
+
+    /* --- Camadas ------------------------------------------------------ */
+    --n-z-backdrop: 0;
+    --n-z-content: 1;
+    --n-z-sticky: 50;
+    --n-z-nav: 100;
+
+    /* --- Marca: sobrescrita por tenant com data-brand ------------------ */
+    --n-brand: var(--n-gold-500);
+    --n-brand-hover: var(--n-gold-400);
+    --n-on-brand: var(--n-graphite-950);
+  }
+
+  /* --- Cenas: cada uma redefine as superfícies e tintas ------------------
+     penumbra é o padrão: o cinza escuro que carrega a marca.                */
+  :root,
+  [data-scene="penumbra"] {
+    color-scheme: dark;
+    --n-shadow-lg: 0 32px 72px rgb(0 0 0 / 0.42);
+    --n-logo-n: var(--n-gold-500);
+    --n-logo-tix: var(--n-graphite-300);
+    --n-surface-0: var(--n-graphite-850);
+    --n-surface-1: var(--n-graphite-800);
+    --n-surface-2: var(--n-graphite-700);
+    --n-ink: var(--n-graphite-50);
+    --n-ink-muted: var(--n-graphite-300);
+    --n-ink-subtle: var(--n-graphite-400);
+    --n-line: rgb(255 255 255 / 0.12);
+    --n-line-strong: rgb(255 255 255 / 0.26);
+    --n-accent-ink: var(--n-gold-300);
+    --n-error-ink: var(--n-danger-300);
+    --n-success-ink: var(--n-success-300);
+    --n-action: var(--n-brand);
+    --n-action-hover: var(--n-brand-hover);
+    --n-on-action: var(--n-on-brand);
+    --n-focus: var(--n-gold-200);
+  }
+
+  /* palco: luzes apagadas, a luz aponta o que importa */
+  [data-scene="palco"] {
+    color-scheme: dark;
+    --n-shadow-lg: 0 32px 72px rgb(0 0 0 / 0.42);
+    --n-logo-n: var(--n-gold-500);
+    --n-logo-tix: var(--n-graphite-300);
+    --n-surface-0: var(--n-graphite-950);
+    --n-surface-1: var(--n-graphite-900);
+    --n-surface-2: var(--n-graphite-800);
+    --n-ink: var(--n-graphite-50);
+    --n-ink-muted: var(--n-graphite-300);
+    --n-ink-subtle: var(--n-graphite-400);
+    --n-line: rgb(255 255 255 / 0.1);
+    --n-line-strong: rgb(255 255 255 / 0.24);
+    --n-accent-ink: var(--n-gold-300);
+    --n-error-ink: var(--n-danger-300);
+    --n-success-ink: var(--n-success-300);
+    --n-action: var(--n-brand);
+    --n-action-hover: var(--n-brand-hover);
+    --n-on-action: var(--n-on-brand);
+    --n-focus: var(--n-gold-200);
+  }
+
+  /* casa: luzes da casa acesas, hora de ler com calma */
+  [data-scene="casa"] {
+    color-scheme: light;
+    --n-shadow-lg: 0 18px 44px rgb(27 29 32 / 0.14);
+    --n-logo-n: var(--n-gold-500);
+    --n-logo-tix: var(--n-graphite-850);
+    --n-surface-0: var(--n-graphite-50);
+    --n-surface-1: var(--n-graphite-0);
+    --n-surface-2: var(--n-graphite-100);
+    --n-ink: var(--n-graphite-900);
+    --n-ink-muted: var(--n-graphite-600);
+    --n-ink-subtle: var(--n-graphite-500);
+    --n-line: rgb(27 29 32 / 0.14);
+    --n-line-strong: rgb(27 29 32 / 0.3);
+    --n-accent-ink: var(--n-gold-700);
+    --n-error-ink: var(--n-danger-700);
+    --n-success-ink: var(--n-success-700);
+    --n-action: var(--n-graphite-850);
+    --n-action-hover: var(--n-graphite-700);
+    --n-on-action: var(--n-gold-200);
+    --n-focus: var(--n-gold-700);
+  }
+
+  /* ouro: a marca em cena aberta, reservada para o momento de decisão */
+  [data-scene="ouro"] {
+    color-scheme: light;
+    --n-shadow-lg: 0 18px 44px rgb(27 29 32 / 0.2);
+    --n-logo-n: var(--n-graphite-950);
+    --n-logo-tix: var(--n-graphite-800);
+    --n-surface-0: var(--n-gold-500);
+    --n-surface-1: var(--n-gold-400);
+    --n-surface-2: var(--n-gold-300);
+    --n-ink: var(--n-graphite-950);
+    --n-ink-muted: var(--n-graphite-800);
+    --n-ink-subtle: var(--n-graphite-800);
+    --n-line: rgb(27 29 32 / 0.22);
+    --n-line-strong: rgb(27 29 32 / 0.5);
+    --n-accent-ink: var(--n-graphite-950);
+    --n-error-ink: var(--n-danger-700);
+    --n-success-ink: var(--n-success-700);
+    --n-action: var(--n-graphite-900);
+    --n-action-hover: var(--n-graphite-800);
+    --n-on-action: var(--n-gold-200);
+    --n-focus: var(--n-graphite-950);
+  }
+
+  /* --- Tema claro -------------------------------------------------------
+     Muda palco e penumbra. casa e ouro já são claras e valem nos dois temas.
+     Quem tem data-fixed continua escuro: abertura, destaque sobre imagem e o palco da compra. */
+  :root[data-theme="light"],
+  :root[data-theme="light"] [data-scene="penumbra"]:not([data-fixed]) {
+    color-scheme: light;
+    --n-logo-n: var(--n-gold-500);
+    --n-logo-tix: var(--n-graphite-850);
+    --n-surface-0: var(--n-graphite-50);
+    --n-surface-1: var(--n-graphite-0);
+    --n-surface-2: var(--n-graphite-100);
+    --n-ink: var(--n-graphite-900);
+    --n-ink-muted: var(--n-graphite-600);
+    --n-ink-subtle: var(--n-graphite-500);
+    --n-line: rgb(27 29 32 / 0.13);
+    --n-line-strong: rgb(27 29 32 / 0.28);
+    --n-accent-ink: var(--n-gold-700);
+    --n-error-ink: var(--n-danger-700);
+    --n-success-ink: var(--n-success-700);
+    --n-action: var(--n-brand);
+    --n-action-hover: var(--n-brand-hover);
+    --n-on-action: var(--n-on-brand);
+    --n-focus: var(--n-gold-700);
+    --n-shadow-lg: 0 18px 44px rgb(27 29 32 / 0.14);
+  }
+
+  :root[data-theme="light"] [data-scene="palco"]:not([data-fixed]) {
+    color-scheme: light;
+    --n-logo-n: var(--n-gold-500);
+    --n-logo-tix: var(--n-graphite-850);
+    --n-surface-0: var(--n-graphite-0);
+    --n-surface-1: var(--n-graphite-50);
+    --n-surface-2: var(--n-graphite-100);
+    --n-ink: var(--n-graphite-900);
+    --n-ink-muted: var(--n-graphite-600);
+    --n-ink-subtle: var(--n-graphite-500);
+    --n-line: rgb(27 29 32 / 0.13);
+    --n-line-strong: rgb(27 29 32 / 0.28);
+    --n-accent-ink: var(--n-gold-700);
+    --n-error-ink: var(--n-danger-700);
+    --n-success-ink: var(--n-success-700);
+    --n-action: var(--n-brand);
+    --n-action-hover: var(--n-brand-hover);
+    --n-on-action: var(--n-on-brand);
+    --n-focus: var(--n-gold-700);
+    --n-shadow-lg: 0 18px 44px rgb(27 29 32 / 0.14);
+  }
+
+  /* Tokens derivados de --n-brand precisam ser redeclarados onde a marca muda:
+     uma custom property é resolvida no elemento que a declara e herdada já pronta. */
+  [data-brand] {
+    --n-action: var(--n-brand);
+    --n-action-hover: var(--n-brand-hover);
+    --n-on-action: var(--n-on-brand);
+  }
+}

@@ -1,0 +1,5 @@
+/* Ordem importa: tokens.css declara a ordem das camadas @layer. */
+@import "./tokens.css";
+@import "./base.css";
+@import "./components.css";
+@import "./immersion.css";

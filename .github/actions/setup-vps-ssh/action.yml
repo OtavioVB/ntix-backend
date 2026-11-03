@@ -1,0 +1,41 @@
+name: Configurar acesso SSH à VPS
+description: Monta a chave, o known_hosts e o alias "vps", usados pelos jobs de implantação.
+
+inputs:
+  host:
+    required: true
+  port:
+    required: false
+    default: "22"
+  user:
+    required: true
+  private-key:
+    required: true
+  known-hosts:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Configurar acesso SSH
+      shell: bash
+      env:
+        VPS_HOST: ${{ inputs.host }}
+        VPS_PORT: ${{ inputs.port }}
+        VPS_USER: ${{ inputs.user }}
+        VPS_SSH_PRIVATE_KEY: ${{ inputs.private-key }}
+        VPS_KNOWN_HOSTS: ${{ inputs.known-hosts }}
+      run: |
+        install -m 700 -d ~/.ssh
+        printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/vps_key
+        printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/vps_key ~/.ssh/known_hosts
+        cat > ~/.ssh/config <<CONFIG
+        Host vps
+          HostName $VPS_HOST
+          Port $VPS_PORT
+          User $VPS_USER
+          IdentityFile ~/.ssh/vps_key
+          IdentitiesOnly yes
+          StrictHostKeyChecking yes
+        CONFIG

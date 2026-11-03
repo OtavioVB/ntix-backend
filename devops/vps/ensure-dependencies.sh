@@ -4,6 +4,12 @@ set -euo pipefail
 
 COMPOSE_VERSION="v5.6.1"
 COMPOSE_PLUGIN_DIR="/usr/local/lib/docker/cli-plugins"
+# O Vite do frontend (web/) exige Node 22.12 ou superior.
+NODE_MAJOR=22
+
+# Os deploys da API e do frontend rodam em paralelo: uma instalação por vez, sem disputar o lock do apt.
+exec 9>/tmp/ntix-dependencies.lock
+flock 9
 
 if [ "$(id -u)" -eq 0 ]; then
     SUDO=()
@@ -36,7 +42,7 @@ install_package() {
     fi
 }
 
-for package in curl tar gzip; do
+for package in curl tar gzip nginx; do
     if ! command -v "$package" >/dev/null; then
         echo "[ntix] Instalando $package..."
         install_package "$package"
@@ -74,6 +80,14 @@ if ! docker compose version >/dev/null 2>&1 && ! "${SUDO[@]}" docker compose ver
 
     "${SUDO[@]}" install -d -m 755 "$COMPOSE_PLUGIN_DIR"
     "${SUDO[@]}" install -m 755 "$temporary_dir/$file_name" "$COMPOSE_PLUGIN_DIR/docker-compose"
+fi
+
+installed_node_major="$(node --version 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || true)"
+if [ -z "$installed_node_major" ] || [ "$installed_node_major" -lt "$NODE_MAJOR" ]; then
+    echo "[ntix] Instalando o Node.js $NODE_MAJOR..."
+    require_root_access "o Node.js"
+    curl -fsSL "https://deb.nodesource.com/setup_$NODE_MAJOR.x" | "${SUDO[@]}" bash -
+    "${SUDO[@]}" env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs
 fi
 
 # Verificação final em uma nova sessão: a entrada no grupo docker só vale a partir do próximo login.

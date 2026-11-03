@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1b1d20" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Ntix</title>
+    <script>
+      /* Antes da primeira pintura, para não piscar no tema errado. A regra completa está em design-system/theme.ts. */
+      try {
+        var saved = localStorage.getItem("ntix.theme");
+        document.documentElement.dataset.theme = saved === "light" || saved === "dark" ? saved : matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      } catch (error) {
+        document.documentElement.dataset.theme = "dark";
+      }
+    </script>
+  </head>
+  <body data-scene="palco">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

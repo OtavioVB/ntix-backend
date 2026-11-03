@@ -1,0 +1,258 @@
+/* Ntix Design System: imersão. Luz, plateia e transição entre cenas.
+   Regra: nada aqui carrega informação. Com movimento reduzido, a tela
+   continua completa. */
+
+@layer n-immersion {
+  .n-scene {
+    position: relative;
+    isolation: isolate;
+    background: var(--n-surface-0);
+    color: var(--n-ink);
+  }
+
+  /* --- Fundo de cena -------------------------------------------------- */
+  .n-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: var(--n-z-backdrop);
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* Canhões de luz */
+  .n-beam {
+    position: absolute;
+    top: -12%;
+    left: var(--_x, 50%);
+    width: var(--_w, 34vw);
+    height: 130%;
+    margin-left: calc(var(--_w, 34vw) / -2);
+    filter: blur(26px); /* no pai: blur no mesmo elemento do clip-path teria borda dura */
+    transform: rotate(var(--_tilt, 0deg));
+    transform-origin: 50% 0;
+    will-change: transform;
+    animation: n-beam-sway var(--_sway, 15s) var(--n-ease-in-out) infinite alternate;
+  }
+
+  .n-beam::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--n-gold-300) var(--_power, 30%), transparent),
+      transparent 82%
+    );
+    clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+  }
+
+  @keyframes n-beam-sway {
+    to {
+      transform: rotate(calc(var(--_tilt, 0deg) + var(--_swing, 5deg)));
+    }
+  }
+
+  /* Luz que acompanha o ponteiro */
+  .n-follow-spot {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle 26rem at var(--n-spot-x, 62%) var(--n-spot-y, 40%),
+      color-mix(in srgb, var(--n-gold-400) 13%, transparent),
+      transparent 72%
+    );
+  }
+
+  /* Plateia: mapa de assentos desenhado em canvas */
+  .n-audience {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* --- Revelação ao rolar ---------------------------------------------- */
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(22px);
+    transition:
+      opacity var(--n-dur-slow) var(--n-ease-out),
+      transform var(--n-dur-slow) var(--n-ease-out);
+    transition-delay: var(--n-reveal-delay, 0ms);
+  }
+
+  [data-reveal].is-revealed {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Entrada do que nasce na tela: só desloca, sem fade. Título e formulário são
+     legíveis desde o primeiro quadro, mesmo em aparelho lento. */
+  .n-enter {
+    animation: n-enter var(--n-dur-slow) var(--n-ease-out) var(--n-reveal-delay, 0ms) backwards;
+  }
+
+  @keyframes n-enter {
+    from {
+      transform: translateY(12px);
+    }
+  }
+
+  /* --- Luzes da casa acendendo -------------------------------------------
+     Um véu escuro sobre a cena inteira (conteúdo incluso) sai conforme ela
+     entra: o contraste entre texto e fundo se mantém durante a transição.   */
+  [data-lights-up]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: calc(var(--n-z-content) + 1);
+    background: var(--n-graphite-950);
+    opacity: var(--n-house-dark, 0);
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .n-beam {
+      animation: none;
+    }
+
+    .n-enter {
+      animation: none;
+    }
+
+    [data-reveal] {
+      opacity: 1;
+      transform: none;
+    }
+
+    [data-lights-up]::after {
+      display: none;
+    }
+  }
+}
+
+@layer n-immersion {
+  /* --- Cortina ---------------------------------------------------------
+     Pregas em grafite, com luz rasante: fecha o que ainda não foi liberado. */
+  .n-curtain {
+    --_pleats: repeating-linear-gradient(
+      90deg,
+      var(--n-graphite-950) 0,
+      var(--n-graphite-800) 1.1rem,
+      var(--n-graphite-950) 2.2rem
+    );
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: min(44rem, calc(100svh - 9rem));
+    overflow: hidden;
+    border: 1px solid var(--n-line);
+    border-radius: var(--n-radius-lg);
+    background: var(--n-surface-1);
+  }
+
+  .n-curtain--compact {
+    min-height: 18rem;
+  }
+
+  .n-curtain__preview {
+    position: absolute;
+    inset: 0;
+    padding: var(--n-space-5);
+    overflow: hidden;
+    filter: blur(3px);
+    opacity: 0.8;
+    user-select: none;
+  }
+
+  .n-curtain__drape {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 24%;
+    background: var(--_pleats);
+    box-shadow: 0 0 48px rgb(0 0 0 / 0.55);
+  }
+
+  .n-curtain__drape::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 4px;
+    background: var(--n-gold-600);
+  }
+
+  .n-curtain__drape--left {
+    left: 0;
+  }
+
+  .n-curtain__drape--right {
+    right: 0;
+  }
+
+  .n-curtain--compact .n-curtain__drape {
+    width: 14%;
+  }
+
+  .n-curtain__card {
+    position: relative;
+    z-index: 1;
+    width: min(100% - 2rem, 32rem);
+    margin-block: var(--n-space-5);
+    padding: var(--n-space-6);
+    background: var(--n-graphite-950);
+    border: 1px solid var(--n-line-strong);
+    border-radius: var(--n-radius-lg);
+    box-shadow: 0 24px 64px rgb(0 0 0 / 0.5);
+  }
+
+  .n-curtain--compact .n-curtain__card {
+    width: min(100% - 2rem, 24rem);
+    padding: var(--n-space-5);
+  }
+
+  /* Abertura: uma vez, ao entrar */
+  .n-curtain-opening {
+    --_pleats: repeating-linear-gradient(
+      90deg,
+      var(--n-graphite-950) 0,
+      var(--n-graphite-800) 2rem,
+      var(--n-graphite-950) 4rem
+    );
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--n-z-nav) + 10);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .n-curtain-opening__side {
+    background: var(--_pleats);
+    animation: n-curtain-left var(--n-dur-scene) var(--n-ease-in-out) 150ms forwards;
+  }
+
+  .n-curtain-opening__side--right {
+    animation-name: n-curtain-right;
+  }
+
+  @keyframes n-curtain-left {
+    to {
+      transform: translateX(-102%);
+    }
+  }
+
+  @keyframes n-curtain-right {
+    to {
+      transform: translateX(102%);
+    }
+  }
+}
+
+@layer n-immersion {
+  /* O véu das luzes da casa sai de uma cena escura: no tema claro, seria um clarão ao contrário. */
+  :root[data-theme="light"] [data-lights-up]::after {
+    display: none;
+  }
+}

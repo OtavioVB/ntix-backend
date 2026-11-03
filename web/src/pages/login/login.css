@@ -1,0 +1,62 @@
+/* Tela de acesso. Reaproveita a nota de rodapé do cadastro. */
+
+@layer n-page {
+  .login {
+    display: grid;
+    place-items: center;
+    min-height: 100svh;
+    padding: var(--n-space-5) var(--n-gutter);
+  }
+
+  .login__card {
+    display: grid;
+    gap: var(--n-space-5);
+    width: min(100%, 26rem);
+  }
+
+  .login__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .login__form {
+    display: grid;
+    gap: var(--n-space-4);
+  }
+
+  .login__error {
+    font-size: var(--n-text-sm);
+    color: var(--n-error-ink);
+  }
+
+  .login__error:empty {
+    display: none;
+  }
+
+  .login__alt {
+    font-size: var(--n-text-sm);
+    color: var(--n-ink-muted);
+  }
+
+  .login__alt a {
+    font-weight: 600;
+    color: var(--n-accent-ink);
+  }
+
+  .login__reset {
+    padding: 0;
+    background: none;
+    border: 0;
+    font-size: inherit;
+    color: var(--n-ink-muted);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .signup__note {
+    font-size: var(--n-text-xs);
+    line-height: 1.45;
+    color: var(--n-ink-subtle);
+  }
+}

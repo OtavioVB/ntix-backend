@@ -1,0 +1,186 @@
+/* Editor de marca e pré-visualização da loja: usados na tela de conversão e no painel. */
+
+@layer n-page {
+  .brand-lab__swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--n-space-2);
+  }
+
+  .brand-lab__color {
+    display: flex;
+    align-items: center;
+    gap: var(--n-space-3);
+  }
+
+  .brand-lab__picker {
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 2px;
+    background: transparent;
+    border: 1px solid var(--n-line-strong);
+    border-radius: var(--n-radius-sm);
+    cursor: pointer;
+  }
+
+  .brand-lab__caption {
+    margin-top: var(--n-space-3);
+    font-size: var(--n-text-xs);
+    color: var(--n-ink-subtle);
+  }
+
+  .window-dots {
+    display: inline-flex;
+    gap: 5px;
+  }
+
+  .window-dots i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--n-surface-2);
+  }
+
+  /* A loja simula um tenant: tem superfícies próprias, definidas pelo tema. */
+  .store {
+    --store-bg: var(--n-graphite-900);
+    --store-ink: var(--n-graphite-50);
+    --store-muted: var(--n-graphite-300);
+    --store-line: rgb(255 255 255 / 0.12);
+    --store-poster: var(--n-graphite-800);
+    background: var(--store-bg);
+    color: var(--store-ink);
+    transition: background-color var(--n-dur-slow) var(--n-ease-out), color var(--n-dur-slow) var(--n-ease-out);
+  }
+
+  .store__head {
+    display: flex;
+    align-items: center;
+    gap: var(--n-space-3);
+    padding: var(--n-space-3) var(--n-space-5);
+    border-bottom: 1px solid var(--store-line);
+  }
+
+  .store__logo {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    flex: none;
+    background: var(--n-brand);
+    color: var(--n-on-brand);
+    border-radius: var(--n-radius-sm);
+    font-weight: 800;
+    transition: background-color var(--n-dur-slow) var(--n-ease-out);
+  }
+
+  .store__menu {
+    margin-left: auto;
+    font-size: var(--n-text-sm);
+    color: var(--store-muted);
+    white-space: nowrap;
+  }
+
+  .store__hero {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: var(--n-space-5);
+    padding: var(--n-space-5);
+  }
+
+  .store__poster {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    background: var(--store-poster);
+    border-radius: var(--n-radius-md);
+    transition: background-color var(--n-dur-slow) var(--n-ease-out);
+  }
+
+  .store__poster-sun {
+    position: absolute;
+    left: 50%;
+    bottom: -62%;
+    width: 110%;
+    aspect-ratio: 1;
+    background: var(--n-brand);
+    border-radius: 50%;
+    transform: translateX(-50%);
+    transition: background-color var(--n-dur-slow) var(--n-ease-out);
+  }
+
+  .store__poster-sun::after {
+    content: "";
+    position: absolute;
+    inset: 16%;
+    border-radius: 50%;
+    border: 2px solid var(--n-on-brand);
+    opacity: 0.4;
+  }
+
+  .store__poster-date {
+    position: absolute;
+    top: var(--n-space-4);
+    left: var(--n-space-4);
+    font-size: var(--n-display-sm);
+    font-stretch: 72%;
+    font-weight: 700;
+    line-height: 0.95;
+    color: var(--store-ink);
+  }
+
+  .store__event {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--n-space-3);
+    min-width: 0;
+  }
+
+  .store__tag {
+    font-family: var(--n-font-mono);
+    font-size: var(--n-text-xs);
+    color: var(--store-muted);
+  }
+
+  .store__event-title {
+    font-size: var(--n-display-sm);
+    font-stretch: 72%;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
+
+  .store__event-meta {
+    color: var(--store-muted);
+  }
+
+  .store__buy {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--n-space-3);
+    margin-top: var(--n-space-3);
+    padding-top: var(--n-space-4);
+    border-top: 1px solid var(--store-line);
+  }
+
+  .store__buy small {
+    display: block;
+    font-size: var(--n-text-xs);
+    color: var(--store-muted);
+  }
+
+  .store__cta {
+    padding: 0.625rem 1rem;
+    background: var(--n-brand);
+    color: var(--n-on-brand);
+    border-radius: var(--n-radius-sm);
+    font-size: var(--n-text-sm);
+    font-weight: 600;
+    transition: background-color var(--n-dur-slow) var(--n-ease-out);
+  }
+
+}
