@@ -188,6 +188,11 @@
     color: var(--n-ink-subtle);
   }
 
+  .signup__error {
+    font-size: var(--n-text-sm);
+    color: var(--n-error-ink);
+  }
+
   .signup__intro {
     font-size: var(--n-text-sm);
     color: var(--n-ink-muted);

@@ -2,6 +2,8 @@ using Application.UseCases.Base.Configuration;
 using Application.UseCases.Base.Interfaces;
 using Application.UseCases.CreateCustomer;
 using Application.UseCases.CreateCustomer.Inputs;
+using Application.UseCases.CreateProducer;
+using Application.UseCases.CreateProducer.Inputs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +21,8 @@ public static class ServiceCollectionExtensions
         services.AddMetrics();
         services.AddSingleton<CreateCustomerDiagnostics>();
         services.AddScoped<IUseCase<CreateCustomerUseCaseInput>, CreateCustomerUseCase>();
+        services.AddSingleton<CreateProducerDiagnostics>();
+        services.AddScoped<IUseCase<CreateProducerUseCaseInput>, CreateProducerUseCase>();
 
         return services;
     }

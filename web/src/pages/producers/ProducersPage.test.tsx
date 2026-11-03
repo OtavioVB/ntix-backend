@@ -2,7 +2,7 @@ import { render as baseRender, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProducerSessionProvider } from "../../producer/session";
 import { ProducersPage } from "./ProducersPage";
 
@@ -41,14 +41,14 @@ describe("cadastro de produtor", () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
   }
 
-  it("pede o administrador e já sugere o e-mail da produtora", async () => {
+  it("pede o administrador, que acessa com o e-mail da produtora", async () => {
     const user = userEvent.setup();
     render(<ProducersPage />);
 
     await fillProducer(user);
 
     expect(screen.getByLabelText("Nome do administrador")).toHaveFocus();
-    expect(screen.getByLabelText("E-mail de acesso")).toHaveValue("contato@exemplo.test");
+    expect(screen.queryByLabelText("E-mail de acesso")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Criar meu cadastro" }));
     expect(screen.getByText("Informe o nome do administrador.")).toBeInTheDocument();
@@ -81,13 +81,53 @@ describe("cadastro de produtor", () => {
 
     await fillProducer(user);
     await user.type(screen.getByLabelText("Nome do administrador"), "Pessoa Administradora");
-    await user.type(screen.getByLabelText("Senha"), "senha-de-teste");
+    await user.type(screen.getByLabelText("Senha"), "Senha@123");
     await user.click(screen.getByRole("button", { name: "Criar meu cadastro" }));
 
     expect(await screen.findByText(/Tudo certo, Maré Alta/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
     expect(screen.getByText(/nenhum dado foi enviado/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Entrar na plataforma" })).toHaveAttribute("href", "/painel");
+  });
+
+  async function fillAdministrator(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText("Nome do administrador"), "Pessoa Administradora");
+    await user.type(screen.getByLabelText("Senha"), "Senha@123");
+    await user.click(screen.getByRole("button", { name: "Criar meu cadastro" }));
+  }
+
+  describe("com a API real (?api=real)", () => {
+    beforeEach(() => window.sessionStorage.setItem("ntix:api-mode", "real"));
+    afterEach(() => {
+      window.sessionStorage.clear();
+      vi.unstubAllGlobals();
+    });
+
+    it("cadastra na API e pede a verificação do e-mail, sem abrir o painel", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("[]", { status: 200 })));
+      const user = userEvent.setup();
+      render(<ProducersPage />);
+
+      await fillProducer(user);
+      await fillAdministrator(user);
+
+      expect(await screen.findByText(/Falta só confirmar o seu e-mail/)).toBeInTheDocument();
+      expect(screen.getByText(/contato@exemplo.test/)).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Entrar na plataforma" })).not.toBeInTheDocument();
+    });
+
+    it("volta ao passo da produtora quando o e-mail já existe", async () => {
+      const body = JSON.stringify([{ code: "PRODUCER_EMAIL_ALREADY_EXISTS", message: "Já existe um cadastro de produtora com o e-mail informado." }]);
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body, { status: 400 })));
+      const user = userEvent.setup();
+      render(<ProducersPage />);
+
+      await fillProducer(user);
+      await fillAdministrator(user);
+
+      expect(await screen.findByText("Já existe um cadastro de produtora com o e-mail informado.")).toBeInTheDocument();
+      expect(screen.getByLabelText("E-mail da produtora")).toHaveAttribute("aria-invalid", "true");
+    });
   });
 
   it("muda o rótulo do nome para pessoa física", async () => {
