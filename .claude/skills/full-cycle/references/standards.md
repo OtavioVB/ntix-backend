@@ -33,6 +33,8 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Tabelas e índices ficam em scripts na pasta `data/`.
 - Unit of Work: o caso de uso faz rollback em qualquer exceção e só faz commit quando a regra de negócio permite a criação.
 - Evite consultas com `LIKE`. Prefira consultas exatas sobre índices.
+- Mesmo quando um requisito pedir stored procedure dona da transação, mantém-se o SQL nativo com Unit of Work no caso de uso (decidido no REQ1, criação do produtor).
+- Evento de integração é gravado na outbox (`outbox.outbox_event`) na mesma transação da operação que o origina. O consumidor só é implementado quando o requisito do sistema de destino existir.
 
 ### Exceções
 - Toda exceção tratada no caso de uso é devolvida ao controller, exceto o cancelamento da requisição, que é tratado e devolvido com 4XX.
@@ -58,7 +60,10 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 
 ### Regras de negócio
 - Não invente regra que não foi estipulada, mesmo que pareça uma proteção técnica, como um limite de tentativas.
-- Slug único: o primeiro usa só o nome; se já existir, gera-se uma versão aleatória de 5 letras ou números, verifica-se na base e usa-se a primeira livre.
+- Slug único: o primeiro usa só o nome; se já existir, gera-se uma versão aleatória de 5 letras ou números, verifica-se na base e usa-se a primeira livre. Vale também para o produtor, mesmo que o requisito fale em sufixo sequencial (`-2`, `-3`).
+- Slug do produtor é rótulo de subdomínio: no máximo 63 caracteres, contando o sufixo, e nunca uma palavra reservada (que recebe a versão aleatória).
+- Produtor: o e-mail do administrador é o mesmo da produtora; o front não pede um segundo e-mail.
+- Verificação de e-mail e carteira do produtor ficam para requisitos próprios: no cadastro, só o evento `ProducerRegistered` vai para a outbox.
 - Senha do cliente: obrigatória, com ao menos 8 caracteres, uma letra maiúscula, uma minúscula, um número e um símbolo. É persistida como hash que combina a chave privada do servidor com o hash da senha, e cada cliente tem o próprio salt.
 - Celular do cliente: opcional, com DDD e número.
 
@@ -84,7 +89,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Unitários: xUnit, padrão AAA, nomes `Given_[Cenário]_When_[Comportamento]_Should_[ResultadoEsperado]`.
 - Integrados: xUnit, usando as dependências criadas, padrão AAA, mesma nomenclatura.
 - Funcionais: Reqnroll e Gherkin em português (`# language: pt`), com definições semânticas ao negócio.
-- Carga: k6. O cadastro de conta usa o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros.
+- Carga: k6. O cadastro de conta e o cadastro de produtor usam o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros.
 
 ### Dependências
 - Dependência nova é responsabilidade de Claude, com explicação prévia e RFC que a justifique.
@@ -119,7 +124,10 @@ Assumidas por Claude. Valem até o usuário dizer o contrário; ao confirmar, mo
 - Celular tem exatamente 11 dígitos (2 de DDD e 9 de número), aceita `(`, `)`, `-` e espaços na entrada e é persistido só com dígitos. Não há validação da lista de DDDs nem do nono dígito, e o celular não aparece nos logs.
 - O 4XX do cancelamento é o 499, e a exceção que chega ao controller não é capturada e vira 500.
 - O número de iterações é fixo, então "extrapolar" é medido pelo tempo do hash: p95 amarelo a partir de 250 ms e vermelho a partir de 500 ms. As iterações ficam no hash, porque gerar o salt não itera.
-- Enquanto só houver um endpoint, o controller lê os headers com `[FromHeader]` e o caso de uso valida o `AuditableInfoValueObject`, sem middleware.
+- Palavras reservadas de slug de produtor (lista definitiva em aberto no requisito): `www`, `api`, `admin`, `app`, `hub`, `produtores`.
+- Telefone do produtor é obrigatório e persistido em E.164: com 10 ou 11 dígitos nacionais recebe `+55`; começando com `+`, aceita de 8 a 15 dígitos.
+- O front chama a API por CORS, com as origens permitidas em `CorsConfiguration:AllowedOrigins`.
+- O controller lê os headers com `[FromHeader]` e o caso de uso valida o `AuditableInfoValueObject`, sem middleware.
 
 ## Decisões em aberto
 

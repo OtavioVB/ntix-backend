@@ -13,6 +13,7 @@ import {
   type SignupValues,
 } from "../signup";
 import { panelPath } from "../../../producer/paths";
+import type { ApiMode } from "../../../api/mode";
 
 const PRODUCER_TYPES = [
   { value: "COMPANY", label: "Empresa (PJ)" },
@@ -35,15 +36,16 @@ export function SignupTicket({ suggestedName, onComplete }: SignupTicketProps) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [adminName, setAdminName] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<SignupErrors>({});
+  const [formError, setFormError] = useState<string>();
+  const [createdMode, setCreatedMode] = useState<ApiMode>("demo");
   const formRef = useRef<HTMLFormElement>(null);
   const doneRef = useRef<HTMLDivElement>(null);
 
   const name = typedName ?? suggestedName;
-  const values: SignupValues = { producerType, name, email, phone, adminName, adminEmail, adminPassword };
+  const values: SignupValues = { producerType, name, email, phone, adminName, adminPassword };
   const isCompany = producerType === "COMPANY";
 
   useEffect(() => {
@@ -73,7 +75,6 @@ export function SignupTicket({ suggestedName, onComplete }: SignupTicketProps) {
     event.preventDefault();
     if (step === "producer") {
       if (!checkFields(PRODUCER_FIELDS)) return;
-      if (!adminEmail) setAdminEmail(email.trim());
       if (!adminName && !isCompany) setAdminName(name.trim());
       setStep("admin");
       return;
@@ -81,15 +82,30 @@ export function SignupTicket({ suggestedName, onComplete }: SignupTicketProps) {
     if (step !== "admin" || !checkFields(ADMIN_FIELDS)) return;
 
     setStep("submitting");
-    await submitProducerSignup(values);
-    update({
-      name: name.trim(),
-      producerType,
-      status: "PENDING",
-      loggedIn: true,
-      adminEmail: adminEmail.trim(),
-      team: [{ id: "admin", name: adminName.trim(), email: adminEmail.trim(), isAdmin: true, invited: false }],
-    });
+    setFormError(undefined);
+    const result = await submitProducerSignup(values);
+
+    if (result.status === "rejected") {
+      setErrors(result.errors);
+      setFormError(result.message);
+      // Erro de um dado da produtora: volta ao passo em que o campo está.
+      const producerError = PRODUCER_FIELDS.find((field) => result.errors[field]);
+      setStep(producerError ? "producer" : "admin");
+      return;
+    }
+
+    setCreatedMode(result.mode);
+    // Na API real o administrador nasce PENDING e só acessa depois de verificar o e-mail: não há sessão a abrir.
+    if (result.mode === "demo") {
+      update({
+        name: name.trim(),
+        producerType,
+        status: "PENDING",
+        loggedIn: true,
+        adminEmail: email.trim(),
+        team: [{ id: "admin", name: adminName.trim(), email: email.trim(), isAdmin: true, invited: false }],
+      });
+    }
     setAdminPassword("");
     setStep("done");
     onComplete();
@@ -112,12 +128,20 @@ export function SignupTicket({ suggestedName, onComplete }: SignupTicketProps) {
   return (
     <Ticket stub={stub} torn={step === "done"}>
       {step === "done" ? (
-        <div className="signup-done" ref={doneRef} tabIndex={-1}>
-          <Stamp>Cadastro iniciado</Stamp>
-          <p className="n-title signup-done__title">Tudo certo, {name.trim()}. Sua plataforma já está aberta para ensaio.</p>
-          <ButtonLink to={panelPath()} state={{ openCurtain: true }} size="lg" block arrow>Entrar na plataforma</ButtonLink>
-          <p className="signup__note">Demonstração: a integração com a API ainda não existe, então nenhum dado foi enviado.</p>
-        </div>
+        createdMode === "real" ? (
+          <div className="signup-done" ref={doneRef} tabIndex={-1}>
+            <Stamp>Cadastro iniciado</Stamp>
+            <p className="n-title signup-done__title">Tudo certo, {name.trim()}. Falta só confirmar o seu e-mail.</p>
+            <p className="signup__intro">Enviamos um link de verificação para {email.trim()}. Depois de confirmar, entre com esse e-mail e a senha que você criou.</p>
+          </div>
+        ) : (
+          <div className="signup-done" ref={doneRef} tabIndex={-1}>
+            <Stamp>Cadastro iniciado</Stamp>
+            <p className="n-title signup-done__title">Tudo certo, {name.trim()}. Sua plataforma já está aberta para ensaio.</p>
+            <ButtonLink to={panelPath()} state={{ openCurtain: true }} size="lg" block arrow>Entrar na plataforma</ButtonLink>
+            <p className="signup__note">Demonstração: nenhum dado foi enviado para a API. Para usar a API de verdade, abra o cadastro com ?api=real.</p>
+          </div>
+        )
       ) : (
         <form className="signup" ref={formRef} onSubmit={handleSubmit} noValidate>
           {onProducerStep ? (
@@ -207,23 +231,6 @@ export function SignupTicket({ suggestedName, onComplete }: SignupTicketProps) {
                 }}
                 onBlur={() => validateOnBlur("adminName")}
               />
-              <TextField
-                id="admin-email"
-                name="adminEmail"
-                label="E-mail de acesso"
-                type="email"
-                inputMode="email"
-                autoComplete="username"
-                required
-                maxLength={254}
-                value={adminEmail}
-                error={errors.adminEmail}
-                onChange={(event) => {
-                  setAdminEmail(event.target.value);
-                  revalidate("adminEmail", { adminEmail: event.target.value });
-                }}
-                onBlur={() => validateOnBlur("adminEmail")}
-              />
               <div className="password-field">
                 <TextField
                   id="admin-password"
@@ -250,6 +257,7 @@ export function SignupTicket({ suggestedName, onComplete }: SignupTicketProps) {
               <button type="button" className="signup__back" onClick={() => setStep("producer")}>Voltar para os dados da produtora</button>
             </>
           )}
+          {formError && <p className="signup__error" role="alert">{formError}</p>}
           <p className="signup__note">Contrato e termos de uso só entram na etapa de contratação, depois que você conhecer a plataforma.</p>
         </form>
       )}

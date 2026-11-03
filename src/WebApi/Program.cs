@@ -1,6 +1,9 @@
 using Application.UseCases;
 using Infra.PostgreSql.Base.UnitOfWork;
 using Infra.PostgreSql.Repositories.Customers;
+using Infra.PostgreSql.Repositories.Outbox;
+using Infra.PostgreSql.Repositories.Producers;
+using WebApi.Cors;
 using WebApi.Observability;
 
 namespace WebApi;
@@ -18,15 +21,20 @@ public class Program
             options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
         });
         builder.Services.AddOpenApi();
+        builder.Services.AddCorsConfiguration(builder.Configuration);
 
         builder.Services
             .AddPostgreSqlConfiguration(builder.Configuration)
-            .AddCustomerRepositoryConfiguration(builder.Configuration);
+            .AddCustomerRepositoryConfiguration(builder.Configuration)
+            .AddProducerRepositoryConfiguration(builder.Configuration)
+            .AddOutboxRepositoryConfiguration(builder.Configuration);
 
         builder.Services
             .AddUseCasesConfiguration(builder.Configuration);
 
         var app = builder.Build();
+
+        app.UseCors(CorsExtensions.WEB_POLICY_NAME);
 
         app.MapOpenApi();
         app.MapControllers();

@@ -53,6 +53,10 @@ Escreva os quatro níveis, seguindo [references/testing.md](references/testing.m
 
 **Não execute os testes** (`dotnet test`, `k6 run`): apenas escreva. A validação é do usuário, e a entrega deve dizer claramente que eles não foram executados.
 
+## 4.1 Front
+
+Se o requisito tiver tela em `web/` ou o usuário pedir a integração, siga a skill `frontend-integration` (`.claude/skills/frontend-integration/SKILL.md`) depois do endpoint pronto.
+
 ## 5. Entrega
 
 Reporte de forma curta:

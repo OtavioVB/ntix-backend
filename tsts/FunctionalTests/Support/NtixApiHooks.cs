@@ -31,6 +31,11 @@ public sealed class NtixApiHooks
     }
 
     [BeforeScenario]
-    public Task RemoveCustomersFromPreviousScenarios()
-        => Database.ExecuteAsync("DELETE FROM customers.customer;");
+    public Task RemoveDataFromPreviousScenarios()
+        => Database.ExecuteAsync("""
+            DELETE FROM customers.customer;
+            DELETE FROM outbox.outbox_event;
+            DELETE FROM producers.producer_user;
+            DELETE FROM producers.producer;
+            """);
 }

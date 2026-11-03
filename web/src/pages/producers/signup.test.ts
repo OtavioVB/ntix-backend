@@ -8,8 +8,7 @@ const valid: SignupValues = {
   email: "contato@exemplo.test",
   phone: "(11) 98765-4321",
   adminName: "Pessoa Administradora",
-  adminEmail: "admin@exemplo.test",
-  adminPassword: "senha-de-teste",
+  adminPassword: "Senha@123",
 };
 
 const validate = (values: SignupValues) => validateFields([...PRODUCER_FIELDS, ...ADMIN_FIELDS], values);
@@ -25,13 +24,22 @@ describe("validação do cadastro", () => {
   });
 
   it("aponta cada campo inválido do administrador", () => {
-    const errors = validateFields(ADMIN_FIELDS, { ...valid, adminName: "", adminEmail: "x", adminPassword: "curta" });
-    expect(Object.keys(errors)).toEqual(["adminName", "adminEmail", "adminPassword"]);
+    const errors = validateFields(ADMIN_FIELDS, { ...valid, adminName: "", adminPassword: "curta" });
+    expect(Object.keys(errors)).toEqual(["adminName", "adminPassword"]);
   });
 
   it("exige senha com o tamanho mínimo", () => {
-    expect(validate({ ...valid, adminPassword: "1234567" }).adminPassword).toBeDefined();
-    expect(validate({ ...valid, adminPassword: "12345678" }).adminPassword).toBeUndefined();
+    expect(validate({ ...valid, adminPassword: "Senh@12" }).adminPassword).toBeDefined();
+    expect(validate({ ...valid, adminPassword: "Senha@12" }).adminPassword).toBeUndefined();
+  });
+
+  it.each([
+    ["senha@123", "A senha precisa ter uma letra maiúscula."],
+    ["SENHA@123", "A senha precisa ter uma letra minúscula."],
+    ["Senha@abc", "A senha precisa ter um número."],
+    ["Senha1234", "A senha precisa ter um símbolo, como @ ou #."],
+  ])("segue a política de senha da API: %s", (password, message) => {
+    expect(validate({ ...valid, adminPassword: password }).adminPassword).toBe(message);
   });
 
   it("adapta a mensagem do nome ao tipo de produtor", () => {
