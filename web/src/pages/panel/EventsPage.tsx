@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Badge, Icon, Meter, Window } from "../../design-system";
 import { SAMPLE_EVENT, money } from "./sampleData";
+import { panelPath } from "../../producer/paths";
 
 export function EventsPage() {
   return (
@@ -11,7 +12,7 @@ export function EventsPage() {
           <h1 className="n-display n-display--md">Eventos e lotes</h1>
           <p className="n-lead">Cada evento tem quantos lotes precisar, com preço, quantidade e período de venda próprios.</p>
         </div>
-        <Link className="n-btn n-btn--ghost" to="/painel/aprovacao">
+        <Link className="n-btn n-btn--ghost" to={panelPath("aprovacao")}>
           <Icon name="lock" /> Criar evento
         </Link>
       </header>

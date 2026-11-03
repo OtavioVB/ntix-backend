@@ -6,6 +6,7 @@ import { formatCents, parseCents } from "../../../platform/money";
 import { batchSold, eventStats, fullDate } from "../../../platform/selectors";
 import type { EventStatus } from "../../../platform/types";
 import { usePlatform } from "./usePlatform";
+import { panelPath } from "../../../producer/paths";
 
 const STATUS_LABELS: Record<EventStatus, string> = { DRAFT: "Rascunho", ON_SALE: "Em venda", ENDED: "Encerrado" };
 
@@ -27,7 +28,7 @@ export function EventsListPage() {
           <h1 className="n-display n-display--md">Eventos e lotes</h1>
           <p className="n-lead">Cada evento tem quantos lotes precisar, com preço, quantidade e período de venda próprios.</p>
         </div>
-        <ButtonLink to="/painel/eventos/novo">Criar evento</ButtonLink>
+        <ButtonLink to={panelPath("eventos/novo")}>Criar evento</ButtonLink>
       </header>
 
       {events.length === 0 ? (
@@ -41,7 +42,7 @@ export function EventsListPage() {
             const stats = eventStats(data, event);
             return (
               <li key={event.id}>
-                <Link className="event-card" to={`/painel/eventos/${event.id}`}>
+                <Link className="event-card" to={panelPath(`eventos/${event.id}`)}>
                   <div className="event-card__head">
                     <h2 className="event-card__name">{event.name}</h2>
                     <Badge live={event.status === "ON_SALE"}>{STATUS_LABELS[event.status]}</Badge>
@@ -87,14 +88,14 @@ export function EventFormPage() {
 
     const created = createEvent(data, { name: name.trim(), venue: venue.trim(), date: time, allowsAffiliates });
     save(created.data);
-    navigate(`/painel/eventos/${created.event.id}`);
+    navigate(panelPath(`eventos/${created.event.id}`));
   }
 
   return (
     <>
       <title>Novo evento · Ntix</title>
       <header className="page-head">
-        <Link className="back-link" to="/painel/eventos">Eventos e lotes</Link>
+        <Link className="back-link" to={panelPath("eventos")}>Eventos e lotes</Link>
         <h1 className="n-display n-display--md">Novo evento</h1>
       </header>
       <form className="tile form-tile" onSubmit={handleSubmit} noValidate>
@@ -162,7 +163,7 @@ export function EventDetailPage() {
   const { data, save } = usePlatform();
   const event = data.events.find((candidate) => candidate.id === eventId);
 
-  if (!event) return <Navigate to="/painel/eventos" replace />;
+  if (!event) return <Navigate to={panelPath("eventos")} replace />;
 
   const stats = eventStats(data, event);
   const canPublish = event.status === "DRAFT" && event.batches.length > 0;
@@ -172,7 +173,7 @@ export function EventDetailPage() {
       <title>{`${event.name} · Ntix`}</title>
       <header className="page-head page-head--action">
         <div>
-          <Link className="back-link" to="/painel/eventos">Eventos e lotes</Link>
+          <Link className="back-link" to={panelPath("eventos")}>Eventos e lotes</Link>
           <h1 className="n-display n-display--md">{event.name}</h1>
           <p className="n-lead">{fullDate(event.date)} · {event.venue}</p>
         </div>

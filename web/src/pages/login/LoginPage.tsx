@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Button, Scene, TextField, ThemeToggle, Wordmark } from "../../design-system";
 import { useProducerSession } from "../../producer/session";
+import { panelPath, signupPath } from "../../producer/paths";
 
 /** Acesso de usuários do produtor (P-39). Autenticação pendente: sem API, a senha não é verificada. */
 export function LoginPage() {
@@ -13,7 +14,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string>();
 
-  if (session.loggedIn) return <Navigate to="/painel" replace />;
+  if (session.loggedIn) return <Navigate to={panelPath()} replace />;
 
   const hasDemoAccount = Boolean(session.adminEmail);
 
@@ -26,7 +27,7 @@ export function LoginPage() {
       return;
     }
     update({ loggedIn: true });
-    navigate("/painel");
+    navigate(panelPath());
   }
 
   return (
@@ -34,7 +35,7 @@ export function LoginPage() {
       <title>Entrar · Ntix</title>
       <div className="login__card">
         <div className="login__top">
-          <Wordmark href="/produtores" label="Ntix, página inicial" />
+          <Wordmark href={signupPath()} label="Ntix, página inicial" />
           <ThemeToggle />
         </div>
         <h1 className="n-display n-display--sm">Bem-vindo de volta.</h1>
@@ -44,7 +45,7 @@ export function LoginPage() {
           <p className="login__error" role="alert">{error}</p>
           <Button type="submit" size="lg" block arrow>Entrar</Button>
         </form>
-        <p className="login__alt">Ainda não vende com a Ntix? <Link to="/produtores">Crie seu cadastro</Link></p>
+        <p className="login__alt">Ainda não vende com a Ntix? <Link to={signupPath()}>Crie seu cadastro</Link></p>
         <p className="signup__note">
           Demonstração: sem API, a senha não é verificada de verdade.
           {hasDemoAccount && (

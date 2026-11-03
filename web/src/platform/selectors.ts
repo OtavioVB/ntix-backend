@@ -1,5 +1,6 @@
 import { DAY_MS } from "./demoData";
 import type { Channel, Order, PlatformData, ProducerEvent } from "./types";
+import { panelPath } from "../producer/paths";
 
 export const CHANNEL_LABELS: Record<Channel, string> = {
   HUB: "Hub Ntix",
@@ -119,18 +120,18 @@ export function attentionItems(data: PlatformData, now: number): AttentionItem[]
   const items: AttentionItem[] = [];
 
   for (const charge of data.charges) {
-    if (!charge.paidAt) items.push({ text: `${charge.description} vence em ${fullDate(charge.dueDate)}`, to: "/painel/cobrancas" });
+    if (!charge.paidAt) items.push({ text: `${charge.description} vence em ${fullDate(charge.dueDate)}`, to: panelPath("cobrancas") });
   }
 
   const plan = currentFeePlan(data, now);
   const planDays = plan ? Math.ceil((plan.endsAt - now) / DAY_MS) : 0;
-  if (plan && planDays <= 30) items.push({ text: `Seu plano de intermediação termina em ${planDays} dias`, to: "/painel/plano" });
+  if (plan && planDays <= 30) items.push({ text: `Seu plano de intermediação termina em ${planDays} dias`, to: panelPath("plano") });
 
   for (const event of data.events) {
     if (event.status === "DRAFT") {
       items.push({
         text: event.batches.length ? `${event.name} está pronto para publicar` : `${event.name} ainda não tem lotes`,
-        to: `/painel/eventos/${event.id}`,
+        to: panelPath(`eventos/${event.id}`),
       });
     }
     if (event.status !== "ON_SALE") continue;
@@ -138,7 +139,7 @@ export function attentionItems(data: PlatformData, now: number): AttentionItem[]
       const left = batch.quantity - batchSold(data.orders, batch.id);
       const selling = batch.startsAt <= now && now < batch.endsAt;
       if (selling && left > 0 && left <= batch.quantity * 0.1) {
-        items.push({ text: `${event.name}: restam ${left} ingressos no ${batch.name}`, to: `/painel/eventos/${event.id}` });
+        items.push({ text: `${event.name}: restam ${left} ingressos no ${batch.name}`, to: panelPath(`eventos/${event.id}`) });
       }
     }
   }

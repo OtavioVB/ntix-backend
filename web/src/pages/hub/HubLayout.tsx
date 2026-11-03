@@ -5,6 +5,7 @@ import { Link, Outlet, useLocation, useNavigate, useSearchParams } from "react-r
 import { Icon, Scene, ThemeToggle, Wordmark } from "../../design-system";
 import { useCustomer } from "../../customer/session";
 import { Avatar } from "../../features/avatar/Avatar";
+import { producerAreaHref } from "../../producer/paths";
 
 function HubSearch() {
   const [params] = useSearchParams();
@@ -40,7 +41,7 @@ function HubHeader() {
         <Wordmark href="/" label="Ntix, início" />
         <HubSearch />
         <nav className="hub-header__nav" aria-label="Principal">
-          <Link className="hub-header__link hub-header__link--wide" to="/produtores">Para produtores</Link>
+          <Link className="hub-header__link hub-header__link--wide" to={producerAreaHref("signup")}>Para produtores</Link>
           <ThemeToggle />
           {signedIn ? (
             <Link className="hub-account" to="/conta" aria-label="Minha conta">
@@ -83,8 +84,8 @@ export function HubLayout() {
           <p>O hub reúne os eventos dos produtores da Ntix. Cada evento é organizado pelo produtor indicado na página dele.</p>
           <nav className="hub-footer__links" aria-label="Rodapé">
             <Link to="/conta">Minha conta</Link>
-            <Link to="/produtores">Venda seus ingressos na Ntix</Link>
-            <Link to="/entrar">Acesso do produtor</Link>
+            <Link to={producerAreaHref("signup")}>Venda seus ingressos na Ntix</Link>
+            <Link to={producerAreaHref("login")}>Acesso do produtor</Link>
           </nav>
         </div>
       </Scene>

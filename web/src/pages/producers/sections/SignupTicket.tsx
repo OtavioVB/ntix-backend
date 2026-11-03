@@ -12,6 +12,7 @@ import {
   type SignupField,
   type SignupValues,
 } from "../signup";
+import { panelPath } from "../../../producer/paths";
 
 const PRODUCER_TYPES = [
   { value: "COMPANY", label: "Empresa (PJ)" },
@@ -114,7 +115,7 @@ export function SignupTicket({ suggestedName, onComplete }: SignupTicketProps) {
         <div className="signup-done" ref={doneRef} tabIndex={-1}>
           <Stamp>Cadastro iniciado</Stamp>
           <p className="n-title signup-done__title">Tudo certo, {name.trim()}. Sua plataforma já está aberta para ensaio.</p>
-          <ButtonLink to="/painel" state={{ openCurtain: true }} size="lg" block arrow>Entrar na plataforma</ButtonLink>
+          <ButtonLink to={panelPath()} state={{ openCurtain: true }} size="lg" block arrow>Entrar na plataforma</ButtonLink>
           <p className="signup__note">Demonstração: a integração com a API ainda não existe, então nenhum dado foi enviado.</p>
         </div>
       ) : (

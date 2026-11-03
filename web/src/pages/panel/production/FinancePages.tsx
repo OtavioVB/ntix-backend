@@ -7,6 +7,7 @@ import { formatCents, formatSigned, parseCents } from "../../../platform/money";
 import { currentBalance, currentFeePlan, fullDate } from "../../../platform/selectors";
 import type { ChargeType, LedgerType } from "../../../platform/types";
 import { usePlatform } from "./usePlatform";
+import { panelPath } from "../../../producer/paths";
 
 const LEDGER_FILTERS: { value: "" | LedgerType; label: string }[] = [
   { value: "", label: "Todos" },
@@ -126,7 +127,7 @@ export function ChargesPage() {
       {sorted.length === 0 ? (
         <section className="tile empty-state">
           <h2 className="n-title">Nenhuma cobrança</h2>
-          <p>Sem ticketeria contratada, você não tem mensalidade: só a taxa de intermediação de cada venda. <Link to="/painel/ticketeria">Conheça a ticketeria</Link></p>
+          <p>Sem ticketeria contratada, você não tem mensalidade: só a taxa de intermediação de cada venda. <Link to={panelPath("ticketeria")}>Conheça a ticketeria</Link></p>
         </section>
       ) : (
         <section className="tile" aria-label="Lista de cobranças">

@@ -3,6 +3,7 @@ import { Badge, Curtain, Icon, Meter, Reveal } from "../../design-system";
 import { useProducerSession } from "../../producer/session";
 import { RevenueChart } from "./RevenueChart";
 import { CHANNELS, SALES_DAYS, SAMPLE_EVENT, SUMMARY, money } from "./sampleData";
+import { panelPath } from "../../producer/paths";
 
 const TOP_AFFILIATES = [
   { name: "Afiliado 1", tickets: 31 },
@@ -15,7 +16,7 @@ function LockedCard({ title, text }: { title: string; text: string }) {
     <>
       <p className="locked-title"><Icon name="lock" /> {title}</p>
       <p className="locked-text">{text}</p>
-      <Link className="locked-link" to="/painel/aprovacao">Ver o que falta para liberar</Link>
+      <Link className="locked-link" to={panelPath("aprovacao")}>Ver o que falta para liberar</Link>
     </>
   );
 }
@@ -92,7 +93,7 @@ export function OverviewPage() {
             ))}
           </ul>
           <p className="tile__note">Ingressos por canal. Cada pedido registra por onde a venda aconteceu.</p>
-          <Link className="upsell-row" to="/painel/ticketeria">
+          <Link className="upsell-row" to={panelPath("ticketeria")}>
             <Icon name="store" />
             <span><strong>Um terceiro canal:</strong> sua ticketeria própria. Veja como ficaria.</span>
           </Link>

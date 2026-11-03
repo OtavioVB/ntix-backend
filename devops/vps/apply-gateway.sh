@@ -5,7 +5,7 @@ set -euo pipefail
 
 GATEWAY_DIR="${1:?Informe a pasta com os arquivos do gateway}"
 # Precisam apontar para este servidor no DNS antes da emissão: o Let's Encrypt valida cada um pela porta 80.
-CERT_DOMAINS=(ntix.com.br www.ntix.com.br api.ntix.com.br)
+CERT_DOMAINS=(ntix.com.br www.ntix.com.br api.ntix.com.br produtores.ntix.com.br)
 CERT_NAME="ntix.com.br"
 CERT_FILE="/etc/letsencrypt/live/$CERT_NAME/fullchain.pem"
 # 80: validação do Let's Encrypt e redirecionamento. 443: HTTPS.
@@ -65,10 +65,13 @@ certificate_covers_all_domains() {
     done
 }
 
-# Primeira emissão (ou domínio novo): o nginx não sobe com 'listen ssl' sem certificado, então serve só a validação.
+# Emissão ou domínio novo. Sem certificado nenhum, o nginx não sobe com 'listen ssl', então serve só a validação.
+# Com um certificado que só não cobre um nome novo, a configuração atual já atende a validação e o HTTPS segue no ar.
 if ! certificate_covers_all_domains; then
     echo "[ntix] Emitindo o certificado HTTPS para ${CERT_DOMAINS[*]}..."
-    replace_config "$GATEWAY_DIR/acme.conf"
+    if ! "${SUDO[@]}" test -f "$CERT_FILE"; then
+        replace_config "$GATEWAY_DIR/acme.conf"
+    fi
     domain_args=()
     for domain in "${CERT_DOMAINS[@]}"; do domain_args+=(-d "$domain"); done
     if ! "${SUDO[@]}" certbot certonly --webroot --webroot-path "$ACME_WEBROOT" \

@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { overviewSegment, panelPath } from "../../producer/paths";
 import { useProducerSession } from "../../producer/session";
 import { ApprovalPage } from "./ApprovalPage";
 import { EventsPage } from "./EventsPage";
@@ -20,13 +21,16 @@ function ByStatus({ rehearsal, production }: { rehearsal: ReactElement; producti
   return session.status === "ACTIVE" ? production : rehearsal;
 }
 
-const toEvents = <Navigate to="/painel/eventos" replace />;
+const toEvents = <Navigate to={panelPath("eventos")} replace />;
+const overview = <ByStatus rehearsal={<OverviewPage />} production={<DashboardPage />} />;
+const overviewPath = overviewSegment();
 
 export default function PanelRoutes() {
   return (
     <Routes>
       <Route element={<PanelLayout />}>
-        <Route index element={<ByStatus rehearsal={<OverviewPage />} production={<DashboardPage />} />} />
+        {/* No subdomínio do produtor, a raiz é o cadastro: a visão geral ganha caminho próprio. */}
+        {overviewPath ? <Route path={overviewPath} element={overview} /> : <Route index element={overview} />}
         <Route path="eventos" element={<ByStatus rehearsal={<EventsPage />} production={<EventsListPage />} />} />
         <Route path="eventos/novo" element={<ByStatus rehearsal={toEvents} production={<EventFormPage />} />} />
         <Route path="eventos/:eventId" element={<ByStatus rehearsal={toEvents} production={<EventDetailPage />} />} />
@@ -40,7 +44,7 @@ export default function PanelRoutes() {
         <Route path="ticketeria" element={<TicketeriaPage />} />
         <Route path="equipe" element={<TeamPage />} />
         <Route path="aprovacao" element={<ApprovalPage />} />
-        <Route path="*" element={<Navigate to="/painel" replace />} />
+        <Route path="*" element={<Navigate to={panelPath()} replace />} />
       </Route>
     </Routes>
   );

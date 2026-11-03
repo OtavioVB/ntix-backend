@@ -9,8 +9,9 @@ import { formatCents } from "../../platform/money";
 import { currentBalance } from "../../platform/selectors";
 import { approvalSteps, useProducerSession } from "../../producer/session";
 import { PANEL_GROUPS } from "./navigation";
+import { panelPath } from "../../producer/paths";
 
-const APPROVAL_PATH = "/painel/aprovacao";
+const APPROVAL_PATH = panelPath("aprovacao");
 
 const STATUS_LABELS = {
   PENDING: "Cadastro pendente",
@@ -23,7 +24,7 @@ function SideCard({ onNavigate }: { onNavigate: () => void }) {
 
   if (session.status === "ACTIVE") {
     return (
-      <Link className="panel-side__approval" to="/painel/carteira" onClick={onNavigate}>
+      <Link className="panel-side__approval" to={panelPath("carteira")} onClick={onNavigate}>
         <span className="n-label n-label--accent">Saldo na carteira</span>
         <strong className="panel-side__balance">{formatCents(session.platform ? currentBalance(session.platform) : 0)}</strong>
         <small>Ver extrato e sacar</small>
@@ -140,7 +141,7 @@ export function PanelLayout() {
       <a className="n-skip-link" href="#panel-content">Ir para o conteúdo</a>
 
       <header className="panel-topbar" data-scene="palco">
-        <Wordmark href="/painel" label="Ntix, visão geral" />
+        <Wordmark href={panelPath()} label="Ntix, visão geral" />
         <button
           type="button"
           className="panel-topbar__menu"
@@ -157,7 +158,7 @@ export function PanelLayout() {
 
       <Scene light="palco" as="aside" className={menuOpen ? "panel-side is-open" : "panel-side"} id="panel-side" aria-label="Menu da plataforma">
         <div className="panel-side__brand">
-          <Wordmark href="/painel" label="Ntix, visão geral" />
+          <Wordmark href={panelPath()} label="Ntix, visão geral" />
         </div>
 
         <div className="panel-side__producer">
@@ -172,7 +173,7 @@ export function PanelLayout() {
               <ul>
                 {group.areas.map((area) => (
                   <li key={area.path}>
-                    <NavLink to={area.path} end={area.path === "/painel"} className="panel-side__link">
+                    <NavLink to={area.path} end={area.path === panelPath()} className="panel-side__link">
                       <Icon name={area.icon} />
                       <span>{area.label}</span>{" "}
                       {area.lockedInRehearsal && !isActive && (

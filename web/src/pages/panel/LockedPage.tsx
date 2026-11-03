@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Badge, ButtonLink, Curtain, Icon, Ledger } from "../../design-system";
 import { useProducerSession } from "../../producer/session";
+import { panelPath } from "../../producer/paths";
 
 function PreviewTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
@@ -162,7 +163,7 @@ export function LockedPage({ domain }: { domain: LockedDomain }) {
           {inReview ? (
             <p className="inline-note">Seu cadastro está em análise. Esta área abre assim que a Ntix aprovar sua produtora.</p>
           ) : (
-            <ButtonLink to="/painel/aprovacao" arrow block>Ver o que falta para liberar</ButtonLink>
+            <ButtonLink to={panelPath("aprovacao")} arrow block>Ver o que falta para liberar</ButtonLink>
           )}
         </div>
       </Curtain>

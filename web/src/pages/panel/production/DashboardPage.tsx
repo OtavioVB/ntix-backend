@@ -17,6 +17,7 @@ import {
 import { useProducerSession } from "../../../producer/session";
 import { RevenueChart } from "../RevenueChart";
 import { usePlatform } from "./usePlatform";
+import { panelPath } from "../../../producer/paths";
 
 const PERIODS = [
   { value: "7", label: "7 dias" },
@@ -46,10 +47,10 @@ function FirstSteps() {
   const hasBatch = data.events.some((event) => event.batches.length > 0);
   const published = data.events.some((event) => event.status === "ON_SALE");
   const steps = [
-    { done: hasEvent, text: "Crie seu primeiro evento", to: "/painel/eventos/novo" },
-    { done: hasBatch, text: "Adicione os lotes de ingresso", to: hasEvent ? `/painel/eventos/${data.events[0].id}` : "/painel/eventos" },
-    { done: published, text: "Publique para começar a vender no hub", to: hasEvent ? `/painel/eventos/${data.events[0].id}` : "/painel/eventos" },
-    { done: session.team.length > 1, text: "Convide sua equipe", to: "/painel/equipe" },
+    { done: hasEvent, text: "Crie seu primeiro evento", to: panelPath("eventos/novo") },
+    { done: hasBatch, text: "Adicione os lotes de ingresso", to: hasEvent ? panelPath(`eventos/${data.events[0].id}`) : panelPath("eventos") },
+    { done: published, text: "Publique para começar a vender no hub", to: hasEvent ? panelPath(`eventos/${data.events[0].id}`) : panelPath("eventos") },
+    { done: session.team.length > 1, text: "Convide sua equipe", to: panelPath("equipe") },
   ];
   const next = steps.find((step) => !step.done);
 
@@ -125,7 +126,7 @@ export function DashboardPage() {
             <section className="tile" aria-labelledby="balance-title">
               <h2 className="tile__title" id="balance-title">Saldo na carteira</h2>
               <p className="side-figure">{formatCents(currentBalance(data))}</p>
-              <Link className="locked-link" to="/painel/carteira">Ver extrato e sacar</Link>
+              <Link className="locked-link" to={panelPath("carteira")}>Ver extrato e sacar</Link>
             </section>
 
             <section className="tile" aria-labelledby="attention-title">
@@ -157,7 +158,7 @@ export function DashboardPage() {
             </ul>
             <p className="tile__note">Ingressos por canal no período.</p>
             {!hasStore && (
-              <Link className="upsell-row" to="/painel/ticketeria">
+              <Link className="upsell-row" to={panelPath("ticketeria")}>
                 <Icon name="store" />
                 <span><strong>Um canal só seu:</strong> veja como ficaria a sua ticketeria.</span>
               </Link>
@@ -167,7 +168,7 @@ export function DashboardPage() {
           <section className="tile overview__half" aria-labelledby="events-title">
             <div className="tile__head">
               <h2 className="tile__title" id="events-title">Eventos em venda</h2>
-              <Link className="locked-link" to="/painel/eventos">Ver todos</Link>
+              <Link className="locked-link" to={panelPath("eventos")}>Ver todos</Link>
             </div>
             <ul className="batch-list">
               {upcoming.map((event) => {
@@ -175,7 +176,7 @@ export function DashboardPage() {
                 return (
                   <li key={event.id}>
                     <div className="batch-list__head">
-                      <Link to={`/painel/eventos/${event.id}`}>{event.name}</Link>
+                      <Link to={panelPath(`eventos/${event.id}`)}>{event.name}</Link>
                       <span className="n-figure">{fullDate(event.date)}</span>
                     </div>
                     <Meter value={stats.tickets} max={Math.max(1, stats.capacity)} label={`${stats.tickets} de ${stats.capacity} ingressos vendidos`} />
@@ -189,7 +190,7 @@ export function DashboardPage() {
           <section className="tile overview__wide" aria-labelledby="recent-title">
             <div className="tile__head">
               <h2 className="tile__title" id="recent-title">Últimos pedidos</h2>
-              <Link className="locked-link" to="/painel/vendas">Ver todas as vendas</Link>
+              <Link className="locked-link" to={panelPath("vendas")}>Ver todas as vendas</Link>
             </div>
             <div className="n-ledger-scroll">
               <table className="n-ledger">
@@ -224,7 +225,7 @@ export function DashboardPage() {
                 </li>
               ))}
             </ul>
-            <Link className="locked-link" to="/painel/afiliados">Ver afiliados</Link>
+            <Link className="locked-link" to={panelPath("afiliados")}>Ver afiliados</Link>
           </section>
         </div>
       )}

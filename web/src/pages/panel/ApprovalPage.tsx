@@ -5,6 +5,7 @@ import { TICKETERIA_MONTHLY_CENTS, generateDemoData } from "../../platform/demoD
 import { formatCents } from "../../platform/money";
 import { formatDocument, isValidDocument } from "../../producer/legal";
 import { approvalSteps, submitForApproval, useProducerSession } from "../../producer/session";
+import { panelPath } from "../../producer/paths";
 
 function StepStatus({ done }: { done: boolean }) {
   return (
@@ -22,7 +23,7 @@ export function ApprovalPage() {
   const [documentError, setDocumentError] = useState<string>();
   const summaryRef = useRef<HTMLParagraphElement>(null);
 
-  if (session.status === "ACTIVE") return <Navigate to="/painel" replace />;
+  if (session.status === "ACTIVE") return <Navigate to={panelPath()} replace />;
 
   const steps = approvalSteps(session);
   const doneCount = steps.filter((step) => step.done).length;
@@ -51,7 +52,7 @@ export function ApprovalPage() {
       ticketeria: withTicketeria ? "ACTIVE" : "NONE",
       platform: generateDemoData(Date.now(), withTicketeria),
     });
-    navigate("/painel", { state: { openCurtain: true } });
+    navigate(panelPath(), { state: { openCurtain: true } });
   }
 
   const stub = (
@@ -95,7 +96,7 @@ export function ApprovalPage() {
                 </p>
               ) : (
                 <p>
-                  <strong>Ticketeria própria:</strong> não incluída. {!submitted && <Link to="/painel/ticketeria">Ver como ficaria</Link>}
+                  <strong>Ticketeria própria:</strong> não incluída. {!submitted && <Link to={panelPath("ticketeria")}>Ver como ficaria</Link>}
                 </p>
               )}
             </div>

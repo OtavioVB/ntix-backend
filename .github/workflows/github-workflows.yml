@@ -222,4 +222,7 @@ jobs:
         run: ssh vps "bash '$DEPLOY_PATH/devops/vps/apply-gateway.sh' '$DEPLOY_PATH/gateway'"
 
       - name: Verificar o frontend
-        run: ssh vps "curl --fail --silent --output /dev/null --connect-to 'ntix.com.br:443:127.0.0.1:443' 'https://ntix.com.br/'"
+        run: |
+          for host in ntix.com.br produtores.ntix.com.br; do
+            ssh vps "curl --fail --silent --output /dev/null --connect-to '$host:443:127.0.0.1:443' 'https://$host/'"
+          done

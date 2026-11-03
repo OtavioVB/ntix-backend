@@ -5,6 +5,7 @@ import { CATEGORIES, type Category, type HubEvent } from "../../hub/catalog";
 import { eventDay, filterEvents, type WhenFilter } from "../../hub/rules";
 import { useHub } from "../../hub/useHub";
 import { EventCard, EventImage, PriceFrom, Rail } from "./parts";
+import { producerAreaHref } from "../../producer/paths";
 
 const WHEN_OPTIONS: { value: WhenFilter; label: string }[] = [
   { value: "", label: "Qualquer data" },
@@ -180,7 +181,7 @@ export function HubHomePage() {
       <Scene light="ouro" className="hub-cta">
         <div className="n-container hub-cta__inner">
           <h2 className="n-display n-display--md">Produz eventos? Venda aqui também.</h2>
-          <ButtonLink to="/produtores" size="lg" arrow>Conhecer a Ntix para produtores</ButtonLink>
+          <ButtonLink to={producerAreaHref("signup")} size="lg" arrow>Conhecer a Ntix para produtores</ButtonLink>
         </div>
       </Scene>
     </>

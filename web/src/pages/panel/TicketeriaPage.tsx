@@ -9,6 +9,7 @@ import { formatCents, parseCents } from "../../platform/money";
 import { channelTotals, summarize } from "../../platform/selectors";
 import { slugify } from "../../producer/text";
 import { useProducerSession } from "../../producer/session";
+import { panelPath } from "../../producer/paths";
 
 const COMPARISON = [
   { label: "Endereço", hub: "Dentro do hub da Ntix", own: "O domínio da sua produtora" },
@@ -157,7 +158,7 @@ function TicketeriaOffer() {
             {!isActive && !inReview && selected && (
               <div className="offer__selected">
                 <p><Icon name="check" /> <strong>Incluída na sua contratação.</strong> Ela entra no ar com a aprovação.</p>
-                <ButtonLink to="/painel/aprovacao" size="lg" arrow>Ir para a aprovação</ButtonLink>
+                <ButtonLink to={panelPath("aprovacao")} size="lg" arrow>Ir para a aprovação</ButtonLink>
                 <button type="button" className="signup__back" onClick={() => update({ ticketeria: "NONE" })}>Remover da contratação</button>
               </div>
             )}
@@ -199,7 +200,7 @@ function TicketeriaOffer() {
           <div className="offer-try">
             <StoreControls name={session.name} onNameChange={(name) => update({ name })} look={session.storeLook} onLookChange={(storeLook) => update({ storeLook })} />
           </div>
-          <p className="tile__note">A prévia lá em cima muda na hora. <Link to="/painel/equipe">Prefere chamar a equipe para opinar?</Link></p>
+          <p className="tile__note">A prévia lá em cima muda na hora. <Link to={panelPath("equipe")}>Prefere chamar a equipe para opinar?</Link></p>
         </section>
       </div>
     </>

@@ -6,6 +6,7 @@
   <Folder Name="/devops/">
     <File Path=".github/workflows/github-workflows.yml" />
     <File Path=".github/workflows/static-analysis.yml" />
+    <File Path="devops/.env.example" />
     <File Path="devops/docker-compose.yml" />
   </Folder>
   <Folder Name="/docs/">
