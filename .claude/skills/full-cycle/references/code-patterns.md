@@ -92,7 +92,7 @@ Agrega `CorrelationId`, `OriginService`, `ExecutionUser` e `RequestedAt`. `Build
 - O controller só converte payload em input, chama o caso de uso e traduz: notificação de cancelamento vira 499; `IsError` vira `BadRequest(result.Notifications)`; sucesso vira `Ok(result.Notifications)`. Exceção não é capturada no controller e vira 500.
 - `SuppressImplicitRequiredAttributeForNonNullableReferenceTypes` fica ligado no `Program`: campo ausente chega ao value object e vira notificação, em vez de `ProblemDetails` do framework.
 - O JSON da API omite propriedades nulas (`JsonIgnoreCondition.WhenWritingNull`): campo opcional ausente fica fora da resposta.
-- Desfecho que não é erro de quem chama (ex.: arquivo de configuração fora da estrutura) vira 500 sem corpo; ausência do recurso vira `NotFound(result.Notifications)`.
+- Desfecho que não é erro de quem chama (ex.: arquivo de configuração fora da estrutura) vira 500 sem corpo, com `Response.StatusCode = 500` e `EmptyResult` (o `StatusCode(500)` do `[ApiController]` vira `ProblemDetails`); ausência do recurso vira `NotFound(result.Notifications)`.
 
 ## Injeção de dependência e configuração
 
