@@ -27,6 +27,7 @@
   <ItemGroup>
     <None Include="..\..\data\**\*.sql" Link="data\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\devops\whitelabel\*.json" Link="whitelabel\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\devops\whitelabel-defaults\*.json" Link="whitelabel-defaults\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

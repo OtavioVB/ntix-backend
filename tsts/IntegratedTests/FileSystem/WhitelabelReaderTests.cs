@@ -192,6 +192,33 @@ public sealed class WhitelabelReaderTests : IDisposable
         Assert.Equal("#c99b14", result.Output!.Colors!.Primary!["500"]);
     }
 
+    [Theory]
+    [InlineData("amarelo", "#e8b923")]
+    [InlineData("laranja", "#c99b14")]
+    [InlineData("azul", "#2563eb")]
+    [InlineData("verde", "#16a34a")]
+    [InlineData("roxo", "#7c3aed")]
+    [InlineData("branco", "#f4f4f2")]
+    [InlineData("rosa", "#db2777")]
+    public async Task Given_DefaultColorFile_When_UsedAsProducerFile_Should_BeServed(string color, string expectedPrimary)
+    {
+        // Arrange: cada default é o ponto de partida do arquivo de uma produtora, então precisa passar na validação.
+        var defaultFile = Path.Combine(AppContext.BaseDirectory, "whitelabel-defaults", color + ".json");
+        File.Copy(defaultFile, Path.Combine(_directory, "produtora-" + color + ".json"));
+        using var services = BuildServices();
+        using var scope = services.CreateScope();
+        var useCase = scope.ServiceProvider.GetRequiredService<IUseCase<GetProducerWhitelabelUseCaseInput, GetProducerWhitelabelUseCaseOutput>>();
+
+        // Act
+        var result = await useCase.ExecuteAsync(GetProducerWhitelabelUseCaseInput.Create("produtora-" + color), NewAuditableInfo());
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(expectedPrimary, result.Output!.Colors!.Primary!["500"]);
+        Assert.Equal(expectedPrimary, result.Output.Colors.Action!.Base);
+        Assert.Equal(10, result.Output.Colors.Primary.Count);
+    }
+
     private ServiceProvider BuildServices()
     {
         var configuration = new ConfigurationBuilder()
