@@ -82,7 +82,11 @@ public sealed class ProducersV1Controller : ControllerBase
             return StatusCode(CLIENT_CLOSED_REQUEST_STATUS_CODE, result.Notifications);
 
         if (result.Notifications.Any(notification => notification.Code == GetProducerWhitelabelUseCase.WHITELABEL_INVALID_FILE_NOTIFICATION_CODE))
-            return StatusCode(StatusCodes.Status500InternalServerError);
+        {
+            // Sem corpo: StatusCode(500) viraria ProblemDetails pelo [ApiController]. O motivo fica só no log.
+            Response.StatusCode = StatusCodes.Status500InternalServerError;
+            return new EmptyResult();
+        }
 
         if (result.Notifications.Any(notification => notification.Code == GetProducerWhitelabelUseCase.WHITELABEL_NOT_FOUND_NOTIFICATION_CODE))
             return NotFound(result.Notifications);
