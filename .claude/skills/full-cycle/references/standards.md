@@ -89,11 +89,12 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Unitários: xUnit, padrão AAA, nomes `Given_[Cenário]_When_[Comportamento]_Should_[ResultadoEsperado]`.
 - Integrados: xUnit, usando as dependências criadas, padrão AAA, mesma nomenclatura.
 - Funcionais: Reqnroll e Gherkin em português (`# language: pt`), com definições semânticas ao negócio.
-- Carga: k6. O cadastro de conta e o cadastro de produtor usam o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros.
+- Carga: k6. O cadastro de conta, o cadastro de produtor e a consulta do whitelabel (REQ3) usam o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros.
 
 ### Whitelabel (front)
 - Cada implantação é whitelabel: a identidade visual vem de uma configuração em runtime, nunca de build. Hoje `web/public/whitelabel.json` (substituído por implantação, sem rebuild); no futuro, a API, apontada por `VITE_WHITELABEL_URL`, no mesmo formato.
 - No back-end (REQ3), a configuração é o arquivo `{slug}.json` da produtora (ex.: `ntix.json`) em uma pasta do servidor. Nunca é devolvido como está: a cada consulta é validado contra a estrutura e a resposta sai do modelo tipado.
+- Decisões do REQ3, aprovadas pelo usuário: arquivo fora da estrutura devolve 500 sem detalhe (nunca a parte válida); a consulta não verifica a produtora na base; `Cache-Control: public, max-age=300`; rota `/api/v1/producers/{slug}/whitelabel`; o slug de produtora é nome comercial e pode aparecer no log (a regra de não logar slug vale para cliente).
 - O contrato é o tipo `WhitelabelConfig` (`web/src/whitelabel/config.ts`): `brand` (nome, logo, favicon, cor da barra), `colors` (`primary`, `secondary`, `neutral`, `success`, `danger`, `action`), `typography`, `spacing`, `radius`, `motion`. Tudo opcional; o que faltar fica no padrão Ntix de `tokens.css`.
 - A configuração sobrescreve só os primitivos (`--n-primary-*`, `--n-secondary-*`, `--n-neutral-*`, `--n-space-*`...). Cenas e componentes referenciam primitivos e semânticos por `var()`, nunca cor literal nem nome de marca (`gold`, `graphite`).
 - Campo novo no contrato: tipo em `config.ts`, tradução em `toCssVariables`, valor padrão em `tokens.css` e em `whitelabel.json`, e teste em `whitelabel.test.ts`.
@@ -124,7 +125,7 @@ Assumidas por Claude. Valem até o usuário dizer o contrário; ao confirmar, mo
 - Referências dos testes: `UnitTests` e `IntegratedTests` referenciam `Application`; `FunctionalTests` referencia `WebApi`. As demais camadas chegam por transitividade.
 - Headers auditáveis: `X-Correlation-Id`, `X-Origin-Service` e `X-Requested-At` são obrigatórios; `X-Execution-User` é opcional, como o usuário na referência, porque o cadastro é anônimo.
 - `ExecutionUser` é um identificador e aparece sem ofuscação nos logs, então quem chama não deve enviar nele um dado pessoal, como um email.
-- Slug não aparece nos logs, porque revela o nome completo do cliente.
+- Slug de cliente não aparece nos logs, porque revela o nome completo do cliente. Slug de produtora pode aparecer (REQ3).
 - O Sonar da esteira é o SonarQube Cloud, e a API Key é o secret `SONAR_TOKEN`, exposto ao job como variável de ambiente.
 - A esteira gera a cobertura com o `coverlet.collector`, e o `coverlet.msbuild` fica disponível para `dotnet test /p:CollectCoverage=true`.
 - Algoritmo da senha: PBKDF2-SHA256 com 600 mil iterações e salt aleatório de 16 bytes, seguido de HMAC-SHA256 com a chave privada (`PasswordConfiguration__PrivateKey`). Só a biblioteca padrão do .NET, sem RFC.

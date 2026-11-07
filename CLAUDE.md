@@ -13,6 +13,13 @@ Backend em .NET 10: `src/` (WebApi, Application, Domain, Infra) e `tsts/` (teste
 - Escreva os testes, mas não os execute: a validação é do usuário.
 - Dependência nova exige explicação prévia e RFC em `docs/rfcs/`.
 
+## Ciclo de cada trabalho
+
+1. Atualize a `main` (`git switch main && git pull`) e crie a branch do trabalho a partir dela.
+2. Implemente e abra um PR para a `main`; um trabalho, um PR.
+3. O usuário mergeia, implanta e valida manualmente no ambiente.
+4. Só depois disso comece o próximo trabalho, voltando ao passo 1. Não empilhe trabalho novo em branch já mergeada.
+
 ## Manter as skills vivas
 
 Parte do trabalho é acelerar o próprio trabalho, mesmo fora de um requisito:

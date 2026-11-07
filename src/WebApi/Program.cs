@@ -1,4 +1,6 @@
+using System.Text.Json.Serialization;
 using Application.UseCases;
+using Infra.FileSystem.Whitelabels;
 using Infra.PostgreSql.Base.UnitOfWork;
 using Infra.PostgreSql.Repositories.Customers;
 using Infra.PostgreSql.Repositories.Outbox;
@@ -19,6 +21,10 @@ public class Program
         builder.Services.AddControllers(options =>
         {
             options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+        }).AddJsonOptions(options =>
+        {
+            // Campo opcional ausente fica fora da resposta, em vez de sair como null (ex.: whitelabel parcial).
+            options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
         });
         builder.Services.AddOpenApi();
         builder.Services.AddCorsConfiguration(builder.Configuration);
@@ -27,7 +33,8 @@ public class Program
             .AddPostgreSqlConfiguration(builder.Configuration)
             .AddCustomerRepositoryConfiguration(builder.Configuration)
             .AddProducerRepositoryConfiguration(builder.Configuration)
-            .AddOutboxRepositoryConfiguration(builder.Configuration);
+            .AddOutboxRepositoryConfiguration(builder.Configuration)
+            .AddWhitelabelReaderConfiguration(builder.Configuration);
 
         builder.Services
             .AddUseCasesConfiguration(builder.Configuration);

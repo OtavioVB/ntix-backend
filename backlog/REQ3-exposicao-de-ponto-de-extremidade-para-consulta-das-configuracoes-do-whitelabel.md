@@ -1,6 +1,6 @@
 # REQ3 - Exposição de Ponto de Extremidade para Consulta das Configurações do Whitelabel
 
-- **Status**: Proposto
+- **Status**: Em implementação (aguardando validação no ambiente)
 - **Área**: produtor / plataforma
 - **Depende de**: REQ1 (cadastro do produtor, que gera o slug); whitelabel do front (`web/src/whitelabel/`)
 
@@ -97,7 +97,7 @@ O exemplo completo é o próprio `web/public/whitelabel.json`, que serve de base
 
 | Status | Quando | Código |
 |---|---|---|
-| 400 | Slug com formato inválido | `WHITELABEL_SLUG_INVALID` |
+| 400 | Slug com formato inválido | `SLUG_INVALID` |
 | 404 | Nenhum arquivo `{slug}.json` na pasta | `WHITELABEL_NOT_FOUND` |
 | 500 | Arquivo existe, mas não segue a estrutura (JSON inválido, campo fora do formato, tamanho excedido) ou pasta inacessível | sem detalhe no corpo; motivo só no log |
 | 499 | Requisição cancelada pelo cliente | — |
@@ -185,7 +185,7 @@ Funcionalidade: Consulta da configuração whitelabel da produtora
 
   Cenário: Slug que tenta sair da pasta
     Quando eu consulto o whitelabel da produtora "..%2Fappsettings"
-    Então recebo status 400 com a notificação "WHITELABEL_SLUG_INVALID"
+    Então recebo status 400 com a notificação "SLUG_INVALID"
 
   Cenário: Arquivo com valor inseguro
     Dado que o arquivo "ntix.json" tem "logoUrl" igual a "javascript:alert(1)"
@@ -198,10 +198,18 @@ Funcionalidade: Consulta da configuração whitelabel da produtora
     Então recebo status 500 sem detalhe no corpo
 ```
 
-## Decisões em aberto
+## Decisões
+
+Aprovadas pelo usuário na implementação, como estavam propostas:
 
 1. **Arquivo inválido**: 500 sem detalhe (adotado) ou devolver só a parte válida? A parte válida evita tela sem marca, mas pode servir uma marca incoerente.
 2. **Slug sem produtora na base**: o endpoint não consulta o banco (adotado). Se for preciso servir só produtoras ativas/aprovadas, entra uma consulta ao repositório de produtores.
 3. **Cache**: `Cache-Control: max-age=300` (adotado). Uma troca de marca leva até 5 minutos para aparecer. Cache em memória no servidor fica para quando a carga pedir.
 4. **Slug no log**: tratado como nome comercial e logado nesta consulta (adotado). O `standards.md` proíbe slug de cliente no log; confirmar que a regra não vale para produtora.
 5. **Rota**: `/api/v1/producers/{slug}/whitelabel` (adotado) ou `/api/v1/whitelabel/{slug}`, se o whitelabel for servir também outros tipos de tenant.
+
+## Notas da implementação
+
+- O slug inválido devolve `SLUG_INVALID`, emitido pelo `SlugValueObject.Parse`, e não `WHITELABEL_SLUG_INVALID`: a notificação pertence ao value object.
+- Além dos limites de RN4, `typography.stylesheets` aceita no máximo 10 itens, e os degraus de cor aceitam também `850`, usado na escala neutra do `ntix.json`.
+- O front ainda carrega `web/public/whitelabel.json`. Apontá-lo para este endpoint (resolver o slug pelo subdomínio e enviar os headers auditáveis) fica para a integração pela skill `frontend-integration`.

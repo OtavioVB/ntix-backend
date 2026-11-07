@@ -4,6 +4,9 @@ using Application.UseCases.CreateCustomer;
 using Application.UseCases.CreateCustomer.Inputs;
 using Application.UseCases.CreateProducer;
 using Application.UseCases.CreateProducer.Inputs;
+using Application.UseCases.GetProducerWhitelabel;
+using Application.UseCases.GetProducerWhitelabel.Inputs;
+using Application.UseCases.GetProducerWhitelabel.Outputs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,6 +26,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUseCase<CreateCustomerUseCaseInput>, CreateCustomerUseCase>();
         services.AddSingleton<CreateProducerDiagnostics>();
         services.AddScoped<IUseCase<CreateProducerUseCaseInput>, CreateProducerUseCase>();
+        services.AddSingleton<GetProducerWhitelabelDiagnostics>();
+        services.AddScoped<IUseCase<GetProducerWhitelabelUseCaseInput, GetProducerWhitelabelUseCaseOutput>, GetProducerWhitelabelUseCase>();
 
         return services;
     }
