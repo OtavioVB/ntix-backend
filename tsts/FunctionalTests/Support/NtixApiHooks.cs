@@ -11,6 +11,9 @@ public sealed class NtixApiHooks
     public static WebApplicationFactory<Program> Factory { get; private set; } = null!;
     public static PostgreSqlTestDatabase Database { get; private set; } = null!;
 
+    /// <summary>Pasta de whitelabel da API sob teste: cada cenário grava nela os arquivos de que precisa.</summary>
+    public static string WhitelabelDirectory { get; } = Path.Combine(Path.GetTempPath(), "ntix-functional-whitelabel-" + Guid.NewGuid().ToString("N"));
+
     [BeforeTestRun]
     public static async Task StartApi()
     {
@@ -20,6 +23,9 @@ public sealed class NtixApiHooks
         Environment.SetEnvironmentVariable("PasswordConfiguration__PrivateKey", "chave-de-teste");
         Environment.SetEnvironmentVariable("OTEL_SDK_DISABLED", bool.TrueString);
 
+        Directory.CreateDirectory(WhitelabelDirectory);
+        Environment.SetEnvironmentVariable("WhitelabelConfiguration__DirectoryPath", WhitelabelDirectory);
+
         Factory = new WebApplicationFactory<Program>();
     }
 
@@ -28,6 +34,9 @@ public sealed class NtixApiHooks
     {
         await Factory.DisposeAsync();
         await Database.DisposeAsync();
+
+        if (Directory.Exists(WhitelabelDirectory))
+            Directory.Delete(WhitelabelDirectory, recursive: true);
     }
 
     [BeforeScenario]
@@ -38,4 +47,11 @@ public sealed class NtixApiHooks
             DELETE FROM producers.producer_user;
             DELETE FROM producers.producer;
             """);
+
+    [BeforeScenario]
+    public void RemoveWhitelabelFilesFromPreviousScenarios()
+    {
+        foreach (var file in Directory.EnumerateFiles(WhitelabelDirectory))
+            File.Delete(file);
+    }
 }

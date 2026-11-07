@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "brand": {
+    "name": "Nome da Produtora",
+    "logoUrl": "",
+    "faviconUrl": "/favicon.svg",
+    "themeColor": {
+      "light": "#ffffff",
+      "dark": "#1b1d20"
+    }
+  },
+  "colors": {
+    "primary": {
+      "50": "#fbe9f1",
+      "100": "#f6c9dd",
+      "200": "#ef9ec2",
+      "300": "#e873a7",
+      "400": "#e14c8e",
+      "500": "#db2777",
+      "600": "#b62063",
+      "700": "#8e194d",
+      "800": "#691339",
+      "900": "#460c26"
+    },
+    "secondary": {
+      "50": "#f4f4f2",
+      "100": "#e8e8e6",
+      "200": "#d4d5d6",
+      "300": "#b4b6bb",
+      "400": "#92959b",
+      "500": "#696c73",
+      "600": "#53565c",
+      "700": "#41444a",
+      "800": "#2a2c31",
+      "900": "#232529"
+    },
+    "neutral": {
+      "0": "#ffffff",
+      "50": "#f4f4f2",
+      "100": "#e8e8e6",
+      "200": "#d4d5d6",
+      "300": "#b4b6bb",
+      "400": "#92959b",
+      "500": "#696c73",
+      "600": "#53565c",
+      "700": "#41444a",
+      "800": "#35383d",
+      "850": "#2a2c31",
+      "900": "#232529",
+      "950": "#1b1d20"
+    },
+    "success": {
+      "300": "#7fd1a0",
+      "700": "#1c6b42"
+    },
+    "danger": {
+      "300": "#f4a39a",
+      "700": "#a8322a"
+    },
+    "action": {
+      "base": "#db2777",
+      "hover": "#e14c8e"
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "sans": "\"Archivo Variable\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "mono": "\"IBM Plex Mono\", ui-monospace, \"Cascadia Mono\", Consolas, monospace"
+    },
+    "stylesheets": [],
+    "text": {
+      "xs": "0.75rem",
+      "sm": "0.875rem",
+      "md": "1rem",
+      "lg": "clamp(1.0625rem, 1rem + 0.3vw, 1.25rem)",
+      "xl": "clamp(1.25rem, 1.1rem + 0.6vw, 1.625rem)"
+    },
+    "display": {
+      "sm": "clamp(1.75rem, 1.4rem + 1.6vw, 2.75rem)",
+      "md": "clamp(2.5rem, 1.8rem + 3.4vw, 5rem)",
+      "lg": "clamp(3.25rem, 0.8rem + 6.1vw, 7.25rem)"
+    }
+  },
+  "spacing": {
+    "scale": {
+      "1": "0.25rem",
+      "2": "0.5rem",
+      "3": "0.75rem",
+      "4": "1rem",
+      "5": "1.5rem",
+      "6": "2rem",
+      "7": "3rem",
+      "8": "4rem",
+      "9": "6rem",
+      "10": "clamp(5rem, 3rem + 8vw, 10rem)"
+    },
+    "gutter": "clamp(1rem, 0.2rem + 3.4vw, 3rem)",
+    "pageMax": "90rem"
+  },
+  "radius": {
+    "sm": "4px",
+    "md": "8px",
+    "lg": "14px",
+    "notch": "11px"
+  },
+  "motion": {
+    "duration": {
+      "fast": "140ms",
+      "base": "260ms",
+      "slow": "700ms",
+      "scene": "1200ms"
+    },
+    "easing": {
+      "out": "cubic-bezier(0.16, 1, 0.3, 1)",
+      "inOut": "cubic-bezier(0.65, 0, 0.35, 1)"
+    }
+  }
+}

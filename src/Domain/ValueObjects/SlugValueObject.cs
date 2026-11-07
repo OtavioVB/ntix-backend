@@ -69,6 +69,36 @@ public readonly struct SlugValueObject
             methodResult: MethodResult.Success());
     }
 
+    private const string SLUG_INVALID_NOTIFICATION_CODE = "SLUG_INVALID";
+    private const string SLUG_INVALID_NOTIFICATION_MESSAGE = "O slug informado é inválido: use só letras minúsculas, números e hífen, com até 63 caracteres.";
+
+    /// <summary>
+    /// Recebe um slug já existente (rota, subdomínio), sem normalizar: só é válido se já estiver na forma
+    /// canônica de subdomínio. Nada de "../", barra, ponto ou maiúscula passa, então o valor é seguro para compor caminhos.
+    /// </summary>
+    public static SlugValueObject Parse(string? slug)
+    {
+        var canonical = Truncate(Normalize(slug), SUBDOMAIN_MAX_LENGTH);
+
+        if (string.IsNullOrEmpty(slug) || canonical != slug)
+        {
+            var notification = Notification.Error(
+                code: SLUG_INVALID_NOTIFICATION_CODE,
+                message: SLUG_INVALID_NOTIFICATION_MESSAGE);
+
+            return new SlugValueObject(
+                isValid: false,
+                methodResult: MethodResult.Error([notification]));
+        }
+
+        return new SlugValueObject(
+            isValid: true,
+            baseSlug: slug,
+            slug: slug,
+            maxLength: SUBDOMAIN_MAX_LENGTH,
+            methodResult: MethodResult.Success());
+    }
+
     public SlugValueObject BuildRandomVersion()
     {
         if (!IsValid)

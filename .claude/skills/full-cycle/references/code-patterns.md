@@ -66,6 +66,7 @@ Agrega `CorrelationId`, `OriginService`, `ExecutionUser` e `RequestedAt`. `Build
 - O caso de uso orquestra: abre o escopo de log auditável, valida input e `auditableInfo` juntos, abre a transação, chama domínio e repositório, faz commit só quando a regra permite, registra os logs e devolve a notificação.
 - Toda recusa de negócio depois de abrir a transação faz rollback. O `catch` faz rollback em qualquer exceção, sem deixar uma falha do rollback esconder a original, registra o log de erro e o desfecho e relança a exceção para o controller; cancelamento não é relançado: depois do rollback, devolve uma notificação de cancelamento.
 - Input: `sealed record` com value objects dos dados do negócio, construtor privado, `static Create(...)` e `GetInputValidation()`, que agrega os `MethodResult` deles. Os dados auditáveis não entram no input.
+- Consulta (sem escrita) usa `IUseCase<TInput, TOutput>`, que devolve `MethodResult<TOutput>` com a saída só no sucesso. Não abre transação. A saída é um `sealed record` em `Outputs/` com tipos primitivos, montado a partir da entidade validada, e o controller devolve `Ok(result.Output)` (ex.: `GetProducerWhitelabelUseCase`).
 
 ## Logs
 
@@ -90,6 +91,8 @@ Agrega `CorrelationId`, `OriginService`, `ExecutionUser` e `RequestedAt`. `Build
 - Payload `sealed record <Acao>V1Request` em `Controllers/Payloads`.
 - O controller só converte payload em input, chama o caso de uso e traduz: notificação de cancelamento vira 499; `IsError` vira `BadRequest(result.Notifications)`; sucesso vira `Ok(result.Notifications)`. Exceção não é capturada no controller e vira 500.
 - `SuppressImplicitRequiredAttributeForNonNullableReferenceTypes` fica ligado no `Program`: campo ausente chega ao value object e vira notificação, em vez de `ProblemDetails` do framework.
+- O JSON da API omite propriedades nulas (`JsonIgnoreCondition.WhenWritingNull`): campo opcional ausente fica fora da resposta.
+- Desfecho que não é erro de quem chama (ex.: arquivo de configuração fora da estrutura) vira 500 sem corpo, com `Response.StatusCode = 500` e `EmptyResult` (o `StatusCode(500)` do `[ApiController]` vira `ProblemDetails`); ausência do recurso vira `NotFound(result.Notifications)`.
 
 ## Injeção de dependência e configuração
 
@@ -116,6 +119,9 @@ Infra/PostgreSql/
 - Connection string nunca fica em `appsettings`: vem de `PostgreSqlConfiguration__ConnectionString` ou de user secrets.
 
 ## Infraestrutura
+
+- Arquivo do servidor é integração como outra qualquer: `Infra/FileSystem/<Recurso>s/` com interface, modelo primitivo e `ServiceCollectionExtensions`; a pasta vem de `<Recurso>Configuration` no `appsettings`. O leitor limita tamanho e profundidade e confere que o caminho final fica dentro da pasta; a regra fica na Application.
+- Identificador vindo da rota que vira caminho de arquivo passa por `SlugValueObject.Parse`, que só aceita a forma canônica (nunca `Build`, que normaliza).
 
 - Toda integração tem interface em `Interfaces/`, e é ela que o caso de uso consome.
 - Health checks implementam `IHealthCheck`, expostos em `/health/ready` e `/health/live` nos workers.

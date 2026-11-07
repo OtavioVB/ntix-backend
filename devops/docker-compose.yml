@@ -142,9 +142,13 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       PasswordConfiguration__PrivateKey: "${PASSWORD_PRIVATE_KEY:?Defina PASSWORD_PRIVATE_KEY em devops/.env (veja devops/.env.example)}"
       PostgreSqlConfiguration__ConnectionString: "Host=ntix-postgresql-local;Port=5432;Database=ntix;Username=ntix;Password=${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em devops/.env (veja devops/.env.example)}"
+      # Uma configuração whitelabel por produtora: {slug}.json (REQ3). Somente leitura para a API.
+      WhitelabelConfiguration__DirectoryPath: /app/whitelabel
     ports:
       # Local: 8080 direto. Na VPS, WEBAPI_PORT_BINDING=127.0.0.1:5080 e o nginx (gateway/) expõe a 8080.
       - "${WEBAPI_PORT_BINDING:-8080}:8080"
+    volumes:
+      - ./whitelabel:/app/whitelabel:ro
     depends_on:
       ntix-postgresql-init:
         condition: service_completed_successfully
