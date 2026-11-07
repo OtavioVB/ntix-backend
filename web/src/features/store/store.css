@@ -43,11 +43,11 @@
 
   /* A loja simula um tenant: tem superfícies próprias, definidas pelo tema. */
   .store {
-    --store-bg: var(--n-graphite-900);
-    --store-ink: var(--n-graphite-50);
-    --store-muted: var(--n-graphite-300);
+    --store-bg: var(--n-neutral-900);
+    --store-ink: var(--n-neutral-50);
+    --store-muted: var(--n-neutral-300);
     --store-line: rgb(255 255 255 / 0.12);
-    --store-poster: var(--n-graphite-800);
+    --store-poster: var(--n-neutral-800);
     background: var(--store-bg);
     color: var(--store-ink);
     transition: background-color var(--n-dur-slow) var(--n-ease-out), color var(--n-dur-slow) var(--n-ease-out);

@@ -78,8 +78,8 @@
   }
 
   ::selection {
-    background: var(--n-gold-500);
-    color: var(--n-graphite-950);
+    background: var(--n-primary-500);
+    color: var(--n-neutral-950);
   }
 
   /* --- Tipografia --------------------------------------------------- */
@@ -152,8 +152,8 @@
     left: var(--n-space-2);
     z-index: calc(var(--n-z-nav) + 1);
     padding: var(--n-space-2) var(--n-space-4);
-    background: var(--n-gold-500);
-    color: var(--n-graphite-950);
+    background: var(--n-primary-500);
+    color: var(--n-neutral-950);
     border-radius: var(--n-radius-sm);
     transform: translateY(-200%);
   }
