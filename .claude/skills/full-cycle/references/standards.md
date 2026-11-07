@@ -93,6 +93,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 
 ### Whitelabel (front)
 - Cada implantação é whitelabel: a identidade visual vem de uma configuração em runtime, nunca de build. Hoje `web/public/whitelabel.json` (substituído por implantação, sem rebuild); no futuro, a API, apontada por `VITE_WHITELABEL_URL`, no mesmo formato.
+- No back-end (REQ3), a configuração é o arquivo `{slug}.json` da produtora (ex.: `ntix.json`) em uma pasta do servidor. Nunca é devolvido como está: a cada consulta é validado contra a estrutura e a resposta sai do modelo tipado.
 - O contrato é o tipo `WhitelabelConfig` (`web/src/whitelabel/config.ts`): `brand` (nome, logo, favicon, cor da barra), `colors` (`primary`, `secondary`, `neutral`, `success`, `danger`, `action`), `typography`, `spacing`, `radius`, `motion`. Tudo opcional; o que faltar fica no padrão Ntix de `tokens.css`.
 - A configuração sobrescreve só os primitivos (`--n-primary-*`, `--n-secondary-*`, `--n-neutral-*`, `--n-space-*`...). Cenas e componentes referenciam primitivos e semânticos por `var()`, nunca cor literal nem nome de marca (`gold`, `graphite`).
 - Campo novo no contrato: tipo em `config.ts`, tradução em `toCssVariables`, valor padrão em `tokens.css` e em `whitelabel.json`, e teste em `whitelabel.test.ts`.
