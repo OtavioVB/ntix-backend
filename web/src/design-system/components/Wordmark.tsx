@@ -1,3 +1,5 @@
+import { brandName, getWhitelabel, safeAssetUrl } from "../../whitelabel";
+
 /* Letras da Montserrat ExtraBold em minúsculas, convertidas em traçados. */
 const N =
   "M251 0L61 0L61 542L242 542L242 483Q264 506 292 522Q346 551 414 551Q477 551 528 525.5Q579 500 608.5 447Q638 394 638 310L638 0L448 0L448 279Q448 337 424.5 363.5Q401 390 359 390Q329 390 304 376.5Q279 363 265 335Q251 307 251 262Z";
@@ -20,9 +22,15 @@ type WordmarkProps = {
   className?: string;
 };
 
-/** A marca Ntix: "n" em ouro e "tix" em cinza. As cores vêm da cena (--n-logo-n, --n-logo-tix). */
-export function Wordmark({ href, label = "Ntix", decorative, className }: WordmarkProps) {
-  const svg = (
+/**
+ * A marca da plataforma. Com logo no whitelabel, mostra a imagem do tenant; senão, o wordmark Ntix:
+ * "n" na cor primária e "tix" em cinza, com as cores da cena (--n-logo-n, --n-logo-tix).
+ */
+export function Wordmark({ href, label = brandName(), decorative, className }: WordmarkProps) {
+  const logoUrl = safeAssetUrl(getWhitelabel().brand?.logoUrl);
+  const svg = logoUrl ? (
+    <img className="n-wordmark__logo" src={logoUrl} alt={decorative ? "" : label} />
+  ) : (
     <svg viewBox="61 0 1880 1015" {...(decorative ? { "aria-hidden": true } : { role: "img", "aria-label": label })}>
       <g transform="matrix(1 0 0 -1 0 804)">
         <path className="n-wordmark__n" d={N} />

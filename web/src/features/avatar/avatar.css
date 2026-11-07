@@ -97,8 +97,8 @@
   }
 
   .avatar-option[aria-pressed="true"] {
-    border-color: var(--n-gold-500);
-    box-shadow: inset 0 0 0 1px var(--n-gold-500);
+    border-color: var(--n-primary-500);
+    box-shadow: inset 0 0 0 1px var(--n-primary-500);
     color: var(--n-ink);
   }
 
@@ -128,7 +128,7 @@
   }
 
   .avatar-color[aria-pressed="true"] {
-    outline: 2px solid var(--n-gold-400);
+    outline: 2px solid var(--n-primary-400);
     outline-offset: 2px;
   }
 

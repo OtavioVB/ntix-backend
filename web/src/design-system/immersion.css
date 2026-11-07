@@ -40,7 +40,7 @@
     inset: 0;
     background: linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--n-gold-300) var(--_power, 30%), transparent),
+      color-mix(in srgb, var(--n-primary-300) var(--_power, 30%), transparent),
       transparent 82%
     );
     clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
@@ -58,7 +58,7 @@
     inset: 0;
     background: radial-gradient(
       circle 26rem at var(--n-spot-x, 62%) var(--n-spot-y, 40%),
-      color-mix(in srgb, var(--n-gold-400) 13%, transparent),
+      color-mix(in srgb, var(--n-primary-400) 13%, transparent),
       transparent 72%
     );
   }
@@ -106,7 +106,7 @@
     position: absolute;
     inset: 0;
     z-index: calc(var(--n-z-content) + 1);
-    background: var(--n-graphite-950);
+    background: var(--n-neutral-950);
     opacity: var(--n-house-dark, 0);
     pointer-events: none;
   }
@@ -137,9 +137,9 @@
   .n-curtain {
     --_pleats: repeating-linear-gradient(
       90deg,
-      var(--n-graphite-950) 0,
-      var(--n-graphite-800) 1.1rem,
-      var(--n-graphite-950) 2.2rem
+      var(--n-neutral-950) 0,
+      var(--n-neutral-800) 1.1rem,
+      var(--n-neutral-950) 2.2rem
     );
     position: relative;
     display: grid;
@@ -179,7 +179,7 @@
     position: absolute;
     inset: auto 0 0;
     height: 4px;
-    background: var(--n-gold-600);
+    background: var(--n-primary-600);
   }
 
   .n-curtain__drape--left {
@@ -200,7 +200,7 @@
     width: min(100% - 2rem, 32rem);
     margin-block: var(--n-space-5);
     padding: var(--n-space-6);
-    background: var(--n-graphite-950);
+    background: var(--n-neutral-950);
     border: 1px solid var(--n-line-strong);
     border-radius: var(--n-radius-lg);
     box-shadow: 0 24px 64px rgb(0 0 0 / 0.5);
@@ -215,9 +215,9 @@
   .n-curtain-opening {
     --_pleats: repeating-linear-gradient(
       90deg,
-      var(--n-graphite-950) 0,
-      var(--n-graphite-800) 2rem,
-      var(--n-graphite-950) 4rem
+      var(--n-neutral-950) 0,
+      var(--n-neutral-800) 2rem,
+      var(--n-neutral-950) 4rem
     );
     position: fixed;
     inset: 0;

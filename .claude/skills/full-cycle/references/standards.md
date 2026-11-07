@@ -91,6 +91,13 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Funcionais: Reqnroll e Gherkin em português (`# language: pt`), com definições semânticas ao negócio.
 - Carga: k6. O cadastro de conta e o cadastro de produtor usam o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros.
 
+### Whitelabel (front)
+- Cada implantação é whitelabel: a identidade visual vem de uma configuração em runtime, nunca de build. Hoje `web/public/whitelabel.json` (substituído por implantação, sem rebuild); no futuro, a API, apontada por `VITE_WHITELABEL_URL`, no mesmo formato.
+- O contrato é o tipo `WhitelabelConfig` (`web/src/whitelabel/config.ts`): `brand` (nome, logo, favicon, cor da barra), `colors` (`primary`, `secondary`, `neutral`, `success`, `danger`, `action`), `typography`, `spacing`, `radius`, `motion`. Tudo opcional; o que faltar fica no padrão Ntix de `tokens.css`.
+- A configuração sobrescreve só os primitivos (`--n-primary-*`, `--n-secondary-*`, `--n-neutral-*`, `--n-space-*`...). Cenas e componentes referenciam primitivos e semânticos por `var()`, nunca cor literal nem nome de marca (`gold`, `graphite`).
+- Campo novo no contrato: tipo em `config.ts`, tradução em `toCssVariables`, valor padrão em `tokens.css` e em `whitelabel.json`, e teste em `whitelabel.test.ts`.
+- A configuração é entrada não confiável: valores passam pelo filtro de `toCssVariables` e URLs por `safeAssetUrl` (só https ou caminho do próprio front). Falha ao carregar mantém o padrão; a plataforma sempre abre.
+
 ### Dependências
 - Dependência nova é responsabilidade de Claude, com explicação prévia e RFC que a justifique.
 - As RFCs ficam em `docs/rfcs/`.

@@ -7,7 +7,7 @@
     position: fixed;
     inset: 0 0 auto;
     z-index: var(--n-z-nav);
-    color: var(--n-graphite-50);
+    color: var(--n-neutral-50);
     transition:
       background-color var(--n-dur-base) ease,
       border-color var(--n-dur-base) ease;
@@ -36,7 +36,7 @@
   .site-nav__links a {
     font-size: var(--n-text-sm);
     font-weight: 500;
-    color: var(--n-graphite-200);
+    color: var(--n-neutral-200);
     text-decoration: none;
     transition: color var(--n-dur-fast) ease;
   }
@@ -52,7 +52,7 @@
   .site-nav__login {
     font-size: var(--n-text-sm);
     font-weight: 600;
-    color: var(--n-graphite-50);
+    color: var(--n-neutral-50);
     text-decoration: none;
   }
 
@@ -107,12 +107,12 @@
   }
 
   .hero__title-accent {
-    color: var(--n-gold-400);
+    color: var(--n-primary-400);
   }
 
   .hero__lead {
     max-width: 38rem;
-    color: var(--n-graphite-200);
+    color: var(--n-neutral-200);
   }
 
   .hero__facts {
@@ -133,7 +133,7 @@
     top: 0.65em;
     width: 0.625rem;
     height: 2px;
-    background: var(--n-gold-500);
+    background: var(--n-primary-500);
   }
 
   .hero__facts strong {
@@ -321,12 +321,12 @@
     font-weight: 700;
     line-height: 0.85;
     color: transparent;
-    -webkit-text-stroke: 1px var(--n-gold-500);
+    -webkit-text-stroke: 1px var(--n-primary-500);
     transition: color var(--n-dur-slow) var(--n-ease-out);
   }
 
   .act.is-active .act__numeral {
-    color: var(--n-gold-500);
+    color: var(--n-primary-500);
   }
 
   .act__panel {
@@ -392,7 +392,7 @@
     place-items: center;
     width: 2.25rem;
     height: 2.25rem;
-    border: 1px solid var(--n-gold-500);
+    border: 1px solid var(--n-primary-500);
     border-radius: 50%;
     font-family: var(--n-font-mono);
     font-size: var(--n-text-sm);

@@ -5,7 +5,8 @@ export type Theme = "light" | "dark";
 /* Sem escolha da pessoa, segue o sistema. O script em index.html aplica a mesma regra antes da
    primeira pintura, para a tela não piscar no tema errado: mudou aqui, muda lá. */
 const STORAGE_KEY = "ntix.theme";
-const THEME_COLORS: Record<Theme, string> = { light: "#ffffff", dark: "#1b1d20" };
+const DEFAULT_THEME_COLORS: Record<Theme, string> = { light: "#ffffff", dark: "#1b1d20" };
+let themeColors: Record<Theme, string> = { ...DEFAULT_THEME_COLORS };
 
 const listeners = new Set<() => void>();
 
@@ -24,7 +25,7 @@ function systemTheme(): Theme {
 
 function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_COLORS[theme]);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", themeColors[theme]);
   listeners.forEach((listener) => listener());
 }
 
@@ -57,4 +58,13 @@ function subscribe(listener: () => void) {
 
 export function useTheme(): Theme {
   return useSyncExternalStore(subscribe, currentTheme);
+}
+
+/** Cor da barra do navegador por tema, definida pelo whitelabel. Sem valor, fica o padrão Ntix. */
+export function setThemeColors(colors: Partial<Record<Theme, string | undefined>>) {
+  themeColors = {
+    light: colors.light ?? DEFAULT_THEME_COLORS.light,
+    dark: colors.dark ?? DEFAULT_THEME_COLORS.dark,
+  };
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", themeColors[currentTheme()]);
 }
