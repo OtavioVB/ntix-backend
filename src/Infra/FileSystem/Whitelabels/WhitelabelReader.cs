@@ -69,7 +69,7 @@ public sealed class WhitelabelReader : IWhitelabelReader
 
             var model = JsonSerializer.Deserialize<WhitelabelModel>(buffer.AsSpan(0, length), SERIALIZER_OPTIONS);
 
-            return model is null
+            return model is null || HasNullEntries(model)
                 ? new(WhitelabelReadStatus.Malformed, Model: null)
                 : new(WhitelabelReadStatus.Found, model);
         }
@@ -82,5 +82,24 @@ public sealed class WhitelabelReader : IWhitelabelReader
             // Removido entre a verificação e a leitura.
             return new(WhitelabelReadStatus.NotFound, Model: null);
         }
+    }
+
+    /// <summary>
+    /// O RespectNullableAnnotations não alcança os elementos de coleções (argumentos genéricos):
+    /// null em valor de escala ou em item de lista é conferido aqui.
+    /// </summary>
+    private static bool HasNullEntries(WhitelabelModel model)
+    {
+        Dictionary<string, string>?[] scales =
+        [
+            model.Colors?.Primary, model.Colors?.Secondary, model.Colors?.Neutral, model.Colors?.Success, model.Colors?.Danger,
+            model.Typography?.Text, model.Typography?.Display,
+            model.Spacing?.Scale,
+            model.Radius,
+            model.Motion?.Duration,
+        ];
+
+        return scales.Any(scale => scale is not null && scale.Values.Any(value => value is null))
+            || model.Typography?.Stylesheets?.Any(stylesheet => stylesheet is null) == true;
     }
 }
