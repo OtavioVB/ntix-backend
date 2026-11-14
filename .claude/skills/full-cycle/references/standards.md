@@ -68,6 +68,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Celular do cliente: opcional, com DDD e número.
 - Autenticação do produtor (REQ5): access token JWT curto (15 min) e refresh token rotativo, gravado só como hash e revogável no banco ([RFC 0007](../../../../docs/rfcs/0007-autenticacao-jwt-bearer.md)).
 - Usuário do produtor `PENDING` (e-mail não verificado) faz login até existir a verificação de e-mail; `BLOCKED` não.
+- Login do produtor: no máximo 10 tentativas por e-mail a cada 15 minutos; a partir daí, 429 com `Retry-After` (REQ5).
 
 ### Padrões de código
 - Seguir os padrões dos projetos de referência `Tech.Aquisition.Customers` e `ntix`, resumidos em [code-patterns.md](code-patterns.md).

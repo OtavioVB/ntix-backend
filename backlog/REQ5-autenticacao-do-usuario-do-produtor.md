@@ -120,7 +120,9 @@ erDiagram
 ### De tecnologia no requisito
 | Risco | Impacto | Mitigação |
 |---|---|---|
-| Força bruta de senha | Conta invadida | Hash lento (PBKDF2, 600 mil iterações). Limite de tentativas e rate limiting **não foram estipulados** (Decisões em aberto, item 1) |
+| Força bruta de senha | Conta invadida | Hash lento (PBKDF2, 600 mil iterações) e no máximo 10 tentativas por e-mail a cada 15 minutos (RN12) |
+| Limite usado para travar a conta de outra pessoa | Produtor legítimo fica até 15 minutos sem entrar | Janela curta e fixa; sem bloqueio permanente; métrica de limite atingido para a operação acompanhar |
+| Contador em memória | Reinício da API zera a janela; com mais de uma instância, cada uma conta à parte | Aceitável com a API em uma instância na VPS; contador compartilhado entra quando houver mais de uma |
 | Roubo do refresh token (XSS) | Sessão sequestrada por até 7 dias | Rotação a cada uso e revogação da família no reuso (RN7); front sem `dangerouslySetInnerHTML` e com URLs filtradas (`safeAssetUrl`) |
 | Vazamento do banco | Sessões reutilizadas | Só o hash SHA-256 do refresh token é gravado (RN6) |
 | Vazamento da chave de assinatura | Tokens forjados para qualquer produtor | Chave só no secret da esteira e no `.env` do servidor; a API não sobe sem ela ou com menos de 32 bytes |
@@ -154,6 +156,7 @@ Os três endpoints levam os headers auditáveis obrigatórios (`X-Correlation-Id
 - **400**: `EMAIL_INVALID_NOTIFICATION_CODE`, `PASSWORD_REQUIRED_NOTIFICATION_CODE`. Só formato: a regra de força da senha não se aplica ao login.
 - **401**: `INVALID_CREDENTIALS_NOTIFICATION_CODE`, para e-mail inexistente ou senha errada.
 - **403**: `PRODUCER_USER_BLOCKED_NOTIFICATION_CODE`, só depois de a senha conferir.
+- **429**: `TOO_MANY_LOGIN_ATTEMPTS_NOTIFICATION_CODE`, com `Retry-After` em segundos até o fim da janela (RN12).
 
 #### `POST /api/v1/producers/sessions/refresh` (anônimo)
 ```json
@@ -201,6 +204,11 @@ Ficam anônimos: `POST /api/v1/producers` (cadastro), `GET /api/v1/producers/{sl
 - **RN9**: em rotas com `{slug}`, a autorização exige `producer_slug` do token igual ao slug da rota.
 - **RN10**: em endpoint autenticado, `ExecutionUser` do `AuditableInfoValueObject` é o `sub` do token, e não o header `X-Execution-User`.
 - **RN11**: o logout revoga a família inteira do token informado.
+- **RN12**: são aceitas no máximo 10 tentativas de login por e-mail a cada 15 minutos.
+  - A janela é fixa e começa na primeira tentativa.
+  - Contam todas as tentativas com e-mail válido, existente ou não, aceitas ou recusadas.
+  - A partir da 11ª, a resposta é 429 sem conferir a senha, igual para e-mail existente e inexistente.
+  - O contador é por e-mail normalizado, em memória (`System.Threading.RateLimiting`, `PartitionedRateLimiter` com `FixedWindowRateLimiter`), com a chave como SHA-256 do e-mail, para não guardar o dado pessoal em claro.
 
 ### Camadas
 - **Domain**:
@@ -215,6 +223,7 @@ Ficam anônimos: `POST /api/v1/producers` (cadastro), `GET /api/v1/producers/{sl
   - `CreateProducerSession`, `RefreshProducerSession` e `RevokeProducerSession`, com `ExecuteAsync(input, auditableInfo, cancellationToken)`.
   - Unit of Work na substituição do refresh token, `*Log` e `*Diagnostics`.
   - A emissão do JWT fica em um serviço de Application, configurado por `JwtConfiguration`.
+  - O limite de tentativas (RN12) é verificado no `CreateProducerSession` antes do hash, por um serviço singleton configurado por `LoginAttemptConfiguration`.
 - **Presentation** (`WebApi`):
   - `ProducerSessionsV1Controller`.
   - `AddAuthentication().AddJwtBearer(...)` com `ClockSkew` de 30 s, e política `ProducerUser`.
@@ -233,6 +242,7 @@ Ficam anônimos: `POST /api/v1/producers` (cadastro), `GET /api/v1/producers/{sl
 - `JwtConfiguration:SigningKey`: Base64 de 32 bytes ou mais, obrigatória.
 - `JwtConfiguration:Issuer`, `JwtConfiguration:Audience`.
 - `JwtConfiguration:AccessTokenMinutes` = 15 e `JwtConfiguration:RefreshTokenDays` = 7.
+- `LoginAttemptConfiguration:PermitLimit` = 10 e `LoginAttemptConfiguration:WindowMinutes` = 15.
 - Esteira: secret `JWT_SIGNING_KEY`, exportado no `.env` do servidor a cada deploy. Modelo em `devops/.env.example`.
 - **Front (`web/`)**, pela skill `frontend-integration`, com `?api=real`:
   - `/entrar` chama o login.
@@ -250,12 +260,14 @@ Ficam anônimos: `POST /api/v1/producers` (cadastro), `GET /api/v1/producers/{sl
 - Métricas:
   - Funil de cada caso de uso.
   - `producer_session_refresh_reuse_total`.
+  - `producer_login_rate_limited_total`.
   - Tempo do hash no login, no mesmo histograma do cadastro.
 - Dashboard: logins aceitos e recusados por motivo, renovações e reusos.
 
 ### Testes
 - **Unitários**:
   - RN2, RN3 (salt fixo para e-mail inexistente), RN4, RN6, RN7 e RN8.
+  - RN12: 10ª tentativa aceita, 11ª recusada sem calcular o hash, janela reaberta depois de 15 minutos (com `TimeProvider` falso), e-mails diferentes com contadores separados.
   - Claims do JWT sem dado pessoal (RN5).
   - `ProducerSlugRequirement` (RN9).
 - **Integrados**: repositório de sessões contra PostgreSQL real:
@@ -275,7 +287,7 @@ Ficam anônimos: `POST /api/v1/producers` (cadastro), `GET /api/v1/producers/{sl
 - Perfis além de `ADMINISTRATOR`.
 - Login do cliente (comprador).
 - Login social e MFA.
-- Limite de tentativas e rate limiting (Decisões, item 1).
+- Limite por IP e contador compartilhado entre instâncias.
 - Limpeza de sessões expiradas.
 - Rotação da chave de assinatura.
 
@@ -303,6 +315,12 @@ Funcionalidade: Autenticação do usuário do produtor
     Dado o administrador com status BLOCKED
     Quando ele entra com e-mail e senha corretos
     Então recebe 403 com PRODUCER_USER_BLOCKED_NOTIFICATION_CODE
+
+  Cenário: Limite de tentativas de login
+    Dado 10 tentativas de login com "ana@produtora.com.br" nos últimos 15 minutos
+    Quando ela entra com e-mail e senha corretos
+    Então recebe 429 com TOO_MANY_LOGIN_ATTEMPTS_NOTIFICATION_CODE
+    E o header Retry-After indica quando tentar de novo
 
   Cenário: Renovação da sessão
     Dado o administrador logado
@@ -336,12 +354,13 @@ Funcionalidade: Autenticação do usuário do produtor
 
 - Sessão com JWT curto e refresh token rotativo, revogável no banco.
 - Usuário `PENDING` entra até existir a verificação de e-mail; `BLOCKED` não.
+- No máximo 10 tentativas de login por e-mail a cada 15 minutos (RN12).
 
 ## Decisões em aberto
 
-1. **Força bruta**: limite de tentativas e rate limiting não foram estipulados, e `standards.md` proíbe inventá-los.
-   - Decisão provisória: nenhum, e a proteção fica no hash lento.
-   - Recomendo definir um limite antes de abrir o login em produção. Exemplo: 10 tentativas por e-mail em 15 minutos, com o `Microsoft.AspNetCore.RateLimiting` nativo.
+1. **Detalhes do limite de tentativas** (RN12):
+   - Decisão provisória: contam todas as tentativas, inclusive as aceitas, em janela fixa e em memória.
+   - Alternativa: contar só as recusadas e zerar o contador no login aceito.
 2. **Onde o front guarda o refresh token**.
    - Decisão provisória: `localStorage`, com rotação e revogação por reuso.
    - Alternativa mais resistente a XSS: cookie `HttpOnly; Secure; SameSite=Strict` no domínio da API, que exige CORS com credenciais e muda o contrato do refresh e do revoke.
