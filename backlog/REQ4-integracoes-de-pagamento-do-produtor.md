@@ -2,7 +2,7 @@
 
 - **Status**: Proposto
 - **Área**: produtor / plataforma / pagamentos
-- **Depende de**: REQ1 (cadastro do produtor); autenticação do usuário do produtor (requisito a escrever, ver Decisões em aberto)
+- **Depende de**: REQ1 (cadastro do produtor); REQ5 (autenticação do usuário do produtor)
 
 ## Contexto: o domínio de pagamentos
 
@@ -13,9 +13,9 @@ O domínio de pagamentos fica dividido em quatro requisitos. Este (REQ4) é a fu
 | REQ | Título | Entrega |
 |---|---|---|
 | **REQ4** | Integrações de pagamento do produtor | Catálogo de fornecedores, integrações do produtor com credenciais em chave-valor, rotas por método com prioridade e o ranqueamento da integração a usar |
-| REQ5 | Criação de pedidos | Pedido do comprador, com itens, valor e método escolhido, em `PENDING_PAYMENT` |
-| REQ6 | Pagamento de pedidos | Cobrança no fornecedor eleito pelo ranqueamento do REQ4, com troca para a próxima integração quando a primeira estiver indisponível |
-| REQ7 | Efetivação dos pagamentos | Confirmação pelo fornecedor (webhook), pedido `PAID`, evento na outbox e lançamento no extrato |
+| REQ6 | Criação de pedidos | Pedido do comprador, com itens, valor e método escolhido, em `PENDING_PAYMENT` |
+| REQ7 | Pagamento de pedidos | Cobrança no fornecedor eleito pelo ranqueamento do REQ4, com troca para a próxima integração quando a primeira estiver indisponível |
+| REQ8 | Efetivação dos pagamentos | Confirmação pelo fornecedor (webhook), pedido `PAID`, evento na outbox e lançamento no extrato |
 
 ```mermaid
 sequenceDiagram
@@ -27,9 +27,9 @@ sequenceDiagram
     participant F2 as Integração prioridade 2
     participant DB as PostgreSQL
 
-    Comprador->>API: Cria pedido (REQ5)
+    Comprador->>API: Cria pedido (REQ6)
     API->>DB: Pedido PENDING_PAYMENT
-    Comprador->>API: Paga o pedido com Pix (REQ6)
+    Comprador->>API: Paga o pedido com Pix (REQ7)
     API->>Rank: Integrações do produtor para PIX
     Rank->>DB: Rotas ativas por prioridade
     Rank-->>API: [Asaas conta A, Asaas conta B]
@@ -43,7 +43,7 @@ sequenceDiagram
     end
     API->>DB: Pagamento com a integração que processou
     API-->>Comprador: QR Code Pix
-    F2->>API: Webhook de pagamento confirmado (REQ7)
+    F2->>API: Webhook de pagamento confirmado (REQ8)
     API->>DB: Pedido PAID + outbox OrderPaid
 ```
 
@@ -56,7 +56,7 @@ Ponto que atravessa os quatro requisitos: **o pagamento grava a integração que
 - **Catálogo de fornecedores**, mantido pela Ntix: quais fornecedores existem, que métodos cada um aceita e quais credenciais cada um exige.
 - **Integrações do produtor**: uma conexão do produtor com um fornecedor (ex.: "Asaas - conta principal"), com as credenciais em chave-valor (`API_KEY`, `ACCOUNT_ID`...), cifradas no banco.
 - **Rotas de pagamento**: para cada método (`PIX`, `BOLETO`, `CREDIT_CARD`), a lista ordenada de integrações, da prioridade 1 em diante.
-- **Ranqueamento**: um serviço de domínio que devolve, para um produtor e um método, as integrações disponíveis em ordem de prioridade. É ele que o REQ6 consome.
+- **Ranqueamento**: um serviço de domínio que devolve, para um produtor e um método, as integrações disponíveis em ordem de prioridade. É ele que o REQ7 consome.
 - **Aba Integrações** no painel do produtor, onde ele conecta fornecedores e ordena as prioridades por método.
 
 **O que impacta**:
@@ -73,7 +73,7 @@ Hoje não há pagamento real: o checkout do front (`web/src/customer/payments.ts
 
 - Não há onde guardar com que fornecedor e com que conta cada produtor recebe.
 - Um único fornecedor fixo no código obrigaria todo produtor a usá-lo, com as taxas dele, e a queda dele pararia a venda de todos os eventos.
-- REQ5, REQ6 e REQ7 não têm como decidir para onde mandar a cobrança.
+- REQ6, REQ7 e REQ8 não têm como decidir para onde mandar a cobrança.
 
 O requisito resolve isso com dados: produtor, integração, credenciais e rota por método, e uma regra única de ranqueamento.
 
@@ -180,7 +180,7 @@ flowchart TD
     H --> C
     C -- fim --> I{Lista vazia?}
     I -- sim --> J["PAYMENT_METHOD_UNAVAILABLE:<br/>método não é oferecido no checkout"]
-    I -- não --> K["Lista ordenada:<br/>1ª é a principal, as demais são fallback (REQ6)"]
+    I -- não --> K["Lista ordenada:<br/>1ª é a principal, as demais são fallback (REQ7)"]
 ```
 
 Ciclo de vida da integração:
@@ -193,7 +193,7 @@ stateDiagram-v2
     note right of INACTIVE
         Sai do ranqueamento, mas continua
         atendendo webhooks e estornos
-        dos pagamentos que já processou (REQ7)
+        dos pagamentos que já processou (REQ8)
     end note
 ```
 
@@ -202,16 +202,16 @@ stateDiagram-v2
 ### Da ausência
 | Risco | Impacto | Mitigação |
 |---|---|---|
-| Sem relação produtor-fornecedor | REQ5 a REQ7 não podem ser implementados; nada é vendido de verdade | Este requisito |
+| Sem relação produtor-fornecedor | REQ6 a REQ8 não podem ser implementados; nada é vendido de verdade | Este requisito |
 | Fornecedor único fixo no código | Produtor sem escolha de taxa; queda do fornecedor para a venda de toda a plataforma | Rotas por produtor e método, com prioridade |
 | Credenciais fora da plataforma (planilha, variável por produtor) | Vazamento, troca manual por deploy, onboarding lento | Credenciais cifradas por integração, editáveis pelo produtor |
 
 ### De negócio no requisito
 | Risco | Impacto | Mitigação |
 |---|---|---|
-| Credencial errada ou de outra conta | Dinheiro do ingresso cai na conta errada | Só o próprio produtor cadastra as credenciais; trilha de auditoria (`updated_correlation_id`, log com produtor e integração, nunca o valor); teste de conexão fica no REQ6 (ver Decisões) |
+| Credencial errada ou de outra conta | Dinheiro do ingresso cai na conta errada | Só o próprio produtor cadastra as credenciais; trilha de auditoria (`updated_correlation_id`, log com produtor e integração, nunca o valor); teste de conexão fica no REQ7 (ver Decisões) |
 | Produtor sem nenhuma rota ativa para um método | Método some do checkout; venda perdida | Ranqueamento vazio devolve `PAYMENT_METHOD_UNAVAILABLE` e o checkout esconde o método; a aba mostra o método como "não configurado" |
-| Mudança de prioridade no meio de uma venda | Pagamento iniciado em uma integração confirmado em outra | O pagamento grava a integração que o processou (REQ6); a prioridade vale só para novas cobranças |
+| Mudança de prioridade no meio de uma venda | Pagamento iniciado em uma integração confirmado em outra | O pagamento grava a integração que o processou (REQ7); a prioridade vale só para novas cobranças |
 | Ntix desliga um fornecedor do catálogo | Todos os produtores que dependem só dele perdem o método | `DISABLED` sai do ranqueamento na hora, e o fallback do produtor assume; comunicação ao produtor fica com a operação |
 
 ### De tecnologia no requisito
@@ -228,7 +228,7 @@ stateDiagram-v2
 
 ### Contrato
 
-Todos os endpoints levam os headers auditáveis (`X-Correlation-Id`, `X-Origin-Service`, `X-Requested-At`, `X-Execution-User`). Exceto o catálogo, exigem o usuário autenticado do produtor `{slug}` (ver Decisões em aberto, item 1).
+Todos os endpoints levam os headers auditáveis (`X-Correlation-Id`, `X-Origin-Service`, `X-Requested-At`). Exceto o catálogo, exigem o access token do REQ5 (`Authorization: Bearer`, política `ProducerUser`) com `producer_slug` igual ao `{slug}` da rota, e `ExecutionUser` vem do token.
 
 #### `GET /api/v1/payment-providers`
 Catálogo de fornecedores `ENABLED`, para a aba montar o formulário. Público.
@@ -312,7 +312,7 @@ Substitui a lista inteira do método. A ordem do array é a prioridade (primeiro
 - **200 OK**, corpo no formato do item do `GET`.
 - **400**: `PAYMENT_METHOD_INVALID_NOTIFICATION_CODE`, `INTEGRATION_NOT_FOUND_NOTIFICATION_CODE`, `INTEGRATION_DUPLICATED_IN_ROUTE_NOTIFICATION_CODE`, `PROVIDER_DOES_NOT_SUPPORT_METHOD_NOTIFICATION_CODE`.
 
-Comuns a todos: **401/403** sem usuário do produtor; **499** no cancelamento; **500** sem corpo, como no REQ3.
+Comuns a todos: **401** sem token válido e **403** com token de outro produtor (REQ5); **499** no cancelamento; **500** sem corpo, como no REQ3.
 
 ### Regras de negócio
 - **RN1**: integrações e rotas pertencem a um produtor; um usuário só lê e altera as do produtor ao qual pertence.
@@ -323,10 +323,10 @@ Comuns a todos: **401/403** sem usuário do produtor; **499** no cancelamento; *
 - **RN6**: em um método, cada integração aparece uma vez e cada prioridade uma vez, de 1 em diante, sem buracos. A lista é substituída inteira em uma transação.
 - **RN7**: uma integração só entra na rota de um método que o fornecedor dela aceita.
 - **RN8**: o ranqueamento devolve, em ordem de prioridade, as integrações do método que estão `ACTIVE`, com fornecedor `ENABLED`, que aceitam o método e com credenciais obrigatórias completas. Lista vazia é `PAYMENT_METHOD_UNAVAILABLE`.
-- **RN9**: valor de credencial é gravado cifrado (AES-256-GCM, nonce aleatório por valor) e só é decifrado no momento da cobrança (REQ6).
+- **RN9**: valor de credencial é gravado cifrado (AES-256-GCM, nonce aleatório por valor) e só é decifrado no momento da cobrança (REQ7).
 - **RN10**: valor de chave secreta nunca é devolvido; a leitura mostra os últimos 4 caracteres em `valueHint`. Chave não secreta é devolvida em `value`.
 - **RN11**: integração não é excluída, só inativada. Inativa, sai do ranqueamento e continua na rota, sinalizada como `INACTIVE`.
-- **RN12**: o ranqueamento não chama o fornecedor. A indisponibilidade em tempo de cobrança (timeout, 5XX) é tratada pelo fallback do REQ6.
+- **RN12**: o ranqueamento não chama o fornecedor. A indisponibilidade em tempo de cobrança (timeout, 5XX) é tratada pelo fallback do REQ7.
 
 ### Camadas
 - **Domain** (`BoundedContexts/PaymentContext`):
@@ -334,14 +334,14 @@ Comuns a todos: **401/403** sem usuário do produtor; **499** no cancelamento; *
   - Entidades `Provider` (métodos e chaves aceitos), `ProducerIntegration` (credenciais), `PaymentRoute` (método e lista ordenada).
   - Value objects `IntegrationNameValueObject` e `CredentialValueObject`, com `GetObfuscatedValue()` para o `valueHint`.
   - `PaymentRoute` valida RN6 e RN7; `ProducerIntegration` valida RN4 e RN5.
-  - O ranqueamento (RN8) é regra do conceito e fica no domínio, como serviço puro sobre as entidades, porque REQ6 e o checkout o reutilizam.
+  - O ranqueamento (RN8) é regra do conceito e fica no domínio, como serviço puro sobre as entidades, porque REQ7 e o checkout o reutilizam.
 - **Infra** (`PostgreSql/Repositories/Payments`):
   - `IPaymentProviderRepository`, `IProducerIntegrationRepository` e `IPaymentRouteRepository`, com SQL nativo e `Npgsql`, trocando modelos de persistência primitivos.
   - Cifragem em `Infra/Cryptography/CredentialCipher` (`AesGcm`), configurada por `PaymentCredentialConfiguration`. Infra recebe e devolve `byte[]`, sem referenciar Domain.
 - **Application** (`UseCases`):
   - `GetPaymentProviders`, `CreateProducerIntegration`, `GetProducerIntegrations`, `UpdateProducerIntegration`, `GetPaymentRoutes`, `ReplacePaymentRoute`.
   - Cada um com `ExecuteAsync(input, auditableInfo, cancellationToken)`, Unit of Work com rollback em exceção, `*Log` e `*Diagnostics`.
-  - `RankPaymentIntegrations` é o caso de uso que o REQ6 chama; neste requisito tem só testes, sem endpoint.
+  - `RankPaymentIntegrations` é o caso de uso que o REQ7 chama; neste requisito tem só testes, sem endpoint.
 - **Presentation**: `PaymentProvidersV1Controller` e `ProducerPaymentsV1Controller`, com payloads em `Controllers/Payloads`.
 
 ### Banco (`data/payments/`)
@@ -387,9 +387,9 @@ Comuns a todos: **401/403** sem usuário do produtor; **499** no cancelamento; *
 Nenhuma nova. `AesGcm` é da biblioteca padrão do .NET.
 
 ### Fora do escopo
-- Chamadas aos fornecedores: adaptadores Asaas e AbacatePay, criação de cobrança e fallback por indisponibilidade (REQ6).
-- Webhooks e efetivação (REQ7).
-- Pedido (REQ5).
+- Chamadas aos fornecedores: adaptadores Asaas e AbacatePay, criação de cobrança e fallback por indisponibilidade (REQ7).
+- Webhooks e efetivação (REQ8).
+- Pedido (REQ6).
 - Teste de conexão das credenciais com o fornecedor.
 - Rotação da chave de cifragem.
 - Integração de pagamento padrão da Ntix para produtor sem configuração.
@@ -458,14 +458,12 @@ Funcionalidade: Integrações de pagamento do produtor
 
 ## Decisões em aberto
 
-1. **Autenticação do produtor**: não existe login na API hoje.
-   - Decisão provisória: este requisito depende de um requisito de autenticação do usuário do produtor, a ser escrito antes ou junto.
-   - Os endpoints de escrita não vão para produção sem ele, porque gravam a conta de recebimento.
+1. **Ordem de entrega**: a autenticação virou o REQ5, e este requisito só vai para produção depois dele, porque grava a conta de recebimento.
 2. **Fornecedor padrão da Ntix**: produtor sem configuração não oferece o método (ranqueamento vazio). Deve existir uma integração da própria Ntix como último fallback?
-3. **Teste de conexão**: a credencial não é validada no fornecedor ao ser salva. Deve ser, assim que o REQ6 trouxer os adaptadores?
+3. **Teste de conexão**: a credencial não é validada no fornecedor ao ser salva. Deve ser, assim que o REQ7 trouxer os adaptadores?
 4. **Ambiente da integração** (`SANDBOX` / `PRODUCTION`): não modelado. O produtor deve poder ter uma integração de teste?
 5. **Carga**: perfil do ranqueamento, que fica no caminho do checkout.
    - Proposta: moderado (50 VUs, p95 < 500 ms, < 1% de erros) para os endpoints da aba.
-   - Para o ranqueamento, p95 < 50 ms, medido no REQ6.
+   - Para o ranqueamento, p95 < 50 ms, medido no REQ7.
 6. **Credenciais em chave-valor**: adotadas como pedido. As chaves válidas de cada fornecedor ficam no catálogo, para validar o cadastro sem código por fornecedor.
 7. **Método de pagamento como enum fixo** (`PIX`, `BOLETO`, `CREDIT_CARD`), e não como tabela. Método novo exige código, porque exige adaptador.
