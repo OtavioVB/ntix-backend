@@ -66,6 +66,9 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Verificação de e-mail e carteira do produtor ficam para requisitos próprios: no cadastro, só o evento `ProducerRegistered` vai para a outbox.
 - Senha do cliente: obrigatória, com ao menos 8 caracteres, uma letra maiúscula, uma minúscula, um número e um símbolo. É persistida como hash que combina a chave privada do servidor com o hash da senha, e cada cliente tem o próprio salt.
 - Celular do cliente: opcional, com DDD e número.
+- Autenticação do produtor (REQ5): access token JWT curto (15 min) e refresh token rotativo, gravado só como hash e revogável no banco ([RFC 0007](../../../../docs/rfcs/0007-autenticacao-jwt-bearer.md)).
+- Usuário do produtor `PENDING` (e-mail não verificado) faz login até existir a verificação de e-mail; `BLOCKED` não.
+- Login do produtor: no máximo 10 tentativas por e-mail a cada 15 minutos; a partir daí, 429 com `Retry-After` (REQ5).
 
 ### Padrões de código
 - Seguir os padrões dos projetos de referência `Tech.Aquisition.Customers` e `ntix`, resumidos em [code-patterns.md](code-patterns.md).
