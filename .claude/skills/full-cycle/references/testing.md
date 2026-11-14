@@ -1,6 +1,6 @@
 # Testes
 
-Os quatro níveis são obrigatórios em cada requisito. Os testes são escritos, não executados.
+Os quatro níveis são obrigatórios em cada requisito. Unitários, integrados e funcionais rodam na máquina pela skill `local-tests` antes do PR, e a esteira do PR precisa ficar verde; os de carga são escritos, não executados.
 
 Os exemplos mostram a forma esperada, não o domínio. Use `tsts/UnitTests/UseCases/CreateCustomer` e os demais testes do cadastro de cliente como modelo para os próximos requisitos. Nos namespaces de teste, não repita `Domain` nem `Application` (`UnitTests.ValueObjects`, por exemplo), para não esconder os namespaces de produção.
 

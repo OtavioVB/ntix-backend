@@ -21,6 +21,23 @@ flowchart LR
 |---|---|
 | **Ntix Funil de Cadastro de Cliente** | Funil de negócio, conversão, evolução, logs e traces do cadastro |
 | **Ntix WebApi** | Tráfego, latência, erros, concorrência, memória, GC, thread pool, logs e traces |
+| **Ntix Funil de Integrações de Pagamento** | Funis de conexão de fornecedor, alteração de integração, substituição de rota e ranqueamento, ranqueamentos vazios por método e fornecedor, logs e traces (REQ4) |
+
+## Integrações de pagamento (REQ4)
+
+| Fluxo | Métricas no Prometheus | Desfechos (`outcome`) |
+|---|---|---|
+| Catálogo de fornecedores | `ntix_payments_providers_requests_total`, `ntix_payments_providers_outcomes_total` | `served`, `validation_failed`, `error` |
+| Conexão de fornecedor | `ntix_payments_integrations_creation_requests_total`, `..._outcomes_total` | `created`, `validation_failed`, `name_already_exists`, `producer_not_found`, `error` |
+| Consulta das integrações | `ntix_payments_integrations_query_requests_total`, `..._outcomes_total` | `served`, `validation_failed`, `producer_not_found`, `error` |
+| Alteração de integração | `ntix_payments_integrations_update_requests_total`, `..._outcomes_total` | `updated`, `validation_failed`, `not_found`, `name_already_exists`, `producer_not_found`, `error` |
+| Consulta das rotas | `ntix_payments_routes_query_requests_total`, `..._outcomes_total` | `served`, `validation_failed`, `producer_not_found`, `error` |
+| Substituição de rota | `ntix_payments_routes_replacement_requests_total`, `..._outcomes_total` | `replaced`, `validation_failed`, `producer_not_found`, `error` |
+| Ranqueamento (REQ7) | `ntix_payments_ranking_requests_total`, `..._outcomes_total` | `ranked`, `unavailable`, `validation_failed`, `error` |
+
+- `ntix_payments_ranking_empty_total{method, provider}` conta os ranqueamentos vazios, em que o método some do checkout. `provider` é o fornecedor da integração de prioridade 1, ou `none` quando o método não tem rota.
+- Logs e spans citam a chave da credencial (`API_KEY`), nunca o valor. O valor secreto também não sai na API: a leitura mostra só os últimos caracteres.
+- Para provocar o desfecho `error` nos testes de funil (`tsts/LoadTests/producers-payments-funnel-tests.js`), pare o PostgreSQL durante a execução.
 
 ## Funil de cadastro de cliente
 

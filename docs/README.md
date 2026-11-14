@@ -93,6 +93,8 @@ A imagem da API é construída para a arquitetura detectada no servidor, x86_64 
 | `VPS_KNOWN_HOSTS` | Chave pública do servidor, gerada com `ssh-keyscan -p <porta> <host>` e conferida antes de salvar |
 | `VPS_POSTGRES_PASSWORD` | Senha do PostgreSQL da VPS, sem `;` e sem `'` |
 | `VPS_PASSWORD_PRIVATE_KEY` | Chave privada combinada ao hash das senhas dos clientes, sem `'`. Gere com `openssl rand -base64 32` |
+| `VPS_PAYMENT_CREDENTIAL_ENCRYPTION_KEY` | Chave AES-256 que cifra as credenciais das integrações de pagamento (REQ4): 32 bytes em Base64. Gere com `openssl rand -base64 32` e guarde um backup fora do GitHub |
+| `VPS_JWT_SIGNING_KEY` | Chave que assina o access token do usuário do produtor (REQ5): 32 bytes ou mais em Base64. Gere com `openssl rand -base64 32` |
 
 A connection string da API, o endpoint de telemetria e as demais configurações são resolvidos pelo `docker-compose.yml` a partir desse `.env`, a cada deploy.
 
@@ -107,6 +109,18 @@ A senha do PostgreSQL é definida quando o volume é criado. Depois disso, troca
 Na primeira implantação com PostgreSQL em um servidor que já tinha o SQL Server, o deploy remove os contêineres antigos, mas o volume `devops_ntix-sqlserver-volume` continua ocupando disco. Como não havia dados de produção, ele pode ser apagado com `docker volume rm devops_ntix-sqlserver-volume`.
 
 Trocar `VPS_PASSWORD_PRIVATE_KEY` invalida as senhas já cadastradas, porque o hash depende dela.
+
+Trocar ou perder `VPS_PAYMENT_CREDENTIAL_ENCRYPTION_KEY` deixa ilegíveis as credenciais de pagamento já gravadas: nenhuma cobrança sai até os produtores cadastrarem as credenciais de novo. A rotação da chave ainda não existe. Trocar `VPS_JWT_SIGNING_KEY` só derruba as sessões abertas.
+
+Para rodar a API fora do contêiner, defina as mesmas chaves por user secrets do projeto `src/WebApi`:
+
+```bash
+dotnet user-secrets set "PaymentCredentialConfiguration:EncryptionKey" "$(openssl rand -base64 32)" --project src/WebApi
+```
+
+```bash
+dotnet user-secrets set "JwtConfiguration:SigningKey" "$(openssl rand -base64 32)" --project src/WebApi
+```
 
 ## Banco de dados
 

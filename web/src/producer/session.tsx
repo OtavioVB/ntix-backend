@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_STORE_LOOK, type StoreLook } from "../features/store/StoreBuilder";
+import type { PaymentMethod, ProducerIntegration } from "../api/payments";
 import type { PlatformData } from "../platform/types";
 import { isValidDocument } from "./legal";
 
@@ -26,6 +27,17 @@ export type ProducerSession = {
   legalName: string;
   storeLook: StoreLook;
   platform: PlatformData | null;
+  /** Slug da produtora na API (`/api/v1/producers/{slug}`), preenchido pelo login (REQ5). */
+  slug: string;
+  /**
+   * Access token do login (REQ5). Fica só em memória: nunca vai para o localStorage, nem na demonstração.
+   * Enquanto o login real não existir, o modo `?api=real` do painel recebe 401 e pede para entrar de novo.
+   */
+  accessToken?: string;
+  /** Integrações de pagamento da demonstração (REQ4). Credencial secreta guardada só pelo final, como a API devolve. */
+  paymentIntegrations: ProducerIntegration[];
+  /** Rotas da demonstração: por método, os ids das integrações em ordem de prioridade. */
+  paymentRoutes: Record<PaymentMethod, string[]>;
 };
 
 const INITIAL_SESSION: ProducerSession = {
@@ -42,6 +54,9 @@ const INITIAL_SESSION: ProducerSession = {
   legalName: "",
   storeLook: DEFAULT_STORE_LOOK,
   platform: null,
+  slug: "",
+  paymentIntegrations: [],
+  paymentRoutes: { PIX: [], BOLETO: [], CREDIT_CARD: [] },
 };
 
 export type ApprovalStep = { id: "contract" | "terms" | "legal"; title: string; done: boolean };
@@ -79,7 +94,10 @@ function loadStored(): ProducerSession | null {
 
 function store(session: ProducerSession) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    // O access token não sobrevive ao recarregamento: fica fora do que é gravado no navegador.
+    const persisted: Partial<ProducerSession> = { ...session };
+    delete persisted.accessToken;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
   } catch {
     // Sem armazenamento a demonstração segue funcionando, só não sobrevive a um recarregamento.
   }

@@ -1,8 +1,11 @@
 # RFC 0007: Autenticação com JWT Bearer
 
-- **Status**: Proposta
+- **Status**: Aceita (validação do token adotada no REQ4; emissão no REQ5)
 - **Data**: 2026-11-14
 - **Requisito**: REQ5 - Autenticação do Usuário do Produtor
+- **Adoção**: REQ4 - Integrações de Pagamento do Produtor, que é o primeiro endpoint do painel e só pode ir ao ar protegido.
+  - Entrou `Microsoft.AspNetCore.Authentication.JwtBearer` **10.0.14** no `WebApi`, com a validação (`AddJwtBearer`), a política `ProducerUser` e o requisito `ProducerSlugRequirement` (RN9 do REQ5).
+  - Login, renovação e logout, que emitem o token, ficam com o REQ5. Até lá, os endpoints do painel respondem 401 a qualquer chamada sem token assinado com `JwtConfiguration:SigningKey`.
 
 ## Contexto
 

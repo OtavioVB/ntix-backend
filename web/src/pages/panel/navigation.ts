@@ -33,6 +33,8 @@ export const PANEL_GROUPS: { label: string; areas: PanelArea[] }[] = [
       { path: panelPath("carteira"), label: "Carteira", icon: "wallet", lockedInRehearsal: true },
       { path: panelPath("cobrancas"), label: "Cobranças", icon: "receipt", lockedInRehearsal: true },
       { path: panelPath("plano"), label: "Plano de intermediação", icon: "percent", lockedInRehearsal: true },
+      // Liberada no ensaio: a produtora conecta os fornecedores de pagamento antes de vender.
+      { path: panelPath("integracoes"), label: "Integrações", icon: "plug", lockedInRehearsal: false },
     ],
   },
   {

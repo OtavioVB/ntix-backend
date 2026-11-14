@@ -1,9 +1,11 @@
 using Application.UseCases;
+using Infra.Cryptography.Credentials;
 using Infra.PostgreSql.Base.UnitOfWork;
 using Infra.PostgreSql.Repositories.Customers;
 using Infra.PostgreSql.Repositories.Customers.Models;
 using Infra.PostgreSql.Repositories.Outbox;
 using Infra.PostgreSql.Repositories.Outbox.Models;
+using Infra.PostgreSql.Repositories.Payments;
 using Infra.PostgreSql.Repositories.Producers;
 using Infra.PostgreSql.Repositories.Producers.Models;
 using Microsoft.Extensions.Configuration;
@@ -36,6 +38,7 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
             {
                 ["PostgreSqlConfiguration:ConnectionString"] = _database.ConnectionString,
                 ["PasswordConfiguration:PrivateKey"] = CustomerTestData.PRIVATE_KEY,
+                ["PaymentCredentialConfiguration:EncryptionKey"] = PaymentIntegratedTestData.ENCRYPTION_KEY,
             })
             .Build();
 
@@ -45,6 +48,8 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
             .AddCustomerRepositoryConfiguration(configuration)
             .AddProducerRepositoryConfiguration(configuration)
             .AddOutboxRepositoryConfiguration(configuration)
+            .AddPaymentRepositoriesConfiguration(configuration)
+            .AddCredentialCipherConfiguration(configuration)
             .AddUseCasesConfiguration(configuration)
             .BuildServiceProvider();
     }
@@ -164,6 +169,12 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
 
         return events;
     }
+
+    public Task<int> ExecuteAsync(string sql, params NpgsqlParameter[] parameters)
+        => _database!.ExecuteAsync(sql, parameters);
+
+    public Task<T> ScalarAsync<T>(string sql, params NpgsqlParameter[] parameters)
+        => _database!.ScalarAsync<T>(sql, parameters);
 
     public async Task DisposeAsync()
     {

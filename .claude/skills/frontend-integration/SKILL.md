@@ -38,17 +38,18 @@ web/src/api/
 - **Erros**: mapeie cada `code` da API para o campo do formulário por prefixo (`EMAIL_` → e-mail, `PASSWORD_` → senha...), exibindo a `message` da API. O que não tiver campo vira mensagem geral (`role="alert"`). Falha de rede e 500 viram a notificação `NETWORK_ERROR`.
 - **Validação local espelha a da API**: se o value object exige uma regra (ex.: política de senha), o front valida igual antes de enviar, para a pessoa não descobrir o erro só no servidor.
 - **Estado do negócio manda na tela**: se a API cria algo que ainda não dá acesso (ex.: usuário `PENDING` até verificar o e-mail), o modo real não abre sessão local nem leva ao painel.
-- **Segredos**: senha vai só no corpo da requisição; nunca em sessão, storage, log ou URL.
+- **Segredos**: senha vai só no corpo da requisição; nunca em sessão, storage, log ou URL. O mesmo vale para credencial de terceiro (ex.: API key de pagamento): a demonstração guarda só o final dela, como a API devolve, e o campo é `type="password"`.
+- **Endpoints autenticados do painel** (REQ4 em diante): use `requestJson` do `client.ts`, que envia `Authorization: Bearer <accessToken>` da sessão, não envia `X-Execution-User` (a API tira o usuário do token) e transforma 401 e 403, que vêm sem corpo, em `UNAUTHORIZED` e `FORBIDDEN`. O `accessToken` fica só em memória, nunca no `localStorage`. Exemplo: `api/payments.ts` e `pages/panel/IntegrationsPage.tsx`.
 
 ## 4. Testes
 
-Vitest + Testing Library, já no projeto. Escreva, não execute (mesma regra do backend). O `tsc --noEmit` pode ser rodado para garantir que compila.
+Vitest + Testing Library, já no projeto. Rode `bash .claude/skills/local-tests/scripts/run-tests.sh web` (tsc + Vitest) antes do PR e corrija as falhas, como no backend.
 
 - `api.test.ts`: flag (padrão demo, liga, desliga, valor desconhecido), base URL, formato dos headers, erro de rede e 500, contrato do request (corpo igual ao `*V1Request`) e mapeamento de códigos para campos. Use `vi.stubGlobal("fetch", ...)`.
 - Teste da página: o fluxo em demonstração continua igual; com `sessionStorage["ntix:api-mode"] = "real"` e `fetch` simulado, sucesso e recusa da API aparecem na tela.
 
 ## 5. Entrega
 
-Diga ao usuário: o endpoint integrado, como testar (`https://localhost:5173/...?api=real` com a API em `https://localhost:5000`), o que muda entre demonstração e modo real, e o aviso de que os testes foram escritos e não executados.
+Diga ao usuário: o endpoint integrado, como testar (`https://localhost:5173/...?api=real` com a API em `https://localhost:5000`), o que muda entre demonstração e modo real, e o resultado dos testes do front.
 
 Se a integração ensinou um padrão novo (outro verbo HTTP, autenticação, paginação), registre-o nesta skill no mesmo turno.

@@ -1,10 +1,13 @@
 using System.Text.Json.Serialization;
 using Application.UseCases;
+using Infra.Cryptography.Credentials;
 using Infra.FileSystem.Whitelabels;
 using Infra.PostgreSql.Base.UnitOfWork;
 using Infra.PostgreSql.Repositories.Customers;
 using Infra.PostgreSql.Repositories.Outbox;
+using Infra.PostgreSql.Repositories.Payments;
 using Infra.PostgreSql.Repositories.Producers;
+using WebApi.Authentication;
 using WebApi.Cors;
 using WebApi.Observability;
 
@@ -28,12 +31,15 @@ public class Program
         });
         builder.Services.AddOpenApi();
         builder.Services.AddCorsConfiguration(builder.Configuration);
+        builder.Services.AddProducerAuthentication(builder.Configuration);
 
         builder.Services
             .AddPostgreSqlConfiguration(builder.Configuration)
             .AddCustomerRepositoryConfiguration(builder.Configuration)
             .AddProducerRepositoryConfiguration(builder.Configuration)
             .AddOutboxRepositoryConfiguration(builder.Configuration)
+            .AddPaymentRepositoriesConfiguration(builder.Configuration)
+            .AddCredentialCipherConfiguration(builder.Configuration)
             .AddWhitelabelReaderConfiguration(builder.Configuration);
 
         builder.Services
@@ -42,6 +48,8 @@ public class Program
         var app = builder.Build();
 
         app.UseCors(CorsExtensions.WEB_POLICY_NAME);
+        app.UseAuthentication();
+        app.UseAuthorization();
 
         app.MapOpenApi();
         app.MapControllers();
