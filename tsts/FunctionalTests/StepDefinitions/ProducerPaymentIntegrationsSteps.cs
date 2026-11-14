@@ -115,7 +115,26 @@ public sealed class ProducerPaymentIntegrationsSteps
         return producer;
     }
 
-    private Task<HttpResponseMessage> SendAsync(HttpMethod method, string route, object? body = null, string? token = null)
+    // O corpo é lido uma única vez e guardado como texto: o passo que conecta lê o id, e o "Então" lê a mesma resposta
+    // de novo. O HttpContent guarda o stream da primeira leitura, e ler de novo dá "Cannot access a closed Stream".
+    private readonly Dictionary<HttpResponseMessage, string> _bodies = [];
+
+    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string route, object? body = null, string? token = null)
+    {
+        var response = await SendOnceAsync(method, route, body, token);
+
+        _bodies[response] = await response.Content.ReadAsStringAsync();
+
+        return response;
+    }
+
+    private string BodyOf(HttpResponseMessage response)
+        => _bodies[response];
+
+    private T ReadJson<T>(HttpResponseMessage response)
+        => JsonSerializer.Deserialize<T>(BodyOf(response), JSON_OPTIONS)!;
+
+    private Task<HttpResponseMessage> SendOnceAsync(HttpMethod method, string route, object? body, string? token)
     {
         var request = new HttpRequestMessage(method, route);
 
@@ -137,7 +156,7 @@ public sealed class ProducerPaymentIntegrationsSteps
         var response = await SendAsync(HttpMethod.Post, $"api/v1/producers/{slug}/payment-integrations", new { providerCode, name, credentials }, _producersBySlug[slug].Token);
 
         if (response.StatusCode == HttpStatusCode.Created)
-            _integrationsByName[name] = (await response.Content.ReadFromJsonAsync<IntegrationResponse>(JSON_OPTIONS))!.Id;
+            _integrationsByName[name] = ReadJson<IntegrationResponse>(response).Id;
 
         return response;
     }
@@ -168,7 +187,7 @@ public sealed class ProducerPaymentIntegrationsSteps
     {
         Assert.Equal(statusCode, _response!.StatusCode);
 
-        var notifications = await _response.Content.ReadFromJsonAsync<NotificationResponse[]>(JSON_OPTIONS);
+        var notifications = ReadJson<NotificationResponse[]>(_response);
 
         Assert.Contains(notifications!, notification => notification.Code == notificationCode);
     }
@@ -279,7 +298,7 @@ public sealed class ProducerPaymentIntegrationsSteps
     {
         Assert.Equal(HttpStatusCode.Created, _response!.StatusCode);
 
-        var integration = await _response.Content.ReadFromJsonAsync<IntegrationResponse>(JSON_OPTIONS);
+        var integration = ReadJson<IntegrationResponse>(_response);
 
         Assert.Equal(name, integration!.Name);
         Assert.Equal("ACTIVE", integration.Status);
@@ -290,7 +309,7 @@ public sealed class ProducerPaymentIntegrationsSteps
     [Then("vejo da chave de API só o final {string}")]
     public async Task ThenSeeOnlyApiKeyHint(string hint)
     {
-        var body = await _response!.Content.ReadAsStringAsync();
+        var body = BodyOf(_response!);
         var integration = JsonSerializer.Deserialize<IntegrationResponse>(body, JSON_OPTIONS);
         var apiKey = Assert.Single(integration!.Credentials);
 
@@ -338,7 +357,7 @@ public sealed class ProducerPaymentIntegrationsSteps
     public async Task ThenPixRouteStillListsInactive(string name)
     {
         var response = await SendAsync(HttpMethod.Get, $"api/v1/producers/{_slug}/payment-routes", token: _producersBySlug[_slug].Token);
-        var routes = await response.Content.ReadFromJsonAsync<Dictionary<string, RouteItemResponse[]>>(JSON_OPTIONS);
+        var routes = ReadJson<Dictionary<string, RouteItemResponse[]>>(response);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(["BOLETO", "CREDIT_CARD", "PIX"], routes!.Keys.Order());

@@ -33,8 +33,9 @@ public sealed record UpdateProducerIntegrationUseCaseInput
         => new(
             producerSlug: SlugValueObject.Parse(producerSlug),
             integrationId: integrationId,
-            name: name is null ? null : IntegrationNameValueObject.Build(name),
-            status: status is null ? null : IntegrationStatusValueObject.Build(status),
+            // O nulo precisa do tipo anulável explícito: senão o operador implícito de string? o converte em um nome inválido.
+            name: name is null ? default(IntegrationNameValueObject?) : IntegrationNameValueObject.Build(name),
+            status: status is null ? default(IntegrationStatusValueObject?) : IntegrationStatusValueObject.Build(status),
             credentials: (credentials ?? new Dictionary<string, string?>())
                 .ToDictionary(
                     credential => credential.Key,

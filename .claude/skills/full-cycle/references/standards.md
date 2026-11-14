@@ -91,6 +91,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Casos de uso são orquestradores de serviços de domínio, de infraestrutura e externos.
 - Testes unitários, integrados, funcionais e de carga.
 - Os testes são escritos, não executados. Quem os valida é o usuário.
+- Exceção: quando o usuário pede para rodar os testes ou para corrigir a esteira, eles rodam na máquina pela skill `local-tests`, e as falhas são corrigidas antes do push.
 
 ### Testes
 - Unitários: xUnit, padrão AAA, nomes `Given_[Cenário]_When_[Comportamento]_Should_[ResultadoEsperado]`.
