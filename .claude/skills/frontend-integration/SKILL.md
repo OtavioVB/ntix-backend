@@ -38,7 +38,8 @@ web/src/api/
 - **Erros**: mapeie cada `code` da API para o campo do formulário por prefixo (`EMAIL_` → e-mail, `PASSWORD_` → senha...), exibindo a `message` da API. O que não tiver campo vira mensagem geral (`role="alert"`). Falha de rede e 500 viram a notificação `NETWORK_ERROR`.
 - **Validação local espelha a da API**: se o value object exige uma regra (ex.: política de senha), o front valida igual antes de enviar, para a pessoa não descobrir o erro só no servidor.
 - **Estado do negócio manda na tela**: se a API cria algo que ainda não dá acesso (ex.: usuário `PENDING` até verificar o e-mail), o modo real não abre sessão local nem leva ao painel.
-- **Segredos**: senha vai só no corpo da requisição; nunca em sessão, storage, log ou URL.
+- **Segredos**: senha vai só no corpo da requisição; nunca em sessão, storage, log ou URL. O mesmo vale para credencial de terceiro (ex.: API key de pagamento): a demonstração guarda só o final dela, como a API devolve, e o campo é `type="password"`.
+- **Endpoints autenticados do painel** (REQ4 em diante): use `requestJson` do `client.ts`, que envia `Authorization: Bearer <accessToken>` da sessão, não envia `X-Execution-User` (a API tira o usuário do token) e transforma 401 e 403, que vêm sem corpo, em `UNAUTHORIZED` e `FORBIDDEN`. O `accessToken` fica só em memória, nunca no `localStorage`. Exemplo: `api/payments.ts` e `pages/panel/IntegrationsPage.tsx`.
 
 ## 4. Testes
 

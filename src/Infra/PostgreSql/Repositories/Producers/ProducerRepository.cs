@@ -29,6 +29,10 @@ public sealed class ProducerRepository : IProducerRepository
         SELECT EXISTS (SELECT 1 FROM producers.producer WHERE slug = @slug);
         """;
 
+    private const string SELECT_ID_BY_SLUG_SQL = """
+        SELECT id_producer FROM producers.producer WHERE slug = @slug;
+        """;
+
     private const string INSERT_PRODUCER_SQL = """
         INSERT INTO producers.producer (id_producer, name, email, phone, slug, status, created_at, created_correlation_id)
         VALUES (@id_producer, @name, @email, @phone, @slug, @status, @created_at, @created_correlation_id);
@@ -75,6 +79,17 @@ public sealed class ProducerRepository : IProducerRepository
         command.Parameters.Add("@slug", NpgsqlDbType.Varchar, SLUG_MAX_LENGTH).Value = slug;
 
         return (bool)(await command.ExecuteScalarAsync(cancellationToken))!;
+    }
+
+    public async Task<Guid?> GetIdBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(GetIdBySlugAsync), "producers.producer");
+
+        await using var command = _unitOfWork.CreateCommand(SELECT_ID_BY_SLUG_SQL);
+
+        command.Parameters.Add("@slug", NpgsqlDbType.Varchar, SLUG_MAX_LENGTH).Value = slug;
+
+        return await command.ExecuteScalarAsync(cancellationToken) as Guid?;
     }
 
     public async Task<ProducerCreationResult> CreateAsync(ProducerModel producer, CancellationToken cancellationToken = default)

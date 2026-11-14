@@ -1,6 +1,6 @@
 # REQ4 - Integrações de Pagamento do Produtor
 
-- **Status**: Proposto
+- **Status**: Implementado (aguardando validação); vai para produção junto com o REQ5
 - **Área**: produtor / plataforma / pagamentos
 - **Depende de**: REQ1 (cadastro do produtor); REQ5 (autenticação do usuário do produtor)
 
@@ -317,7 +317,7 @@ Comuns a todos: **401** sem token válido e **403** com token de outro produtor 
 ### Regras de negócio
 - **RN1**: integrações e rotas pertencem a um produtor; um usuário só lê e altera as do produtor ao qual pertence.
 - **RN2**: os métodos de pagamento são `PIX`, `BOLETO` e `CREDIT_CARD`.
-- **RN3**: o catálogo de fornecedores é mantido pela Ntix por script em `data/payments/`; o produtor não cria fornecedor. Carga inicial: `ASAAS` e `ABACATEPAY`.
+- **RN3**: o catálogo de fornecedores é mantido pela Ntix por script em `data/payments/`; o produtor não cria fornecedor. Carga inicial: só `ABACATEPAY`, por decisão do usuário na implementação; o `ASAAS` entra por script quando for adotado.
 - **RN4**: as credenciais de uma integração são exatamente as chaves do `provider_credential_key` do fornecedor: toda obrigatória presente, nenhuma desconhecida.
 - **RN5**: valor de credencial não vazio, sem espaço nas pontas, com até 2048 caracteres. Nome da integração com 1 a 64 caracteres, único por produtor.
 - **RN6**: em um método, cada integração aparece uma vez e cada prioridade uma vez, de 1 em diante, sem buracos. A lista é substituída inteira em uma transação.
@@ -455,6 +455,30 @@ Funcionalidade: Integrações de pagamento do produtor
     Quando o produtor "produtor-x" tenta colocá-la na sua rota de PIX
     Então recebe 400 com INTEGRATION_NOT_FOUND_NOTIFICATION_CODE
 ```
+
+## Decisões tomadas na implementação
+
+O usuário pediu a implementação sem novas perguntas, com as estratégias já definidas. O que não estava definido foi decidido assim:
+
+- **Catálogo**: só o AbacatePay, conforme a [documentação dele](https://docs.abacatepay.com/pages/reference/introduction).
+  - `API_KEY`: secreta e obrigatória. É a chave da API v2 (`Authorization: Bearer`), e o ambiente vem dela (`abc_dev_...` ou `abc_prod_...`).
+  - `WEBHOOK_SECRET`: secreta e opcional até o REQ8. É o segredo que o produtor define no webhook e que o AbacatePay devolve em `X-Webhook-Secret`.
+  - O AbacatePay não tem `ACCOUNT_ID`.
+  - Métodos: `PIX`, `BOLETO` e `CREDIT_CARD`. No AbacatePay, o cartão é `CARD`, e a tradução fica no adaptador do REQ7.
+  - Os cenários de dois fornecedores usam duas contas do AbacatePay ou um fornecedor de teste gravado só no banco de teste.
+- **Autenticação antes do REQ5**: entrou a validação do token da [RFC 0007](../docs/rfcs/0007-autenticacao-jwt-bearer.md), com o JwtBearer, a política `ProducerUser` e o `ProducerSlugRequirement`. A emissão (login) continua com o REQ5. Até lá, o painel responde 401 e os testes funcionais assinam o token com a chave de teste.
+- **Sem FK para `producers.producer`**: os scripts rodam em ordem de caminho, e `data/payments` vem antes de `data/producers`. A FK composta `(id_producer_integration, id_producer)` da rota garante no banco que a rota só aponta para integração do mesmo produtor.
+- **Cifragem**: o valor cifrado leva como dado associado a integração e a chave. Um valor copiado para outra linha não decifra.
+- **`valueHint`**: até 4 caracteres, nunca mais da metade do valor, para uma credencial curta não aparecer inteira.
+- **`PUT` da integração**: `name` e `status` ausentes mantêm o valor atual.
+- **`PUT` da rota**: corpo sem `integrationIds` recusa com `INTEGRATION_IDS_REQUIRED`, para a rota não ser apagada por engano. Para remover o método, a lista vazia tem de ser explícita.
+- **Fornecedor desligado**: não pode ser conectado (`PROVIDER_NOT_FOUND`), mas as integrações dele continuam editáveis.
+- **Integração de outra produtora** recebe a mesma resposta de uma inexistente: 404 no `PUT` e 400 `INTEGRATION_NOT_FOUND` na rota.
+- **Concorrência**: substituições simultâneas do mesmo método são serializadas por `pg_advisory_xact_lock`. A alteração de integração trava a linha (`FOR UPDATE`).
+- **Ranqueamento** (`RankPaymentIntegrationsUseCase`): sem endpoint. Recebe o id da produtora, não o slug, e devolve a prioridade original de cada integração.
+- **Métrica** `payment_ranking_empty_total` virou `ntix.payments.ranking.empty` (`ntix_payments_ranking_empty_total` no Prometheus), no padrão de nomes do projeto. A tag `provider` é o fornecedor da prioridade 1, ou `none` sem rota.
+- **Carga**: perfil moderado proposto no item 5, em `tsts/LoadTests/producers-payment-integrations-tests.js` e `producers-payments-funnel-tests.js`.
+- **Front**: em demonstração, a credencial secreta não é guardada no navegador, só o final dela. Com `?api=real`, a aba usa o access token da sessão, que o login do REQ5 vai preencher.
 
 ## Decisões em aberto
 

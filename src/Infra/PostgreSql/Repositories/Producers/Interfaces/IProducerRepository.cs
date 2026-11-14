@@ -10,6 +10,9 @@ public interface IProducerRepository
 
     public Task<bool> ExistsBySlugAsync(string slug, CancellationToken cancellationToken = default);
 
+    /// <summary>Id da produtora pelo slug, consulta exata sobre <c>ux_producer_slug</c>. Nulo quando não existe.</summary>
+    public Task<Guid?> GetIdBySlugAsync(string slug, CancellationToken cancellationToken = default);
+
     public Task<ProducerCreationResult> CreateAsync(ProducerModel producer, CancellationToken cancellationToken = default);
 
     public Task<ProducerUserCreationResult> CreateUserAsync(ProducerUserModel producerUser, CancellationToken cancellationToken = default);

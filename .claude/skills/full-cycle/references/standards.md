@@ -69,6 +69,10 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Autenticação do produtor (REQ5): access token JWT curto (15 min) e refresh token rotativo, gravado só como hash e revogável no banco ([RFC 0007](../../../../docs/rfcs/0007-autenticacao-jwt-bearer.md)).
 - Usuário do produtor `PENDING` (e-mail não verificado) faz login até existir a verificação de e-mail; `BLOCKED` não.
 - Login do produtor: no máximo 10 tentativas por e-mail a cada 15 minutos; a partir daí, 429 com `Retry-After` (REQ5).
+- Pagamentos (REQ4): por enquanto, o único fornecedor do catálogo é o AbacatePay. As chaves e os métodos de um fornecedor vêm da documentação dele.
+
+### Modo de trabalho
+- Quando o usuário pedir a implementação sem perguntas, decida pelas estratégias já registradas aqui e no requisito, e registre cada decisão na seção "Decisões tomadas na implementação" do próprio requisito (ex.: REQ4).
 
 ### Padrões de código
 - Seguir os padrões dos projetos de referência `Tech.Aquisition.Customers` e `ntix`, resumidos em [code-patterns.md](code-patterns.md).
@@ -141,6 +145,9 @@ Assumidas por Claude. Valem até o usuário dizer o contrário; ao confirmar, mo
 - Telefone do produtor é obrigatório e persistido em E.164: com 10 ou 11 dígitos nacionais recebe `+55`; começando com `+`, aceita de 8 a 15 dígitos.
 - O front chama a API por CORS, com as origens permitidas em `CorsConfiguration:AllowedOrigins`.
 - O controller lê os headers com `[FromHeader]` e o caso de uso valida o `AuditableInfoValueObject`, sem middleware.
+- Endpoints do painel do produtor (REQ4 em diante) usam `[Authorize(Policy = ProducerUser)]`, e o `ExecutionUser` vem do `sub` do token, não do header. A validação do JWT entrou no REQ4, e a emissão fica com o REQ5.
+- Carga do REQ4: perfil moderado nos endpoints da aba Integrações, como o requisito propôs. O p95 < 50 ms do ranqueamento é medido no REQ7.
+- Demais decisões do REQ4 (FK, `valueHint`, `PUT` parcial, trava da rota, métrica de ranqueamento vazio): na seção "Decisões tomadas na implementação" do requisito.
 
 ## Decisões em aberto
 

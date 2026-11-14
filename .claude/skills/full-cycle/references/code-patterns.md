@@ -66,7 +66,11 @@ Agrega `CorrelationId`, `OriginService`, `ExecutionUser` e `RequestedAt`. `Build
 - O caso de uso orquestra: abre o escopo de log auditável, valida input e `auditableInfo` juntos, abre a transação, chama domínio e repositório, faz commit só quando a regra permite, registra os logs e devolve a notificação.
 - Toda recusa de negócio depois de abrir a transação faz rollback. O `catch` faz rollback em qualquer exceção, sem deixar uma falha do rollback esconder a original, registra o log de erro e o desfecho e relança a exceção para o controller; cancelamento não é relançado: depois do rollback, devolve uma notificação de cancelamento.
 - Input: `sealed record` com value objects dos dados do negócio, construtor privado, `static Create(...)` e `GetInputValidation()`, que agrega os `MethodResult` deles. Os dados auditáveis não entram no input.
-- Consulta (sem escrita) usa `IUseCase<TInput, TOutput>`, que devolve `MethodResult<TOutput>` com a saída só no sucesso. Não abre transação. A saída é um `sealed record` em `Outputs/` com tipos primitivos, montado a partir da entidade validada, e o controller devolve `Ok(result.Output)` (ex.: `GetProducerWhitelabelUseCase`).
+- Consulta (sem escrita) usa `IUseCase<TInput, TOutput>`, que devolve `MethodResult<TOutput>` com a saída só no sucesso. A saída é um `sealed record` em `Outputs/` com tipos primitivos, montado a partir da entidade validada, e o controller devolve `Ok(result.Output)` (ex.: `GetProducerWhitelabelUseCase`).
+  - Consulta de arquivo não abre transação.
+  - Consulta no banco abre a transação só para ler, porque o repositório só cria comando dentro dela, e a encerra com `RollbackAsync`, sem commit (ex.: `GetProducerIntegrationsUseCase`).
+- Escrita que devolve o recurso (ex.: `201` com o corpo) também usa `IUseCase<TInput, TOutput>`, com o mesmo controle de transação da escrita (ex.: `CreateProducerIntegrationUseCase`).
+- Conversões entre entidade e modelo compartilhadas por vários casos de uso de um domínio ficam em `UseCases/Base/<Dominio>/` (ex.: `Base/Payments/PaymentConversions`), assim como as saídas comuns (`Base/Payments/Outputs`).
 
 ## Logs
 
@@ -80,6 +84,8 @@ Agrega `CorrelationId`, `OriginService`, `ExecutionUser` e `RequestedAt`. `Build
 - Cada caso de uso tem seu `<Acao>Diagnostics`, com `ActivitySource` e `Meter` chamados `Ntix.<Dominio>`, cobertos pelo curinga `Ntix.*` do `TelemetryExtensions`.
 - Funil: `ntix.<dominio>.<fluxo>.requests` na entrada e `ntix.<dominio>.<fluxo>.outcomes` com a tag `outcome` em cada desfecho. Tags sempre de baixa cardinalidade.
 - Inicie os contadores com `Add(0)` no construtor. O `increase()` do Prometheus ignora a primeira amostra de uma série, e sem isso o primeiro evento se perderia.
+- O funil padrão vem de `UseCases/Base/Diagnostics/FunnelDiagnostics`: o `<Acao>Diagnostics` herda dele, passando o fluxo e os desfechos, e só cria à parte a métrica extra do fluxo (ex.: `ntix.payments.ranking.empty`).
+- O span do caso de uso abre com `ACTIVITY_SOURCE.StartAuditableActivity("<Acao>", auditableInfo)`, que já traz os campos auditáveis.
 - Em span de erro, registre o tipo da exceção, nunca a mensagem. Span de banco é manual no repositório, sem valores de parâmetros.
 - Dashboards ficam em `devops/observability/grafana/dashboards` e são provisionados automaticamente.
 
@@ -92,6 +98,8 @@ Agrega `CorrelationId`, `OriginService`, `ExecutionUser` e `RequestedAt`. `Build
 - O controller só converte payload em input, chama o caso de uso e traduz: notificação de cancelamento vira 499; `IsError` vira `BadRequest(result.Notifications)`; sucesso vira `Ok(result.Notifications)`. Exceção não é capturada no controller e vira 500.
 - `SuppressImplicitRequiredAttributeForNonNullableReferenceTypes` fica ligado no `Program`: campo ausente chega ao value object e vira notificação, em vez de `ProblemDetails` do framework.
 - O JSON da API omite propriedades nulas (`JsonIgnoreCondition.WhenWritingNull`): campo opcional ausente fica fora da resposta.
+- Endpoint do painel do produtor: `[Authorize(Policy = AuthenticationExtensions.PRODUCER_USER_POLICY)]` no controller, rota com `{slug}` (o `ProducerSlugRequirement` compara com o `producer_slug` do token), sem `X-Execution-User`: o `ExecutionUser` é `User.GetProducerUserId()` (ex.: `ProducerPaymentsV1Controller`).
+- Criação que devolve o recurso responde `Created(location, output)`. Notificação de recurso inexistente vira `NotFound`, e de conflito de unicidade vira `Conflict`. O controller conhece esses códigos pelas constantes públicas do caso de uso.
 - Desfecho que não é erro de quem chama (ex.: arquivo de configuração fora da estrutura) vira 500 sem corpo, com `Response.StatusCode = 500` e `EmptyResult` (o `StatusCode(500)` do `[ApiController]` vira `ProblemDetails`); ausência do recurso vira `NotFound(result.Notifications)`.
 
 ## Injeção de dependência e configuração
@@ -117,6 +125,9 @@ Infra/PostgreSql/
 - `<Agregado>Model` é um `sealed record` de tipos primitivos. A `Application` faz a conversão a partir da entidade.
 - Unicidade é garantida por índice único nomeado (`ux_<tabela>_<coluna>`). A consulta prévia só antecipa a resposta. O repositório traduz o erro `23505` pelo `ConstraintName` para um enum de resultado, em vez de propagar a exceção. No PostgreSQL, um erro invalida a transação inteira: crie um savepoint antes do comando que pode violar a constraint e volte até ele no conflito.
 - Connection string nunca fica em `appsettings`: vem de `PostgreSqlConfiguration__ConnectionString` ou de user secrets.
+- Chave estrangeira entre schemas só aponta para um schema cuja pasta vem antes em `data/`, porque os scripts rodam em ordem de caminho. Ex.: `data/payments` não referencia `producers.producer`. Quando dá, a integridade vem de uma FK composta dentro do próprio schema.
+- Substituição de lista inteira (apagar e regravar) trava a chave da lista com `pg_advisory_xact_lock(hashtextextended(...))`, para duas substituições simultâneas não colidirem no índice único (ex.: `PaymentRouteRepository.ReplaceAsync`). Alteração de uma linha lida antes trava com `FOR UPDATE`.
+- Segredo de terceiro gravado no banco (ex.: credencial de pagamento) é cifrado em `Infra/Cryptography` com AES-256-GCM, nonce aleatório e, como dado associado, o registro e a chave a que pertence. A Infra recebe e devolve `byte[]`; a chave vem de configuração e a API não sobe sem ela.
 
 ## Infraestrutura
 

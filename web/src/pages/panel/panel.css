@@ -1312,6 +1312,37 @@
     display: none;
   }
 
+  /* --- Integrações de pagamento ------------------------------------------------------ */
+  .routes {
+    display: grid;
+    gap: var(--n-space-3);
+    margin-top: var(--n-space-6);
+  }
+
+  .routes__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    align-items: start;
+    gap: var(--n-space-4);
+  }
+
+  .route-add {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--n-space-2);
+    margin-top: var(--n-space-3);
+  }
+
+  .route-add .n-field__label {
+    grid-column: 1 / -1;
+  }
+
+  .team-list__remove:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+
   /* --- Conversão da ticketeria ---------------------------------------------------- */
   .offer {
     overflow: hidden;

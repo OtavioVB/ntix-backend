@@ -66,3 +66,51 @@ export async function postJson(path: string, body: unknown, options: { execution
     notifications: notifications.length ? notifications : [{ code: NETWORK_ERROR_CODE, message: NETWORK_ERROR_MESSAGE }],
   };
 }
+
+/** Resultado de endpoint que devolve dados no sucesso (ex.: integrações) e `Notification[]` na recusa. */
+export type ApiDataResult<T> = { ok: true; status: number; data: T } | { ok: false; status: number; notifications: ApiNotification[] };
+
+export const UNAUTHORIZED_CODE = "UNAUTHORIZED";
+const UNAUTHORIZED_MESSAGE = "Sua sessão expirou. Entre de novo para continuar.";
+
+export const FORBIDDEN_CODE = "FORBIDDEN";
+const FORBIDDEN_MESSAGE = "Você não tem acesso a esta produtora.";
+
+/**
+ * Chamada autenticada do painel do produtor (REQ5): `Authorization: Bearer` com o access token, sem X-Execution-User,
+ * porque a API tira o usuário do token. 401 e 403 viram notificações próprias, já que a API responde sem corpo.
+ */
+export async function requestJson<T>(
+  method: "GET" | "POST" | "PUT",
+  path: string,
+  options: { body?: unknown; accessToken?: string; signal?: AbortSignal } = {},
+): Promise<ApiDataResult<T>> {
+  const headers: Record<string, string> = { ...auditableHeaders() };
+  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  if (options.accessToken) headers.Authorization = `Bearer ${options.accessToken}`;
+
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl()}${path}`, {
+      method,
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: options.signal,
+    });
+  } catch {
+    return { ok: false, status: 0, notifications: [{ code: NETWORK_ERROR_CODE, message: NETWORK_ERROR_MESSAGE }] };
+  }
+
+  const body = await response.json().catch(() => null);
+  if (response.ok) return { ok: true, status: response.status, data: body as T };
+
+  if (response.status === 401) return { ok: false, status: 401, notifications: [{ code: UNAUTHORIZED_CODE, message: UNAUTHORIZED_MESSAGE }] };
+  if (response.status === 403) return { ok: false, status: 403, notifications: [{ code: FORBIDDEN_CODE, message: FORBIDDEN_MESSAGE }] };
+
+  const notifications = toNotifications(body);
+  return {
+    ok: false,
+    status: response.status,
+    notifications: notifications.length ? notifications : [{ code: NETWORK_ERROR_CODE, message: NETWORK_ERROR_MESSAGE }],
+  };
+}

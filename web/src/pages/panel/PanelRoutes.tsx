@@ -4,6 +4,7 @@ import { overviewSegment, panelPath } from "../../producer/paths";
 import { useProducerSession } from "../../producer/session";
 import { ApprovalPage } from "./ApprovalPage";
 import { EventsPage } from "./EventsPage";
+import { IntegrationsPage } from "./IntegrationsPage";
 import { LOCKED_DOMAINS, LockedPage } from "./LockedPage";
 import { OverviewPage } from "./OverviewPage";
 import { PanelLayout } from "./PanelLayout";
@@ -43,6 +44,7 @@ export default function PanelRoutes() {
         <Route path="plano" element={<ByStatus rehearsal={<LockedPage domain={LOCKED_DOMAINS.plano} />} production={<PlanPage />} />} />
         <Route path="ticketeria" element={<TicketeriaPage />} />
         <Route path="equipe" element={<TeamPage />} />
+        <Route path="integracoes" element={<IntegrationsPage />} />
         <Route path="aprovacao" element={<ApprovalPage />} />
         <Route path="*" element={<Navigate to={panelPath()} replace />} />
       </Route>
