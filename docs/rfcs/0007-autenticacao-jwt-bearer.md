@@ -1,11 +1,14 @@
 # RFC 0007: Autenticação com JWT Bearer
 
-- **Status**: Aceita (validação do token adotada no REQ4; emissão no REQ5)
+- **Status**: Aceita (validação do token adotada no REQ4; emissão adotada no REQ5)
 - **Data**: 2026-11-14
 - **Requisito**: REQ5 - Autenticação do Usuário do Produtor
 - **Adoção**: REQ4 - Integrações de Pagamento do Produtor, que é o primeiro endpoint do painel e só pode ir ao ar protegido.
   - Entrou `Microsoft.AspNetCore.Authentication.JwtBearer` **10.0.14** no `WebApi`, com a validação (`AddJwtBearer`), a política `ProducerUser` e o requisito `ProducerSlugRequirement` (RN9 do REQ5).
-  - Login, renovação e logout, que emitem o token, ficam com o REQ5. Até lá, os endpoints do painel respondem 401 a qualquer chamada sem token assinado com `JwtConfiguration:SigningKey`.
+  - Login, renovação e logout, que emitem o token, ficaram com o REQ5.
+- **Emissão (REQ5)**: a referência transitiva não alcança a `Application`, porque é o `WebApi` que referencia o pacote, e não o contrário. Por isso `Microsoft.IdentityModel.JsonWebTokens` **8.19.2**, a mesma versão que o `JwtBearer` 10.0.14 traz, entrou explicitamente no `Application.csproj`, como previsto abaixo.
+  - `ProducerAccessTokenIssuer` (`Application/UseCases/Base/Authentication`) emite o token com `JsonWebTokenHandler`.
+  - `JwtConfiguration` e `ProducerClaims` saíram do `WebApi` para a `Application`, para emissão e validação usarem a mesma configuração e os mesmos nomes de claim.
 
 ## Contexto
 

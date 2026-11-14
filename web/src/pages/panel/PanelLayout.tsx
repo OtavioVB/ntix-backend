@@ -3,6 +3,8 @@ import "./panel.css";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Badge, ButtonLink, CurtainOpening, Icon, Meter, Scene, ThemeToggle, Wordmark } from "../../design-system";
+import { signOut } from "../../api/auth";
+import { isRealApi } from "../../api/mode";
 import { contractTicketeria } from "../../platform/actions";
 import { emptyPlatformData, generateDemoData } from "../../platform/demoData";
 import { formatCents } from "../../platform/money";
@@ -130,7 +132,9 @@ export function PanelLayout() {
 
   const admin = session.team.find((member) => member.isAdmin);
 
+  // Com a API real, revoga a sessão no servidor (REQ5, RN11); os tokens deste navegador saem antes da resposta.
   function logout() {
+    if (isRealApi()) void signOut();
     update({ loggedIn: false });
     navigate("/entrar");
   }

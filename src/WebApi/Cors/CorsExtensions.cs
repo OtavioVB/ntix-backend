@@ -14,7 +14,9 @@ public static class CorsExtensions
         services.AddCors(options => options.AddPolicy(WEB_POLICY_NAME, policy => policy
             .WithOrigins(corsConfiguration.AllowedOrigins)
             .WithMethods(HttpMethods.Get, HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch, HttpMethods.Delete)
-            .AllowAnyHeader()));
+            .AllowAnyHeader()
+            // O front lê o Retry-After do 429 do login (REQ5, RN12) para dizer quando tentar de novo.
+            .WithExposedHeaders("Retry-After")));
 
         return services;
     }

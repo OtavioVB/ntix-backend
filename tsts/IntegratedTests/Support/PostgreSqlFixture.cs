@@ -39,6 +39,9 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
                 ["PostgreSqlConfiguration:ConnectionString"] = _database.ConnectionString,
                 ["PasswordConfiguration:PrivateKey"] = CustomerTestData.PRIVATE_KEY,
                 ["PaymentCredentialConfiguration:EncryptionKey"] = PaymentIntegratedTestData.ENCRYPTION_KEY,
+                ["JwtConfiguration:SigningKey"] = ProducerTestData.JWT_SIGNING_KEY,
+                ["JwtConfiguration:Issuer"] = ProducerTestData.JWT_ISSUER,
+                ["JwtConfiguration:Audience"] = ProducerTestData.JWT_AUDIENCE,
             })
             .Build();
 

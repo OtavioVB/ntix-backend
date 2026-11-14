@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { clearSessionTokens, storeSessionTokens } from "./auth";
 import { FORBIDDEN_CODE, NETWORK_ERROR_CODE, UNAUTHORIZED_CODE } from "./client";
 import { createPaymentIntegration, getPaymentProviders, getPaymentRoutes, replacePaymentRoute, updatePaymentIntegration } from "./payments";
 
@@ -13,8 +14,14 @@ function sentRequest(fetchMock: ReturnType<typeof vi.fn>) {
   return { url, init, headers: init.headers as Record<string, string>, body: init.body ? JSON.parse(init.body as string) : undefined };
 }
 
-beforeEach(() => window.sessionStorage.clear());
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => {
+  window.sessionStorage.clear();
+  storeSessionTokens({ accessToken: "token-123", refreshToken: "refresh-123" });
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+  clearSessionTokens();
+});
 
 describe("integrações de pagamento na API", () => {
   it("consulta o catálogo sem token", async () => {
@@ -33,7 +40,7 @@ describe("integrações de pagamento na API", () => {
   it("conecta o fornecedor com o access token e sem X-Execution-User", async () => {
     const fetchMock = mockFetch(201, { id: "6b0f", providerCode: "ABACATEPAY", name: "Conta principal", status: "ACTIVE", credentials: [{ key: "API_KEY", isSecret: true, valueHint: "a91f" }] });
 
-    const result = await createPaymentIntegration("produtora-x", { providerCode: "ABACATEPAY", name: "Conta principal", credentials: { API_KEY: "abc_dev_a91f" } }, "token-123");
+    const result = await createPaymentIntegration("produtora-x", { providerCode: "ABACATEPAY", name: "Conta principal", credentials: { API_KEY: "abc_dev_a91f" } });
 
     const { url, init, headers, body } = sentRequest(fetchMock);
     expect(url).toMatch(/\/api\/v1\/producers\/produtora-x\/payment-integrations$/);
@@ -47,7 +54,7 @@ describe("integrações de pagamento na API", () => {
   it("inativa pela alteração parcial", async () => {
     const fetchMock = mockFetch(200, { id: "6b0f", providerCode: "ABACATEPAY", name: "Conta principal", status: "INACTIVE", credentials: [] });
 
-    await updatePaymentIntegration("produtora-x", "6b0f", { status: "INACTIVE" }, "token-123");
+    await updatePaymentIntegration("produtora-x", "6b0f", { status: "INACTIVE" });
 
     const { url, init, body } = sentRequest(fetchMock);
     expect(url).toMatch(/\/payment-integrations\/6b0f$/);
@@ -58,7 +65,7 @@ describe("integrações de pagamento na API", () => {
   it("substitui a rota do método com a ordem como prioridade", async () => {
     const fetchMock = mockFetch(200, [{ priority: 1, integrationId: "b", name: "B", status: "ACTIVE" }, { priority: 2, integrationId: "a", name: "A", status: "ACTIVE" }]);
 
-    const result = await replacePaymentRoute("produtora-x", "PIX", { integrationIds: ["b", "a"] }, "token-123");
+    const result = await replacePaymentRoute("produtora-x", "PIX", { integrationIds: ["b", "a"] });
 
     const { url, body } = sentRequest(fetchMock);
     expect(url).toMatch(/\/payment-routes\/PIX$/);
@@ -69,7 +76,7 @@ describe("integrações de pagamento na API", () => {
   it("devolve as notificações da recusa", async () => {
     mockFetch(400, [{ code: "INTEGRATION_DUPLICATED_IN_ROUTE", message: "Uma integração só pode aparecer uma vez no mesmo método de pagamento." }]);
 
-    const result = await replacePaymentRoute("produtora-x", "PIX", { integrationIds: ["a", "a"] }, "token-123");
+    const result = await replacePaymentRoute("produtora-x", "PIX", { integrationIds: ["a", "a"] });
 
     expect(result.ok).toBe(false);
     expect(!result.ok && result.notifications[0].code).toBe("INTEGRATION_DUPLICATED_IN_ROUTE");
@@ -81,7 +88,7 @@ describe("integrações de pagamento na API", () => {
     expect(!unauthorized.ok && unauthorized.notifications[0].code).toBe(UNAUTHORIZED_CODE);
 
     mockFetch(403, undefined);
-    const forbidden = await getPaymentRoutes("produtora-y", "token-de-outra");
+    const forbidden = await getPaymentRoutes("produtora-y");
     expect(!forbidden.ok && forbidden.notifications[0].code).toBe(FORBIDDEN_CODE);
   });
 

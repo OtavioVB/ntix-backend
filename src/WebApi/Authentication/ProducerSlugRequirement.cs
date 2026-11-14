@@ -1,3 +1,4 @@
+using Application.UseCases.Base.Authentication;
 using Microsoft.AspNetCore.Authorization;
 
 namespace WebApi.Authentication;

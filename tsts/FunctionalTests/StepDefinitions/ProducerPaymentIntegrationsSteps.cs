@@ -4,8 +4,6 @@ using Application.UseCases.RankPaymentIntegrations.Outputs;
 using Domain.ValueObjects;
 using FunctionalTests.Support;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using NpgsqlTypes;
 using Reqnroll;
@@ -14,7 +12,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using WebApi.Authentication;
+using Application.UseCases.Base.Authentication;
 
 namespace FunctionalTests.StepDefinitions;
 
@@ -77,26 +75,15 @@ public sealed class ProducerPaymentIntegrationsSteps
             _ => throw new ArgumentOutOfRangeException(nameof(method), method, "Método de pagamento desconhecido no cenário."),
         };
 
-    // Faz o papel do login do REQ5: o token carrega só identificadores da usuária e da produtora.
+    // O mesmo emissor do login (REQ5), sem passar pela senha: o login tem a própria feature (AutenticacaoDaProdutora).
     private static string IssueAccessToken(Guid producerId, string slug)
-    {
-        var jwtConfiguration = NtixApiHooks.Factory.Services.GetRequiredService<JwtConfiguration>();
-
-        return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
-        {
-            Issuer = jwtConfiguration.Issuer,
-            Audience = jwtConfiguration.Audience,
-            Expires = DateTime.UtcNow.AddMinutes(15),
-            Claims = new Dictionary<string, object>
-            {
-                [ProducerClaims.SUBJECT] = Guid.NewGuid().ToString(),
-                [ProducerClaims.PRODUCER_ID] = producerId.ToString(),
-                [ProducerClaims.PRODUCER_SLUG] = slug,
-                [ProducerClaims.USER_TYPE] = "ADMINISTRATOR",
-            },
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Convert.FromBase64String(NtixApiHooks.JWT_SIGNING_KEY)), SecurityAlgorithms.HmacSha256),
-        });
-    }
+        => NtixApiHooks.Factory.Services.GetRequiredService<ProducerAccessTokenIssuer>().Issue(
+            producerUserId: Guid.NewGuid(),
+            producerId: producerId,
+            producerSlug: slug,
+            userType: "ADMINISTRATOR",
+            sessionId: Guid.NewGuid(),
+            now: DateTime.UtcNow);
 
     private async Task<(Guid Id, string Token)> RegisterConnectedProducerAsync(string slug)
     {

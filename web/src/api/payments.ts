@@ -1,3 +1,4 @@
+import { authorizedRequest } from "./auth";
 import { requestJson, type ApiDataResult } from "./client";
 
 /** Métodos de pagamento da Ntix (REQ4, RN2). */
@@ -48,22 +49,24 @@ export function getPaymentProviders(signal?: AbortSignal): Promise<ApiDataResult
   return requestJson("GET", PAYMENT_PROVIDERS_ROUTE, { signal });
 }
 
-export function getPaymentIntegrations(slug: string, accessToken?: string, signal?: AbortSignal): Promise<ApiDataResult<ProducerIntegration[]>> {
-  return requestJson("GET", `${producerRoute(slug)}/payment-integrations`, { accessToken, signal });
+// Endpoints do painel: com o access token da sessão, renovado uma vez no 401 (REQ5).
+
+export function getPaymentIntegrations(slug: string, signal?: AbortSignal): Promise<ApiDataResult<ProducerIntegration[]>> {
+  return authorizedRequest("GET", `${producerRoute(slug)}/payment-integrations`, { signal });
 }
 
-export function createPaymentIntegration(slug: string, request: CreateProducerIntegrationRequest, accessToken?: string): Promise<ApiDataResult<ProducerIntegration>> {
-  return requestJson("POST", `${producerRoute(slug)}/payment-integrations`, { body: request, accessToken });
+export function createPaymentIntegration(slug: string, request: CreateProducerIntegrationRequest): Promise<ApiDataResult<ProducerIntegration>> {
+  return authorizedRequest("POST", `${producerRoute(slug)}/payment-integrations`, { body: request });
 }
 
-export function updatePaymentIntegration(slug: string, id: string, request: UpdateProducerIntegrationRequest, accessToken?: string): Promise<ApiDataResult<ProducerIntegration>> {
-  return requestJson("PUT", `${producerRoute(slug)}/payment-integrations/${encodeURIComponent(id)}`, { body: request, accessToken });
+export function updatePaymentIntegration(slug: string, id: string, request: UpdateProducerIntegrationRequest): Promise<ApiDataResult<ProducerIntegration>> {
+  return authorizedRequest("PUT", `${producerRoute(slug)}/payment-integrations/${encodeURIComponent(id)}`, { body: request });
 }
 
-export function getPaymentRoutes(slug: string, accessToken?: string, signal?: AbortSignal): Promise<ApiDataResult<PaymentRoutes>> {
-  return requestJson("GET", `${producerRoute(slug)}/payment-routes`, { accessToken, signal });
+export function getPaymentRoutes(slug: string, signal?: AbortSignal): Promise<ApiDataResult<PaymentRoutes>> {
+  return authorizedRequest("GET", `${producerRoute(slug)}/payment-routes`, { signal });
 }
 
-export function replacePaymentRoute(slug: string, method: PaymentMethod, request: ReplacePaymentRouteRequest, accessToken?: string): Promise<ApiDataResult<PaymentRouteItem[]>> {
-  return requestJson("PUT", `${producerRoute(slug)}/payment-routes/${method}`, { body: request, accessToken });
+export function replacePaymentRoute(slug: string, method: PaymentMethod, request: ReplacePaymentRouteRequest): Promise<ApiDataResult<PaymentRouteItem[]>> {
+  return authorizedRequest("PUT", `${producerRoute(slug)}/payment-routes/${method}`, { body: request });
 }

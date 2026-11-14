@@ -98,6 +98,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Integrados: xUnit, usando as dependências criadas, padrão AAA, mesma nomenclatura.
 - Funcionais: Reqnroll e Gherkin em português (`# language: pt`), com definições semânticas ao negócio.
 - Carga: k6. O cadastro de conta, o cadastro de produtor e a consulta do whitelabel (REQ3) usam o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros.
+- Carga do login do produtor (REQ5): 50 VUs, p95 abaixo de 1 s e menos de 1% de erros, porque o hash da senha é lento de propósito; a renovação usa o perfil moderado. O script cadastra contas suficientes para nenhuma passar do limite de tentativas.
 
 ### Whitelabel (front)
 - Cada implantação é whitelabel: a identidade visual vem de uma configuração em runtime, nunca de build. Hoje `web/public/whitelabel.json` (substituído por implantação, sem rebuild); no futuro, a API, apontada por `VITE_WHITELABEL_URL`, no mesmo formato.
@@ -131,7 +132,7 @@ Assumidas por Claude. Valem até o usuário dizer o contrário; ao confirmar, mo
 - "As dependências criadas" dos testes integrados são as dependências reais do requisito (banco etc.), não dublês.
 - Não executar os testes não impede compilar: `dotnet build` é permitido.
 - Testes de carga ficam em `tsts/LoadTests/`, que ainda não existe. Ela não entra na solução porque não é um projeto .NET.
-- Referências dos testes: `UnitTests` e `IntegratedTests` referenciam `Application`; `FunctionalTests` referencia `WebApi`. As demais camadas chegam por transitividade.
+- Referências dos testes: `UnitTests` e `IntegratedTests` referenciam `Application`; `FunctionalTests` referencia `WebApi`. As demais camadas chegam por transitividade. Exceção: `UnitTests` também referencia `WebApi`, para testar a regra de autorização que fica na apresentação (`ProducerSlugAuthorizationHandler`, REQ5).
 - Headers auditáveis: `X-Correlation-Id`, `X-Origin-Service` e `X-Requested-At` são obrigatórios; `X-Execution-User` é opcional, como o usuário na referência, porque o cadastro é anônimo.
 - `ExecutionUser` é um identificador e aparece sem ofuscação nos logs, então quem chama não deve enviar nele um dado pessoal, como um email.
 - Slug de cliente não aparece nos logs, porque revela o nome completo do cliente. Slug de produtora pode aparecer (REQ3).
@@ -146,7 +147,9 @@ Assumidas por Claude. Valem até o usuário dizer o contrário; ao confirmar, mo
 - Telefone do produtor é obrigatório e persistido em E.164: com 10 ou 11 dígitos nacionais recebe `+55`; começando com `+`, aceita de 8 a 15 dígitos.
 - O front chama a API por CORS, com as origens permitidas em `CorsConfiguration:AllowedOrigins`.
 - O controller lê os headers com `[FromHeader]` e o caso de uso valida o `AuditableInfoValueObject`, sem middleware.
-- Endpoints do painel do produtor (REQ4 em diante) usam `[Authorize(Policy = ProducerUser)]`, e o `ExecutionUser` vem do `sub` do token, não do header. A validação do JWT entrou no REQ4, e a emissão fica com o REQ5.
+- Endpoints do painel do produtor (REQ4 em diante) usam `[Authorize(Policy = ProducerUser)]`, e o `ExecutionUser` vem do `sub` do token, não do header. A validação do JWT entrou no REQ4, e a emissão no REQ5 (`ProducerAccessTokenIssuer`, na `Application`, com a mesma `JwtConfiguration` da validação).
+- Caso de uso que depende do relógio (expiração, janela de tentativas) recebe `TimeProvider` por injeção (`TimeProvider.System` na DI), e o teste usa o `FakeTimeProvider` de `tsts/UnitTests/Support`, sem pacote novo (REQ5).
+- Decisões do REQ5 (limite de tentativas sem `System.Threading.RateLimiting`, `Retry-After`, códigos, concorrência da renovação, front): na seção "Decisões tomadas na implementação" do requisito.
 - Carga do REQ4: perfil moderado nos endpoints da aba Integrações, como o requisito propôs. O p95 < 50 ms do ranqueamento é medido no REQ7.
 - Demais decisões do REQ4 (FK, `valueHint`, `PUT` parcial, trava da rota, métrica de ranqueamento vazio): na seção "Decisões tomadas na implementação" do requisito.
 

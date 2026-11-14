@@ -53,8 +53,8 @@ function usePaymentIntegrations() {
 
     Promise.all([
       getPaymentProviders(controller.signal),
-      getPaymentIntegrations(session.slug, session.accessToken, controller.signal),
-      getPaymentRoutes(session.slug, session.accessToken, controller.signal),
+      getPaymentIntegrations(session.slug, controller.signal),
+      getPaymentRoutes(session.slug, controller.signal),
     ]).then(([providersResult, integrationsResult, routesResult]) => {
       if (controller.signal.aborted) return;
       const failed = [providersResult, integrationsResult, routesResult].find((result) => !result.ok);
@@ -72,7 +72,7 @@ function usePaymentIntegrations() {
     });
 
     return () => controller.abort();
-  }, [real, session.slug, session.accessToken]);
+  }, [real, session.slug]);
 
   const integrations = real ? remote.integrations : session.paymentIntegrations;
   const routes = real ? remote.routes : session.paymentRoutes;
@@ -87,7 +87,7 @@ function usePaymentIntegrations() {
       return NO_ERRORS;
     }
 
-    const result = await createPaymentIntegration(session.slug, { providerCode: provider.code, name: normalizeName(form.name), credentials: filledCredentials(form, provider) }, session.accessToken);
+    const result = await createPaymentIntegration(session.slug, { providerCode: provider.code, name: normalizeName(form.name), credentials: filledCredentials(form, provider) });
     if (!result.ok) return mapIntegrationNotifications(result.notifications);
     setRemote((current) => ({ ...current, integrations: [...current.integrations, result.data] }));
     return NO_ERRORS;
@@ -99,7 +99,7 @@ function usePaymentIntegrations() {
       return undefined;
     }
 
-    const result = await updatePaymentIntegration(session.slug, integration.id, { status }, session.accessToken);
+    const result = await updatePaymentIntegration(session.slug, integration.id, { status });
     if (!result.ok) return result.notifications[0]?.message;
     setRemote((current) => ({ ...current, integrations: current.integrations.map((item) => (item.id === integration.id ? result.data : item)) }));
     return undefined;
@@ -111,7 +111,7 @@ function usePaymentIntegrations() {
       return undefined;
     }
 
-    const result = await replacePaymentRoute(session.slug, method, { integrationIds }, session.accessToken);
+    const result = await replacePaymentRoute(session.slug, method, { integrationIds });
     if (!result.ok) return result.notifications[0]?.message;
     setRemote((current) => ({ ...current, routes: { ...current.routes, [method]: result.data.map((item) => item.integrationId) } }));
     return undefined;

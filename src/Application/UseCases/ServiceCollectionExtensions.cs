@@ -27,8 +27,17 @@ using Application.UseCases.ReplacePaymentRoute.Inputs;
 using Application.UseCases.ReplacePaymentRoute.Outputs;
 using Application.UseCases.UpdateProducerIntegration;
 using Application.UseCases.UpdateProducerIntegration.Inputs;
+using Application.UseCases.Base.Authentication;
+using Application.UseCases.Base.Producers.Outputs;
+using Application.UseCases.CreateProducerSession;
+using Application.UseCases.CreateProducerSession.Inputs;
+using Application.UseCases.RefreshProducerSession;
+using Application.UseCases.RefreshProducerSession.Inputs;
+using Application.UseCases.RevokeProducerSession;
+using Application.UseCases.RevokeProducerSession.Inputs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Application.UseCases;
 
@@ -42,6 +51,9 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton(passwordConfiguration);
         services.AddMetrics();
+        services.TryAddSingleton(TimeProvider.System);
+
+        AddProducerSessions(services, configuration);
         services.AddSingleton<CreateCustomerDiagnostics>();
         services.AddScoped<IUseCase<CreateCustomerUseCaseInput>, CreateCustomerUseCase>();
         services.AddSingleton<CreateProducerDiagnostics>();
@@ -65,5 +77,26 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUseCase<RankPaymentIntegrationsUseCaseInput, RankPaymentIntegrationsUseCaseOutput>, RankPaymentIntegrationsUseCase>();
 
         return services;
+    }
+
+    // Login, renovação e logout do usuário do produtor (REQ5). A configuração é conferida aqui, para a API não subir sem ela.
+    private static void AddProducerSessions(IServiceCollection services, IConfiguration configuration)
+    {
+        var jwtConfiguration = configuration.GetRequiredSection("JwtConfiguration").Get<JwtConfiguration>()!;
+        var loginAttemptConfiguration = configuration.GetSection("LoginAttemptConfiguration").Get<LoginAttemptConfiguration>() ?? new LoginAttemptConfiguration();
+
+        jwtConfiguration.GetValidatedSigningKey();
+
+        services.AddSingleton(jwtConfiguration);
+        services.AddSingleton(loginAttemptConfiguration);
+        services.AddSingleton<ProducerAccessTokenIssuer>();
+        services.AddSingleton<LoginAttemptLimiter>();
+
+        services.AddSingleton<CreateProducerSessionDiagnostics>();
+        services.AddScoped<IUseCase<CreateProducerSessionUseCaseInput, ProducerSessionOutput>, CreateProducerSessionUseCase>();
+        services.AddSingleton<RefreshProducerSessionDiagnostics>();
+        services.AddScoped<IUseCase<RefreshProducerSessionUseCaseInput, ProducerSessionOutput>, RefreshProducerSessionUseCase>();
+        services.AddSingleton<RevokeProducerSessionDiagnostics>();
+        services.AddScoped<IUseCase<RevokeProducerSessionUseCaseInput>, RevokeProducerSessionUseCase>();
     }
 }

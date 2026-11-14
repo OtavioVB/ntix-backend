@@ -9,6 +9,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddProducerRepositoryConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IProducerRepository, ProducerRepository>();
+        services.AddScoped<IProducerUserRepository, ProducerUserRepository>();
+        services.AddScoped<IProducerUserSessionRepository, ProducerUserSessionRepository>();
 
         return services;
     }

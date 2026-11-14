@@ -11,6 +11,10 @@ public static class ProducerTestData
     public const string PHONE = "(11) 98765-4321";
     public const string E164_PHONE = "+5511987654321";
 
+    public static readonly string JWT_SIGNING_KEY = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+    public const string JWT_ISSUER = "https://api.ntix.test";
+    public const string JWT_AUDIENCE = "ntix-producer-panel";
+
     public static string NewEmail()
         => $"{Guid.NewGuid():N}@produtora.com";
 

@@ -40,4 +40,11 @@ public readonly struct PasswordHashValueObject
             hash: HMACSHA256.HashData(Encoding.UTF8.GetBytes(privateKey), passwordHash),
             methodResult: MethodResult.Success());
     }
+
+    /// <summary>
+    /// Confere o hash calculado com o gravado em tempo constante (REQ5, RN4): o tempo da comparação não revela quantos
+    /// bytes coincidem.
+    /// </summary>
+    public bool Matches(byte[]? storedHash)
+        => IsValid && storedHash is not null && CryptographicOperations.FixedTimeEquals(Value, storedHash);
 }

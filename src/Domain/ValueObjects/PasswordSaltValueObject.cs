@@ -28,4 +28,17 @@ public readonly struct PasswordSaltValueObject
             isValid: true,
             salt: RandomNumberGenerator.GetBytes(LENGTH),
             methodResult: MethodResult.Success());
+
+    /// <summary>Salt gravado do usuário. Fora do tamanho, fica inválido.</summary>
+    public static PasswordSaltValueObject Build(byte[]? salt)
+        => salt is { Length: LENGTH }
+            ? new PasswordSaltValueObject(isValid: true, salt: salt, methodResult: MethodResult.Success())
+            : new PasswordSaltValueObject(isValid: false, methodResult: MethodResult.Error());
+
+    /// <summary>
+    /// Salt fixo do login com e-mail inexistente (REQ5, RN3): o hash é calculado do mesmo jeito, e o tempo da resposta
+    /// não revela se a conta existe.
+    /// </summary>
+    public static PasswordSaltValueObject BuildForUnknownUser()
+        => new(isValid: true, salt: new byte[LENGTH], methodResult: MethodResult.Success());
 }
