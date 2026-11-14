@@ -90,8 +90,8 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Endpoint, presentation, casos de uso, infraestrutura e domínio, conforme os padrões estipulados.
 - Casos de uso são orquestradores de serviços de domínio, de infraestrutura e externos.
 - Testes unitários, integrados, funcionais e de carga.
-- Os testes são escritos, não executados. Quem os valida é o usuário.
-- Exceção: quando o usuário pede para rodar os testes ou para corrigir a esteira, eles rodam na máquina pela skill `local-tests`, e as falhas são corrigidas antes do push.
+- Antes de abrir ou atualizar um PR, os testes unitários, integrados, funcionais e do front rodam na máquina pela skill `local-tests`, e as falhas são corrigidas antes do push. Depois, a esteira do PR é acompanhada até ficar verde, e só então o PR é liberado ao usuário (estipulado no REQ4).
+- Os testes de carga (k6) são escritos, não executados: precisam da API no ar e dos números do usuário.
 
 ### Testes
 - Unitários: xUnit, padrão AAA, nomes `Given_[Cenário]_When_[Comportamento]_Should_[ResultadoEsperado]`.

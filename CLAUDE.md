@@ -10,7 +10,7 @@ Backend em .NET 10: `src/` (WebApi, Application, Domain, Infra) e `tsts/` (teste
 - A integração do front (`web/`) com a API passa pela skill `frontend-integration` (`.claude/skills/frontend-integration/SKILL.md`), guiada pelo OpenAPI da WebApi. O front fica em demonstração por padrão e só chama a API com `?api=real`.
 - Clean Architecture à risca: Presentation (WebApi, Workers, Console etc.) referencia Application, que referencia Infra e Domain.
 - Os padrões ficam em `.claude/skills/full-cycle/references/` (`standards.md` e `code-patterns.md`). Siga-os à risca e não introduza padrão, biblioteca ou arquitetura que não tenha sido estipulado. Antes de adicionar uma estrutura, avalie se ela é realmente necessária, mesmo que exista em um projeto de referência.
-- Escreva os testes, mas não os execute: a validação é do usuário. Quando ele pedir para rodá-los ou para corrigir uma falha da esteira, use a skill `local-tests` (`.claude/skills/local-tests/SKILL.md`), que roda as quatro suítes na máquina, com PostgreSQL 18 no WSL.
+- Antes de abrir ou atualizar um PR, rode na máquina os testes unitários, integrados, funcionais e do front pela skill `local-tests` (`.claude/skills/local-tests/SKILL.md`), com PostgreSQL 18 no WSL, e corrija as falhas. Depois do push, acompanhe a esteira do PR e corrija o que falhar: o PR só é liberado com ela verde. Os testes de carga (k6) são escritos, não executados.
 - Dependência nova exige explicação prévia e RFC em `docs/rfcs/`.
 
 ## Ciclo de cada trabalho

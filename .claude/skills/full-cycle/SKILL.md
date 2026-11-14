@@ -51,7 +51,26 @@ Escreva os quatro níveis, seguindo [references/testing.md](references/testing.m
 - **Funcionais**: `tsts/FunctionalTests` (Reqnroll + Gherkin)
 - **Carga**: `tsts/LoadTests` (k6)
 
-**Não execute os testes** (`dotnet test`, `k6 run`): apenas escreva. A validação é do usuário, e a entrega deve dizer claramente que eles não foram executados.
+## 4.2 Testes locais: obrigatório antes do PR
+
+Nenhum PR é aberto ou atualizado sem antes passar, na máquina, por todas as suítes, pela skill `local-tests` (`.claude/skills/local-tests/SKILL.md`):
+
+```bash
+bash .claude/skills/local-tests/scripts/run-tests.sh all
+```
+
+- Rode em segundo plano e leia o resumo de cada suíte: unitários, integrados, funcionais e front.
+- Corrija toda falha antes do push. Se o erro é do código, corrija o código; se é do teste, corrija o teste. Nunca afrouxe uma asserção só para passar.
+- Rode `all` de novo depois da correção, porque uma correção pode quebrar outra suíte.
+- Os testes de carga (`k6 run`) não entram aqui: precisam da API no ar e dos números do usuário. A entrega diz que eles não foram executados.
+
+## 4.3 Esteira: obrigatória antes de liberar o PR
+
+Depois do push, acompanhe a execução da esteira do PR até o fim, pelo status do PR (`ccd_pr`) ou por `gh pr checks <n>`:
+
+- Falha de teste: leia o log com `gh run view <id> --log-failed`, reproduza com `local-tests` usando o filtro do teste, corrija, rode `all` de novo e envie.
+- Falha de análise estática ou de build: corrija da mesma forma, sem desligar regra nem excluir arquivo da análise sem o usuário pedir.
+- O PR só é liberado para o usuário mergear com todos os checks do PR verdes. O deploy, que só roda na `main`, não conta.
 
 ## 4.1 Front
 
@@ -63,9 +82,9 @@ Reporte de forma curta:
 
 - o que foi implementado em cada camada e os cenários cobertos em cada nível de teste;
 - as RFCs criadas e as decisões menores que você tomou;
-- o resultado do build e o aviso de que os testes não foram executados.
+- o resultado do build, o total de cada suíte local e o estado da esteira do PR, com o aviso de que os testes de carga não foram executados.
 
-Só faça commit, push ou PR se o usuário pedir.
+Commit, push e PR seguem o ciclo do `CLAUDE.md` (um trabalho, um PR), sempre depois dos testes locais (4.2), e o PR só é dado como pronto com a esteira verde (4.3).
 
 ## 6. Evolução da skill
 

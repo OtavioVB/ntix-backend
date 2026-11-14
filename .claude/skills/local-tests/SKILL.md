@@ -1,11 +1,11 @@
 ---
 name: local-tests
-description: Roda os testes do ntix-backend na máquina local (Windows + Git Bash) como a esteira roda - unitários, integrados e funcionais (.NET, com PostgreSQL 18 no WSL) e os do front (Vitest). Use quando o usuário pedir para rodar, validar, reproduzir ou corrigir testes localmente, quando a esteira falhar nos testes, ou antes de abrir um PR se o usuário pedir validação local.
+description: Roda os testes do ntix-backend na máquina local (Windows + Git Bash) como a esteira roda - unitários, integrados e funcionais (.NET, com PostgreSQL 18 no WSL) e os do front (Vitest). Etapa obrigatória antes de abrir ou atualizar qualquer PR, e o caminho para reproduzir e corrigir falhas da esteira. Use também quando o usuário pedir para rodar, validar ou corrigir testes.
 ---
 
 # Testes locais
 
-A regra geral do projeto é escrever os testes e deixar a validação com o usuário. Esta skill vale quando o usuário **pede** para rodar os testes na máquina, ou para reproduzir e corrigir uma falha da esteira.
+Etapa obrigatória do `full-cycle` (seções 4.2 e 4.3): todo trabalho roda `all` aqui antes de abrir ou atualizar o PR, e é por aqui que se reproduz uma falha da esteira antes de corrigi-la. O PR só é liberado com as suítes locais e a esteira verdes.
 
 ## Como rodar
 
