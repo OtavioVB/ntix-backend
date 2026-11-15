@@ -35,8 +35,9 @@ public static class ProducerSessionTestData
         .Build(PasswordValueObject.Build(PASSWORD), PasswordSaltValueObject.Build(SALT), PRIVATE_KEY)
         .Value);
 
-    public static AuditableInfoValueObject BuildAuditableInfo()
-        => AuditableInfoValueObject.Build(CORRELATION_ID, ORIGIN_SERVICE, null, REQUESTED_AT);
+    /// <param name="correlationId">Único por teste quando o teste procura o span pelo correlation id.</param>
+    public static AuditableInfoValueObject BuildAuditableInfo(string correlationId = CORRELATION_ID)
+        => AuditableInfoValueObject.Build(correlationId, ORIGIN_SERVICE, null, REQUESTED_AT);
 
     public static ProducerUserModel NewUser(string status = "PENDING", Guid? id = null)
         => new(

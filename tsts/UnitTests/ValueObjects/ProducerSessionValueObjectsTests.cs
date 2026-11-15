@@ -124,6 +124,36 @@ public sealed class ProducerSessionValueObjectsTests
     }
 
     [Fact]
+    public void Given_InvalidValueObjects_When_ReadingTheValue_Should_Throw()
+    {
+        // Arrange
+        var refreshToken = RefreshTokenValueObject.Build("inválido");
+        var salt = PasswordSaltValueObject.Build((byte[]?)null);
+        var hash = default(PasswordHashValueObject);
+
+        // Act + Assert
+        Assert.Throws<InvalidOperationException>(() => refreshToken.Value);
+        Assert.Throws<InvalidOperationException>(() => refreshToken.Hash);
+        Assert.Throws<InvalidOperationException>(() => salt.Value);
+        Assert.Throws<InvalidOperationException>(() => hash.Value);
+        Assert.False(hash.Matches(new byte[PasswordHashValueObject.LENGTH]));
+    }
+
+    [Fact]
+    public void Given_TokenText_When_ConvertingImplicitly_Should_BuildTheValueObject()
+    {
+        // Arrange
+        var generated = RefreshTokenValueObject.Generate().Value;
+
+        // Act
+        RefreshTokenValueObject converted = generated;
+
+        // Assert
+        Assert.True(converted.IsValid);
+        Assert.Equal(generated, converted.Value);
+    }
+
+    [Fact]
     public void Given_UnknownUser_When_BuildingSalt_Should_AlwaysBeTheSameFixedSalt()
     {
         // Act

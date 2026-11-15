@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Roda os testes do ntix-backend na máquina local (Windows + Git Bash), como a esteira roda.
 #
-# Uso: bash .claude/skills/local-tests/scripts/run-tests.sh [unit|integrated|functional|web|all] [filtro do dotnet test]
+# Uso: bash .claude/skills/local-tests/scripts/run-tests.sh [unit|integrated|functional|web|all|coverage] [filtro do dotnet test]
 #   bash .claude/skills/local-tests/scripts/run-tests.sh all
 #   bash .claude/skills/local-tests/scripts/run-tests.sh integrated "FullyQualifiedName~Payment"
+#   bash .claude/skills/local-tests/scripts/run-tests.sh coverage   # cobertura como o Sonar mede (unitários, integrados e funcionais)
 #
 # Integrados e funcionais precisam de PostgreSQL: o script sobe o PostgreSQL 18 no WSL (wsl-postgresql.sh) e aponta
 # PostgreSqlConfiguration__ConnectionString para ele. A senha é a POSTGRES_PASSWORD do devops/.env (ignorado pelo
@@ -77,5 +78,16 @@ case "$SUITE" in
         run_dotnet FunctionalTests
         run_web
         ;;
-    *) echo "Uso: $0 [unit|integrated|functional|web|all] [filtro]" >&2; exit 2 ;;
+    coverage)
+        # Como a esteira (static-analysis.yml): unitários, integrados e funcionais entram na cobertura do Sonar.
+        rm -rf "$ROOT/TestResults/coverage"
+        ensure_postgresql
+        for project in UnitTests IntegratedTests FunctionalTests; do
+            dotnet test "$ROOT/tsts/$project/$project.csproj" --configuration "$CONFIGURATION" \
+                --results-directory "$ROOT/TestResults/coverage" --collect:"XPlat Code Coverage" \
+                --settings "$ROOT/.claude/skills/local-tests/scripts/coverage.runsettings"
+        done
+        node "$ROOT/.claude/skills/local-tests/scripts/coverage-summary.mjs" "$ROOT"
+        ;;
+    *) echo "Uso: $0 [unit|integrated|functional|web|all|coverage] [filtro]" >&2; exit 2 ;;
 esac

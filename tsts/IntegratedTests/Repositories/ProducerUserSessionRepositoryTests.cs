@@ -154,6 +154,88 @@ public sealed class ProducerUserSessionRepositoryTests
     }
 
     [Fact]
+    public async Task Given_SessionAlreadyRevoked_When_Replacing_Should_ThrowAndKeepNothing()
+    {
+        // Arrange: outra transação revogou a sessão depois de ela ser lida, o que o FOR UPDATE impede no caso de uso.
+        var userId = await CreateProducerUserAsync();
+        var current = NewSession(userId);
+        await InTransactionAsync(async repository => { await repository.CreateAsync(current); return 0; });
+        await InTransactionAsync(repository => repository.RevokeFamilyAsync(current.FamilyId, DateTime.UtcNow));
+        var next = NewSession(userId, current.FamilyId);
+
+        // Act + Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            InTransactionAsync(async repository => { await repository.ReplaceAsync(current with { RevokedAt = DateTime.UtcNow, ReplacedById = next.Id }, next); return 0; }));
+        Assert.Null(await InTransactionAsync(repository => repository.GetByRefreshTokenHashAsync(next.RefreshTokenHash)));
+    }
+
+    [Fact]
+    public async Task Given_ReplacedSessionWithoutRevocationDate_When_Replacing_Should_Throw()
+    {
+        // Arrange
+        var userId = await CreateProducerUserAsync();
+        var current = NewSession(userId);
+        var next = NewSession(userId, current.FamilyId);
+
+        // Act + Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            InTransactionAsync(async repository => { await repository.ReplaceAsync(current, next); return 0; }, commit: false));
+    }
+
+    [Fact]
+    public async Task Given_UnknownHash_When_Searching_Should_ReturnNull()
+    {
+        // Act
+        var found = await InTransactionAsync(repository => repository.GetByRefreshTokenHashAsync(RandomNumberGenerator.GetBytes(32)));
+
+        // Assert
+        Assert.Null(found);
+    }
+
+    [Fact]
+    public async Task Given_ProducerUser_When_SearchingByEmailAndId_Should_ReturnItAndNullForUnknown()
+    {
+        // Arrange
+        var producer = ProducerTestData.NewModel();
+        var user = ProducerTestData.NewUserModel(producer.Id, producer.Email);
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var producerRepository = scope.ServiceProvider.GetRequiredService<IProducerRepository>();
+            await unitOfWork.BeginTransactionAsync();
+            await producerRepository.CreateAsync(producer);
+            await producerRepository.CreateUserAsync(user);
+            await unitOfWork.CommitAsync();
+        }
+
+        using var readScope = _fixture.Services.CreateScope();
+        var readUnitOfWork = readScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var users = readScope.ServiceProvider.GetRequiredService<IProducerUserRepository>();
+        var producers = readScope.ServiceProvider.GetRequiredService<IProducerRepository>();
+        await readUnitOfWork.BeginTransactionAsync();
+
+        // Act
+        var byEmail = await users.GetByEmailAsync(user.Email);
+        var byId = await users.GetByIdAsync(user.Id);
+        var unknownEmail = await users.GetByEmailAsync(ProducerTestData.NewEmail());
+        var unknownId = await users.GetByIdAsync(Guid.NewGuid());
+        var producerById = await producers.GetByIdAsync(producer.Id);
+        var unknownProducer = await producers.GetByIdAsync(Guid.NewGuid());
+        await readUnitOfWork.RollbackAsync();
+
+        // Assert
+        Assert.Equal(user.Id, byEmail!.Id);
+        Assert.Equal(user.PasswordHash, byEmail.PasswordHash);
+        Assert.Equal(user.PasswordSalt, byEmail.PasswordSalt);
+        Assert.Equal(user.Email, byId!.Email);
+        Assert.Null(unknownEmail);
+        Assert.Null(unknownId);
+        Assert.Equal(producer.Slug, producerById!.Slug);
+        Assert.Equal(producer.Status, producerById.Status);
+        Assert.Null(unknownProducer);
+    }
+
+    [Fact]
     public async Task Given_FamilyWithSeveralSessions_When_RevokingTheFamily_Should_RevokeOnlyThatFamily()
     {
         // Arrange

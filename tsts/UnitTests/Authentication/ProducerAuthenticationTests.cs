@@ -119,6 +119,21 @@ public sealed class ProducerAuthenticationTests
     }
 
     [Fact]
+    public async Task Given_ResourceThatIsNotAnHttpRequest_When_Authorizing_Should_Deny()
+    {
+        // Arrange: sem requisição HTTP não há slug de rota para comparar.
+        var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ProducerClaims.PRODUCER_SLUG, "produtora-x")], "Bearer"));
+        var requirement = new ProducerSlugRequirement();
+        var context = new AuthorizationHandlerContext([requirement], user, resource: "produtora-x");
+
+        // Act
+        await new ProducerSlugAuthorizationHandler().HandleAsync(context);
+
+        // Assert
+        Assert.False(context.HasSucceeded);
+    }
+
+    [Fact]
     public void Given_ConfigurationWithoutDurations_When_Reading_Should_Default15MinutesAnd7Days()
     {
         // Arrange

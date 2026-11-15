@@ -97,6 +97,56 @@ public sealed class LoginAttemptLimiterTests
     }
 
     [Fact]
+    public void Given_WindowExpiredBeforeTheNextSweep_When_TryingAgain_Should_RestartTheWindowFromThatAttempt()
+    {
+        // Arrange: a janela do e-mail começa 10 minutos depois da última varredura, então vence antes da próxima.
+        _timeProvider.Advance(TimeSpan.FromMinutes(10));
+        AcquireTimes(EMAIL, 10);
+        _timeProvider.Advance(TimeSpan.FromMinutes(6));
+        _limiter.TryAcquire(EmailValueObject.Build("varredura@produtora.com.br"));
+        _timeProvider.Advance(TimeSpan.FromMinutes(10));
+
+        // Act
+        var accepted = _limiter.TryAcquire(EMAIL);
+
+        // Assert
+        Assert.True(accepted);
+        AcquireTimes(EMAIL, 9);
+        Assert.False(_limiter.TryAcquire(EMAIL));
+        Assert.Equal(900, _limiter.GetRetryAfterSeconds(EMAIL));
+    }
+
+    [Fact]
+    public void Given_EmailWithoutAttemptsOrInvalid_When_AskingRetryAfter_Should_ReturnZero()
+    {
+        // Act + Assert
+        Assert.Equal(0, _limiter.GetRetryAfterSeconds(EmailValueObject.Build("nunca-tentou@produtora.com.br")));
+        Assert.Equal(0, _limiter.GetRetryAfterSeconds(EmailValueObject.Build("não-é-email")));
+
+        AcquireTimes(EMAIL, 3);
+        Assert.Equal(0, _limiter.GetRetryAfterSeconds(EMAIL));
+    }
+
+    [Theory]
+    [InlineData(0, 15)]
+    [InlineData(10, 0)]
+    public void Given_LimitOrWindowNotPositive_When_Creating_Should_Throw(int permitLimit, int windowMinutes)
+    {
+        // Act + Assert
+        Assert.ThrowsAny<ArgumentOutOfRangeException>(() => new LoginAttemptLimiter(new LoginAttemptConfiguration(permitLimit, windowMinutes), _timeProvider));
+    }
+
+    [Fact]
+    public async Task Given_ConcurrentAttempts_When_Acquiring_Should_AcceptExactlyTheLimit()
+    {
+        // Act
+        var results = await Task.WhenAll(Enumerable.Range(0, 50).Select(_ => Task.Run(() => _limiter.TryAcquire(EMAIL))));
+
+        // Assert
+        Assert.Equal(10, results.Count(accepted => accepted));
+    }
+
+    [Fact]
     public void Given_ManyEmailsInTheOldWindow_When_ANewWindowStarts_Should_StillCountFromZero()
     {
         // Arrange
