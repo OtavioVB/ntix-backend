@@ -39,7 +39,9 @@ web/src/api/
 - **Validação local espelha a da API**: se o value object exige uma regra (ex.: política de senha), o front valida igual antes de enviar, para a pessoa não descobrir o erro só no servidor.
 - **Estado do negócio manda na tela**: se a API cria algo que ainda não dá acesso (ex.: usuário `PENDING` até verificar o e-mail), o modo real não abre sessão local nem leva ao painel.
 - **Segredos**: senha vai só no corpo da requisição; nunca em sessão, storage, log ou URL. O mesmo vale para credencial de terceiro (ex.: API key de pagamento): a demonstração guarda só o final dela, como a API devolve, e o campo é `type="password"`.
-- **Endpoints autenticados do painel** (REQ4 em diante): use `requestJson` do `client.ts`, que envia `Authorization: Bearer <accessToken>` da sessão, não envia `X-Execution-User` (a API tira o usuário do token) e transforma 401 e 403, que vêm sem corpo, em `UNAUTHORIZED` e `FORBIDDEN`. O `accessToken` fica só em memória, nunca no `localStorage`. Exemplo: `api/payments.ts` e `pages/panel/IntegrationsPage.tsx`.
+- **Endpoints autenticados do painel** (REQ4 em diante): use `authorizedRequest` de `api/auth.ts`, nunca `requestJson` com token na mão. Ele envia `Authorization: Bearer` com o access token, não envia `X-Execution-User` (a API tira o usuário do token), renova a sessão uma única vez no 401 e repete a chamada; se a renovação for recusada, apaga os tokens e o painel volta para `/entrar`. Exemplo: `api/payments.ts` e `pages/panel/IntegrationsPage.tsx`.
+- **Sessão do produtor** (REQ5): `api/sessions.ts` tem login, renovação e logout; `api/auth.ts` guarda o access token só em memória e o refresh token no `localStorage` (`ntix.producer.refresh-token.v1`), fora da sessão da demonstração (`producer/session.tsx`). A tela de login fica em `pages/login/signIn.ts`; "Sair" chama `signOut()`. 401 e 403 sem corpo viram `UNAUTHORIZED` e `FORBIDDEN`; com corpo (ex.: login recusado), valem as notificações da API, e o 429 traz `retryAfterSeconds`.
+- **Testes de tela autenticada**: chame `storeSessionTokens({ accessToken, refreshToken })` antes de renderizar e `clearSessionTokens()` no `afterEach`.
 
 ## 4. Testes
 

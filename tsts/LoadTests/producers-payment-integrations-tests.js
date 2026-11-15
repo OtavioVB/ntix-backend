@@ -5,8 +5,8 @@ import { Rate, Trend } from "k6/metrics";
 // Perfil moderado (REQ4, Decisões em aberto 5): até 50 VUs, p95 abaixo de 500 ms e menos de 1% de erros nos endpoints
 // da aba Integrações. O ranqueamento não tem endpoint: o p95 < 50 ms dele é medido no REQ7, no caminho da cobrança.
 //
-// Os endpoints exigem o access token do usuário da produtora (REQ5). Enquanto o login não existir, gere um token com a
-// chave de JwtConfiguration__SigningKey (claims sub, producer_id, producer_slug, user_type).
+// Os endpoints exigem o access token do usuário da produtora (REQ5): pegue o accessToken da resposta do login
+// (POST /api/v1/producers/sessions). Ele vale 15 minutos, mais que a execução abaixo.
 // k6 run -e BASE_URL=http://localhost:8080 -e SLUG=produtora-x -e ACCESS_TOKEN=eyJ... tsts/LoadTests/producers-payment-integrations-tests.js
 
 const getProvidersFailRate = new Rate("get_payment_providers_fail");

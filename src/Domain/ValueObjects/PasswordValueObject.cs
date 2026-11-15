@@ -107,6 +107,29 @@ public readonly struct PasswordValueObject
             methodResult: MethodResult.Success());
     }
 
+    /// <summary>
+    /// Senha digitada no login (REQ5): só não pode ser vazia. A regra de força vale para quem define a senha, não para
+    /// quem a confere.
+    /// </summary>
+    public static PasswordValueObject BuildForSignIn(string? password)
+    {
+        var value = password ?? string.Empty;
+
+        if (value.Length == 0)
+        {
+            return new PasswordValueObject(
+                isValid: false,
+                methodResult: MethodResult.Error([Notification.Error(
+                    code: PASSWORD_COULD_NOT_BE_EMPTY_NOTIFICATION_CODE,
+                    message: PASSWORD_COULD_NOT_BE_EMPTY_NOTIFICATION_MESSAGE)]));
+        }
+
+        return new PasswordValueObject(
+            isValid: true,
+            password: value,
+            methodResult: MethodResult.Success());
+    }
+
     private static bool IsSymbol(char character)
         => !char.IsLetterOrDigit(character) && !char.IsWhiteSpace(character);
 

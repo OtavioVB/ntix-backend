@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { clearSessionTokens, storeSessionTokens } from "../../api/auth";
 import type { ProducerIntegration } from "../../api/payments";
 import { ProducerSessionProvider, type ProducerSession } from "../../producer/session";
 import PanelRoutes from "./PanelRoutes";
@@ -21,6 +22,7 @@ function renderIntegrations(session: Partial<ProducerSession> = {}) {
       <ProducerSessionProvider initial={{ ...LOGGED_IN, ...session }}>
         <Routes>
           <Route path="/painel/*" element={<PanelRoutes />} />
+          <Route path="/entrar" element={<h1>Entrar</h1>} />
         </Routes>
       </ProducerSessionProvider>
     </MemoryRouter>,
@@ -32,7 +34,10 @@ beforeAll(() => {
 });
 
 beforeEach(() => window.sessionStorage.clear());
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  clearSessionTokens();
+});
 
 describe("regras da aba Integrações", () => {
   it("mostra do segredo só o final, nunca mais da metade", () => {
@@ -147,7 +152,8 @@ describe("aba Integrações com a API real", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    renderIntegrations({ accessToken: "token-123" });
+    storeSessionTokens({ accessToken: "token-123", refreshToken: "refresh-123" });
+    renderIntegrations();
 
     await waitFor(() => expect(screen.getByRole("region", { name: "1 integração" })).toHaveTextContent("Conta da API"));
     expect(within(screen.getByRole("region", { name: "Pix" })).getByText("Conta da API")).toBeInTheDocument();
@@ -157,12 +163,24 @@ describe("aba Integrações com a API real", () => {
     for (const [, init] of authenticated as unknown as [string, RequestInit][]) expect((init.headers as Record<string, string>).Authorization).toBe("Bearer token-123");
   });
 
-  it("pede para entrar de novo quando a sessão não é aceita", async () => {
+  it("volta para o login quando a sessão não é aceita nem renovada", async () => {
     window.sessionStorage.setItem("ntix:api-mode", "real");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+    storeSessionTokens({ accessToken: "token-vencido", refreshToken: "refresh-revogado" });
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(
+        url.endsWith("/payment-providers")
+          ? new Response(JSON.stringify(DEMO_PROVIDERS), { status: 200 })
+          : url.endsWith("/sessions/refresh")
+            ? new Response(JSON.stringify([{ code: "INVALID_REFRESH_TOKEN", message: "Sua sessão expirou. Entre de novo para continuar." }]), { status: 401 })
+            : new Response(null, { status: 401 }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
 
     renderIntegrations();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Sua sessão expirou. Entre de novo para continuar.");
+    expect(await screen.findByRole("heading", { level: 1, name: "Entrar" })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/sessions/refresh"))).toHaveLength(1);
+    expect(window.localStorage.getItem("ntix.producer.refresh-token.v1")).toBeNull();
   });
 });

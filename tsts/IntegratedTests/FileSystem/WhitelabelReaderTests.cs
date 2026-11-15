@@ -7,6 +7,7 @@ using Domain.ValueObjects;
 using Infra.FileSystem.Base.Configuration;
 using Infra.FileSystem.Whitelabels;
 using Infra.FileSystem.Whitelabels.Enums;
+using IntegratedTests.Support;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -226,6 +227,9 @@ public sealed class WhitelabelReaderTests : IDisposable
             {
                 ["WhitelabelConfiguration:DirectoryPath"] = _directory,
                 ["PasswordConfiguration:PrivateKey"] = "chave-de-teste",
+                ["JwtConfiguration:SigningKey"] = ProducerTestData.JWT_SIGNING_KEY,
+                ["JwtConfiguration:Issuer"] = ProducerTestData.JWT_ISSUER,
+                ["JwtConfiguration:Audience"] = ProducerTestData.JWT_AUDIENCE,
             })
             .Build();
 

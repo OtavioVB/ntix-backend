@@ -67,8 +67,13 @@ export async function postJson(path: string, body: unknown, options: { execution
   };
 }
 
-/** Resultado de endpoint que devolve dados no sucesso (ex.: integrações) e `Notification[]` na recusa. */
-export type ApiDataResult<T> = { ok: true; status: number; data: T } | { ok: false; status: number; notifications: ApiNotification[] };
+/**
+ * Resultado de endpoint que devolve dados no sucesso (ex.: integrações) e `Notification[]` na recusa.
+ * `retryAfterSeconds` vem do header `Retry-After` do 429 (ex.: limite de tentativas de login do REQ5).
+ */
+export type ApiDataResult<T> =
+  | { ok: true; status: number; data: T }
+  | { ok: false; status: number; notifications: ApiNotification[]; retryAfterSeconds?: number };
 
 export const UNAUTHORIZED_CODE = "UNAUTHORIZED";
 const UNAUTHORIZED_MESSAGE = "Sua sessão expirou. Entre de novo para continuar.";
@@ -77,8 +82,9 @@ export const FORBIDDEN_CODE = "FORBIDDEN";
 const FORBIDDEN_MESSAGE = "Você não tem acesso a esta produtora.";
 
 /**
- * Chamada autenticada do painel do produtor (REQ5): `Authorization: Bearer` com o access token, sem X-Execution-User,
- * porque a API tira o usuário do token. 401 e 403 viram notificações próprias, já que a API responde sem corpo.
+ * Chamada à API que devolve dados. Com `accessToken`, é chamada do painel do produtor (REQ5): `Authorization: Bearer`,
+ * sem X-Execution-User, porque a API tira o usuário do token. 401 e 403 sem corpo (token recusado pelo framework) viram
+ * notificações próprias; com corpo (ex.: login recusado), valem as notificações da API.
  */
 export async function requestJson<T>(
   method: "GET" | "POST" | "PUT",
@@ -104,13 +110,15 @@ export async function requestJson<T>(
   const body = await response.json().catch(() => null);
   if (response.ok) return { ok: true, status: response.status, data: body as T };
 
-  if (response.status === 401) return { ok: false, status: 401, notifications: [{ code: UNAUTHORIZED_CODE, message: UNAUTHORIZED_MESSAGE }] };
-  if (response.status === 403) return { ok: false, status: 403, notifications: [{ code: FORBIDDEN_CODE, message: FORBIDDEN_MESSAGE }] };
-
   const notifications = toNotifications(body);
+  if (!notifications.length && response.status === 401) return { ok: false, status: 401, notifications: [{ code: UNAUTHORIZED_CODE, message: UNAUTHORIZED_MESSAGE }] };
+  if (!notifications.length && response.status === 403) return { ok: false, status: 403, notifications: [{ code: FORBIDDEN_CODE, message: FORBIDDEN_MESSAGE }] };
+
+  const retryAfter = Number(response.headers.get("Retry-After"));
   return {
     ok: false,
     status: response.status,
     notifications: notifications.length ? notifications : [{ code: NETWORK_ERROR_CODE, message: NETWORK_ERROR_MESSAGE }],
+    ...(response.status === 429 && retryAfter > 0 ? { retryAfterSeconds: retryAfter } : {}),
   };
 }

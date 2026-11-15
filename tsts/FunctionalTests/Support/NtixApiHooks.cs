@@ -13,7 +13,7 @@ public sealed class NtixApiHooks
 
     public static readonly string PAYMENT_CREDENTIAL_ENCRYPTION_KEY = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 
-    /// <summary>Chave com que os passos assinam o access token do usuário da produtora, como o login do REQ5 fará.</summary>
+    /// <summary>Chave de assinatura do access token do usuário da produtora (REQ5) na API sob teste.</summary>
     public static readonly string JWT_SIGNING_KEY = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 
     /// <summary>Pasta de whitelabel da API sob teste: cada cenário grava nela os arquivos de que precisa.</summary>
@@ -58,6 +58,7 @@ public sealed class NtixApiHooks
             DELETE FROM payments.provider_credential_key WHERE id_provider IN (SELECT id_provider FROM payments.provider WHERE code <> 'ABACATEPAY');
             DELETE FROM payments.provider WHERE code <> 'ABACATEPAY';
             UPDATE payments.provider SET status = 'ENABLED';
+            DELETE FROM producers.producer_user_session;
             DELETE FROM producers.producer_user;
             DELETE FROM producers.producer;
             """);

@@ -33,6 +33,12 @@ public sealed class ProducerRepository : IProducerRepository
         SELECT id_producer FROM producers.producer WHERE slug = @slug;
         """;
 
+    private const string SELECT_BY_ID_SQL = """
+        SELECT id_producer, name, email, phone, slug, status, created_at, created_correlation_id
+        FROM producers.producer
+        WHERE id_producer = @id_producer;
+        """;
+
     private const string INSERT_PRODUCER_SQL = """
         INSERT INTO producers.producer (id_producer, name, email, phone, slug, status, created_at, created_correlation_id)
         VALUES (@id_producer, @name, @email, @phone, @slug, @status, @created_at, @created_correlation_id);
@@ -90,6 +96,30 @@ public sealed class ProducerRepository : IProducerRepository
         command.Parameters.Add("@slug", NpgsqlDbType.Varchar, SLUG_MAX_LENGTH).Value = slug;
 
         return await command.ExecuteScalarAsync(cancellationToken) as Guid?;
+    }
+
+    public async Task<ProducerModel?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(GetByIdAsync), "producers.producer");
+
+        await using var command = _unitOfWork.CreateCommand(SELECT_BY_ID_SQL);
+
+        command.Parameters.Add("@id_producer", NpgsqlDbType.Uuid).Value = id;
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        if (!await reader.ReadAsync(cancellationToken))
+            return null;
+
+        return new ProducerModel(
+            Id: reader.GetGuid(0),
+            Name: reader.GetString(1),
+            Email: reader.GetString(2),
+            Phone: reader.GetString(3),
+            Slug: reader.GetString(4),
+            Status: reader.GetString(5),
+            CreatedAt: reader.GetDateTime(6),
+            CreatedCorrelationId: reader.GetGuid(7));
     }
 
     public async Task<ProducerCreationResult> CreateAsync(ProducerModel producer, CancellationToken cancellationToken = default)

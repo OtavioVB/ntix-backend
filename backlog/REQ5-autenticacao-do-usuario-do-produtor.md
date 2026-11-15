@@ -1,6 +1,6 @@
 # REQ5 - Autenticação do Usuário do Produtor
 
-- **Status**: Proposto
+- **Status**: Implementado (aguardando validação); libera o REQ4 para produção
 - **Área**: produtor / plataforma
 - **Depende de**: REQ1 (cadastro do produtor, que cria o usuário administrador com senha)
 - **Habilita**: REQ4 (integrações de pagamento) e todo endpoint do painel do produtor
@@ -356,16 +356,29 @@ Funcionalidade: Autenticação do usuário do produtor
 - Usuário `PENDING` entra até existir a verificação de e-mail; `BLOCKED` não.
 - No máximo 10 tentativas de login por e-mail a cada 15 minutos (RN12).
 
+## Decisões tomadas na implementação
+
+O usuário pediu a implementação com autonomia, pelas estratégias já definidas. As decisões em aberto seguiram a decisão provisória ou a proposta de cada uma, e o que não estava definido foi decidido assim:
+
+- **Decisões em aberto 1 a 5**: adotadas como propostas. Contam todas as tentativas, em janela fixa e em memória; refresh token no `localStorage`; 15 minutos e 7 dias, configuráveis em `JwtConfiguration`; carga do login com 50 VUs, p95 < 1 s e < 1% de erros, e perfil moderado na renovação; sessões expiradas ficam no banco até existir `Workers`.
+- **Limite de tentativas sem `System.Threading.RateLimiting`**: o `FixedWindowRateLimiter` não aceita `TimeProvider`, e o teste da janela reaberta (RN12) exige relógio falso. Ele também seria pacote novo na `Application`. O `LoginAttemptLimiter` é uma janela fixa por e-mail com `ConcurrentDictionary` e `TimeProvider`, só com a biblioteca padrão, com a mesma regra: chave SHA-256 do e-mail normalizado, contagem a partir da primeira tentativa e varredura das janelas vencidas uma vez por janela.
+- **`Retry-After`**: o controller pergunta ao `LoginAttemptLimiter` quantos segundos faltam, porque o `MethodResult<T>` só leva saída no sucesso. O CORS expõe o header para o front mostrar o tempo.
+- **Emissão do JWT**: `Microsoft.IdentityModel.JsonWebTokens` 8.19.2 entrou explicitamente na `Application`, na mesma versão que o JwtBearer traz, como a [RFC 0007](../docs/rfcs/0007-autenticacao-jwt-bearer.md) previa. `JwtConfiguration` e `ProducerClaims` foram para a `Application`, e a mesma configuração emite e valida.
+- **Códigos de notificação**: os do contrato saem sem o sufixo da constante (`INVALID_CREDENTIALS`, `PRODUCER_USER_BLOCKED`, `TOO_MANY_LOGIN_ATTEMPTS`, `INVALID_REFRESH_TOKEN`), como os demais códigos da API. O 400 do login usa os códigos do `EmailValueObject` (`EMAIL_FORMAT_INVALID`...) e `PASSWORD_COULD_NOT_BE_EMPTY` do `PasswordValueObject.BuildForSignIn`, que só exige senha não vazia.
+- **Refresh token fora do formato**: tratado como inexistente (401 na renovação, 204 no logout). Só headers auditáveis ausentes dão 400 nesses endpoints.
+- **Concorrência na renovação**: a sessão é lida com `FOR UPDATE`. Duas renovações simultâneas com o mesmo token: a primeira gira, a segunda encontra o token já substituído e revoga a família, como a RN7 manda. O front faz uma única renovação por vez para não cair nisso.
+- **Renovação de usuário bloqueado** (RN8): 403 sem girar o token e sem revogar a sessão, porque revogar não foi estipulado. O próximo login do bloqueado também dá 403.
+- **Validade do refresh token**: cada renovação dá 7 dias ao token novo; a sessão expira depois de 7 dias sem renovação, como no diagrama de estados.
+- **Métricas**, no padrão de nomes do projeto: funis `ntix.producers.sessions.creation`, `.refresh` e `.revocation`; `producer_session_refresh_reuse_total` virou `ntix.producers.sessions.refresh.reuse`, e `producer_login_rate_limited_total` virou `ntix.producers.sessions.login.rate_limited`. O tempo do hash usa o histograma do cadastro (`ntix.producers.password.hash.duration`). Dashboard: `devops/observability/grafana/dashboards/ntix-producer-sessions.json`.
+- **Testes**: o `ProducerSlugAuthorizationHandler` (RN9) fica no `WebApi`, então os testes unitários passaram a referenciar o `WebApi`. Os testes funcionais usam um e-mail por cenário (`ana+<cenário>@...`), porque o limite de tentativas fica na memória da API, que sobe uma vez para todos os cenários. Os passos do REQ4 passaram a emitir o token pelo `ProducerAccessTokenIssuer`.
+- **Front** (`?api=real`):
+  - `/entrar` chama o login. A tela valida o e-mail e a senha não vazia antes de enviar e mostra a recusa da API, inclusive em quanto tempo tentar de novo no 429.
+  - `api/auth.ts`: access token em memória, refresh token em `localStorage` (`ntix.producer.refresh-token.v1`). No 401, renova uma única vez, mesmo com várias chamadas recusadas juntas, e repete a chamada; se a renovação for recusada, apaga os tokens e o painel volta para `/entrar`. Falha de rede na renovação não encerra a sessão.
+  - A renovação atualiza o nome, o slug e o status da produtora na sessão.
+  - "Sair" chama o revoke e apaga os tokens, mesmo sem resposta da API.
+  - Em demonstração, nada muda: o login confere só a equipe deste navegador.
+
 ## Decisões em aberto
 
-1. **Detalhes do limite de tentativas** (RN12):
-   - Decisão provisória: contam todas as tentativas, inclusive as aceitas, em janela fixa e em memória.
-   - Alternativa: contar só as recusadas e zerar o contador no login aceito.
-2. **Onde o front guarda o refresh token**.
-   - Decisão provisória: `localStorage`, com rotação e revogação por reuso.
-   - Alternativa mais resistente a XSS: cookie `HttpOnly; Secure; SameSite=Strict` no domínio da API, que exige CORS com credenciais e muda o contrato do refresh e do revoke.
-3. **Durações**: access token de 15 minutos e refresh token de 7 dias. Confirma?
-4. **Carga do login**: o hash leva centenas de milissegundos de propósito, então o perfil moderado (p95 < 500 ms) pode não caber.
-   - Proposta: 50 VUs, p95 < 1 s e < 1% de erros no login.
-   - Perfil moderado para o refresh.
-5. **Limpeza de sessões expiradas**: ficam no banco. Uma rotina de limpeza entra em requisito próprio, quando houver `Workers`?
+1. **Refresh token em cookie `HttpOnly`**: a alternativa mais resistente a XSS continua possível. Exige CORS com credenciais e muda o contrato do refresh e do revoke.
+2. **Limpeza de sessões expiradas**: entra em requisito próprio, quando houver `Workers`.

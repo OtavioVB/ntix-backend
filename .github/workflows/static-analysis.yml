@@ -82,9 +82,10 @@ jobs:
       - name: Compilar a solução
         run: dotnet build ntix.slnx --configuration "$BUILD_CONFIGURATION"
 
+      # Os funcionais sobem a WebApi real: são eles que cobrem controllers, autenticação e CORS.
       - name: Rodar os testes com cobertura
         run: |
-          for project in UnitTests IntegratedTests; do
+          for project in UnitTests IntegratedTests FunctionalTests; do
             dotnet test "tsts/$project/$project.csproj" \
               --configuration "$BUILD_CONFIGURATION" \
               --no-build \

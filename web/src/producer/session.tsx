@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_STORE_LOOK, type StoreLook } from "../features/store/StoreBuilder";
+import { clearSessionTokens, readRefreshToken, subscribeAuth } from "../api/auth";
+import { isRealApi } from "../api/mode";
 import type { PaymentMethod, ProducerIntegration } from "../api/payments";
+import type { ProducerSessionResponse } from "../api/sessions";
 import type { PlatformData } from "../platform/types";
 import { isValidDocument } from "./legal";
 
@@ -27,13 +30,8 @@ export type ProducerSession = {
   legalName: string;
   storeLook: StoreLook;
   platform: PlatformData | null;
-  /** Slug da produtora na API (`/api/v1/producers/{slug}`), preenchido pelo login (REQ5). */
+  /** Slug da produtora na API (`/api/v1/producers/{slug}`), preenchido pelo login e pela renovação (REQ5). */
   slug: string;
-  /**
-   * Access token do login (REQ5). Fica só em memória: nunca vai para o localStorage, nem na demonstração.
-   * Enquanto o login real não existir, o modo `?api=real` do painel recebe 401 e pede para entrar de novo.
-   */
-  accessToken?: string;
   /** Integrações de pagamento da demonstração (REQ4). Credencial secreta guardada só pelo final, como a API devolve. */
   paymentIntegrations: ProducerIntegration[];
   /** Rotas da demonstração: por método, os ids das integrações em ordem de prioridade. */
@@ -92,12 +90,10 @@ function loadStored(): ProducerSession | null {
   }
 }
 
+// Os tokens da API real não entram aqui: ficam em api/auth.ts (access token em memória, refresh token à parte).
 function store(session: ProducerSession) {
   try {
-    // O access token não sobrevive ao recarregamento: fica fora do que é gravado no navegador.
-    const persisted: Partial<ProducerSession> = { ...session };
-    delete persisted.accessToken;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   } catch {
     // Sem armazenamento a demonstração segue funcionando, só não sobrevive a um recarregamento.
   }
@@ -118,12 +114,43 @@ type ProviderProps = {
   initial?: Partial<ProducerSession>;
 };
 
+/**
+ * Sessão aberta pelo login real (REQ5): a produtora e o administrador vêm da API, não da demonstração. O e-mail é o
+ * digitado no login, porque a resposta não o devolve.
+ */
+export function sessionFromLogin(response: ProducerSessionResponse, email: string): Partial<ProducerSession> {
+  return {
+    ...sessionFromRefresh(response),
+    loggedIn: true,
+    adminEmail: email,
+    team: [{ id: response.user.id, name: response.user.name, email, isAdmin: response.user.userType === "ADMINISTRATOR", invited: false }],
+  };
+}
+
+/** A renovação traz o slug e o status atuais da produtora (RN8). */
+function sessionFromRefresh(response: ProducerSessionResponse): Partial<ProducerSession> {
+  return { name: response.producer.name, slug: response.producer.slug, status: response.producer.status };
+}
+
+/** No modo real, sem refresh token guardado não há como reabrir a sessão: o painel volta para o login. */
+function withoutOrphanLogin(session: ProducerSession): ProducerSession {
+  return session.loggedIn && isRealApi() && !readRefreshToken() ? { ...session, loggedIn: false } : session;
+}
+
 export function ProducerSessionProvider({ children, initial }: ProviderProps) {
-  const [session, setSession] = useState<ProducerSession>(() => (initial ? { ...INITIAL_SESSION, ...initial } : (loadStored() ?? INITIAL_SESSION)));
+  const [session, setSession] = useState<ProducerSession>(() => (initial ? { ...INITIAL_SESSION, ...initial } : withoutOrphanLogin(loadStored() ?? INITIAL_SESSION)));
 
   useEffect(() => {
     if (!initial) store(session);
   }, [session, initial]);
+
+  useEffect(
+    () =>
+      subscribeAuth((event) =>
+        setSession((current) => (event.type === "expired" ? { ...current, loggedIn: false } : { ...current, ...sessionFromRefresh(event.session) })),
+      ),
+    [],
+  );
 
   const value = useMemo<SessionContext>(
     () => ({
@@ -135,6 +162,7 @@ export function ProducerSessionProvider({ children, initial }: ProviderProps) {
         } catch {
           // Nada a apagar.
         }
+        clearSessionTokens();
         setSession(INITIAL_SESSION);
       },
     }),

@@ -1,3 +1,5 @@
+using Application.UseCases.Base.Authentication;
+using Application.UseCases.Base.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -10,20 +12,16 @@ public static class AuthenticationExtensions
     /// <summary>Política dos endpoints do painel do produtor: token válido e slug da rota igual ao do token.</summary>
     public const string PRODUCER_USER_POLICY = "ProducerUser";
 
-    public const int SIGNING_KEY_MIN_SIZE_IN_BYTES = 32;
-
     private static readonly TimeSpan CLOCK_SKEW = TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    /// Validação do access token emitido pelo login (REQ5). Usa a mesma <see cref="JwtConfiguration"/> da emissão; a API não
+    /// sobe sem a chave de assinatura ou com menos de 32 bytes.
+    /// </summary>
     public static IServiceCollection AddProducerAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         var jwtConfiguration = configuration.GetRequiredSection("JwtConfiguration").Get<JwtConfiguration>()!;
-
-        ArgumentException.ThrowIfNullOrWhiteSpace(jwtConfiguration.Issuer);
-        ArgumentException.ThrowIfNullOrWhiteSpace(jwtConfiguration.Audience);
-
-        var signingKey = DecodeSigningKey(jwtConfiguration.SigningKey);
-
-        services.AddSingleton(jwtConfiguration);
+        var signingKey = jwtConfiguration.GetValidatedSigningKey();
 
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -63,26 +61,4 @@ public static class AuthenticationExtensions
     /// <summary>Usuário do produtor que fez a requisição (RN10 do REQ5): é ele o <c>ExecutionUser</c>, e não o header.</summary>
     public static string? GetProducerUserId(this ClaimsPrincipal user)
         => user.FindFirst(ProducerClaims.SUBJECT)?.Value;
-
-    private static byte[] DecodeSigningKey(string? signingKey)
-    {
-        if (string.IsNullOrWhiteSpace(signingKey))
-            throw new InvalidOperationException("JwtConfiguration:SigningKey is required.");
-
-        byte[] key;
-
-        try
-        {
-            key = Convert.FromBase64String(signingKey);
-        }
-        catch (FormatException)
-        {
-            throw new InvalidOperationException("JwtConfiguration:SigningKey must be Base64.");
-        }
-
-        if (key.Length < SIGNING_KEY_MIN_SIZE_IN_BYTES)
-            throw new InvalidOperationException($"JwtConfiguration:SigningKey must have at least {SIGNING_KEY_MIN_SIZE_IN_BYTES} bytes.");
-
-        return key;
-    }
 }
