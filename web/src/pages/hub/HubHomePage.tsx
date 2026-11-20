@@ -83,7 +83,7 @@ function Spotlight({ events }: { events: HubEvent[] }) {
 }
 
 export function HubHomePage() {
-  const { events, extra, now } = useHub();
+  const { events, extra, now, loadError } = useHub();
   const [params, setParams] = useSearchParams();
 
   const query = params.get("q") ?? "";
@@ -121,6 +121,7 @@ export function HubHomePage() {
 
       <Scene light="penumbra" className="hub-body" id="eventos">
         <div className="n-container">
+          {loadError && <p className="n-field__error" role="alert">Não foi possível carregar os eventos agora. Tente de novo em instantes.</p>}
           {filtering && <h1 className="n-display n-display--md hub-body__title">{query ? `Resultados para "${query}"` : "Encontre seu próximo evento"}</h1>}
 
           <div className="hub-filters">

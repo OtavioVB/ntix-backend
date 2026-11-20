@@ -102,6 +102,11 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Carga: k6. O cadastro de conta, o cadastro de produtor e a consulta do whitelabel (REQ3) usam o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros.
 - Carga do login do produtor (REQ5): 50 VUs, p95 abaixo de 1 s e menos de 1% de erros, porque o hash da senha é lento de propósito; a renovação usa o perfil moderado. O script cadastra contas suficientes para nenhuma passar do limite de tentativas.
 
+### Listas públicas (REQ11)
+- Paginação por `page` (a partir de 1) e `pageSize` (padrão 20, máximo 50); a resposta traz `items`, `page`, `pageSize` e `totalItems`. Filtro inválido recusa a consulta inteira com uma notificação por filtro.
+- Endpoint público de leitura é `[AllowAnonymous]`, aceita `X-Execution-User` opcional e responde com `Cache-Control: public, max-age=15` quando o dado muda com a venda.
+- Filtro de texto que precisa ignorar maiúsculas e acentos usa coluna gerada normalizada no banco (`translate(lower(...))`) e consulta exata, sem `LIKE`.
+
 ### Whitelabel (front)
 - Cada implantação é whitelabel: a identidade visual vem de uma configuração em runtime, nunca de build. Hoje `web/public/whitelabel.json` (substituído por implantação, sem rebuild); no futuro, a API, apontada por `VITE_WHITELABEL_URL`, no mesmo formato.
 - No back-end (REQ3), a configuração é o arquivo `{slug}.json` da produtora (ex.: `ntix.json`) em uma pasta do servidor. Nunca é devolvido como está: a cada consulta é validado contra a estrutura e a resposta sai do modelo tipado.

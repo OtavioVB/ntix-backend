@@ -55,6 +55,10 @@ Dashboard: `ntix-producer-events-funnel.json`.
 | Lista de lotes (REQ10) | `ntix_events_batches_list_requests_total`, `..._outcomes_total` | `served`, `validation_failed`, `event_not_found`, `error` |
 | Publicação de evento (REQ10) | `ntix_events_publish_requests_total`, `..._outcomes_total` | `published`, `validation_failed`, `event_not_found`, `not_draft`, `event_already_started`, `without_batch`, `without_payment_method`, `error` |
 
+| Vitrine: lista (REQ11) | `ntix_events_search_requests_total`, `..._outcomes_total` | `served`, `validation_failed`, `error` |
+| Vitrine: página do evento (REQ11) | `ntix_events_public_get_requests_total`, `..._outcomes_total` | `served`, `event_not_found`, `error` |
+
+- A vitrine é anônima: o log registra os filtros usados (produtora, categoria, UF) e o slug do evento, que é público; nunca dado do visitante.
 - A alteração de evento registra no log só os nomes dos campos que mudaram (`title`, `period`, `venue`...), nunca os valores de texto livre.
 - `without_payment_method` na publicação indica produtora sem integração Pix disponível: o caminho é a aba Integrações.
 

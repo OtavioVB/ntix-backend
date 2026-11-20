@@ -39,6 +39,10 @@ public sealed class ProducerRepository : IProducerRepository
         WHERE id_producer = @id_producer;
         """;
 
+    private const string SELECT_PROFILES_BY_IDS_SQL = """
+        SELECT id_producer, slug, name FROM producers.producer WHERE id_producer = ANY(@id_producers);
+        """;
+
     private const string INSERT_PRODUCER_SQL = """
         INSERT INTO producers.producer (id_producer, name, email, phone, slug, status, created_at, created_correlation_id)
         VALUES (@id_producer, @name, @email, @phone, @slug, @status, @created_at, @created_correlation_id);
@@ -96,6 +100,27 @@ public sealed class ProducerRepository : IProducerRepository
         command.Parameters.Add("@slug", NpgsqlDbType.Varchar, SLUG_MAX_LENGTH).Value = slug;
 
         return await command.ExecuteScalarAsync(cancellationToken) as Guid?;
+    }
+
+    public async Task<IReadOnlyList<ProducerProfileModel>> GetProfilesByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        if (ids.Count == 0)
+            return [];
+
+        using var activity = StartDatabaseActivity(nameof(GetProfilesByIdsAsync), "producers.producer");
+
+        await using var command = _unitOfWork.CreateCommand(SELECT_PROFILES_BY_IDS_SQL);
+
+        command.Parameters.Add("@id_producers", NpgsqlDbType.Array | NpgsqlDbType.Uuid).Value = ids.Distinct().ToArray();
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        var profiles = new List<ProducerProfileModel>();
+
+        while (await reader.ReadAsync(cancellationToken))
+            profiles.Add(new ProducerProfileModel(reader.GetGuid(0), reader.GetString(1), reader.GetString(2)));
+
+        return profiles;
     }
 
     public async Task<ProducerModel?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

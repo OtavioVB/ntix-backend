@@ -194,8 +194,20 @@ function EventBody({ event }: { event: HubEvent }) {
 
 export function EventPage() {
   const { slug } = useParams();
-  const { findBySlug } = useHub();
+  const { findBySlug, loading } = useHub();
   const event = findBySlug(slug);
+
+  // Vitrine real ainda carregando: não diz que o evento saiu de cartaz antes de a API responder.
+  if (!event && loading) {
+    return (
+      <Scene light="penumbra" className="hub-notfound">
+        <title>Carregando evento · Ntix</title>
+        <div className="n-container">
+          <p className="n-lead" role="status">Carregando o evento…</p>
+        </div>
+      </Scene>
+    );
+  }
 
   if (!event) {
     return (

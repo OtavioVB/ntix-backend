@@ -1,6 +1,6 @@
 # REQ11 - Vitrine Pública de Eventos
 
-- **Status**: Proposto
+- **Status**: Implementado (aguardando validação)
 - **Área**: comprador / catálogo
 - **Depende de**: REQ10 (lotes e publicação)
 - **Habilita**: REQ6 (pedidos)
@@ -248,6 +248,20 @@ Funcionalidade: Vitrine pública de eventos
     Quando o comprador filtra com pageSize 500
     Então recebe 400 com EVENT_FILTER_INVALID_NOTIFICATION_CODE
 ```
+
+## Decisões tomadas na implementação
+
+Implementado na ordem da jornada, depois do REQ10. O que o requisito não definia foi decidido assim:
+
+- **Cidade normalizada como coluna gerada** (`city_normalized GENERATED ALWAYS AS (translate(lower(city), ...)) STORED`): a regra fica no banco, vale para os eventos já criados e não exigiu mudar a gravação do REQ9. A consulta normaliza o filtro com a mesma expressão.
+- **Total da paginação** com `COUNT(*) OVER ()` na própria consulta; só a página além do fim faz a contagem à parte.
+- **Filtro inválido** devolve uma notificação `EVENT_FILTER_INVALID` por filtro, cada uma com a mensagem do problema.
+- **Loja de produtora inexistente** (`?producer=` com slug que não existe) devolve a lista vazia, sem 404, para não revelar quais slugs existem.
+- **Slug inexistente, rascunho ou acima de 126 caracteres** respondem 404 `EVENT_NOT_FOUND`, sem validar o formato.
+- **Produtora na resposta** com slug e nome comercial, lidos de uma vez para a página (`IProducerRepository.GetProfilesByIdsAsync`).
+- **`OrderConfiguration:MaxTicketsPerOrder`** nasce aqui (padrão 6, em `appsettings.json`), para o REQ6 usar o mesmo limite.
+- **Front**: com `?api=real`, o hub carrega a primeira página da vitrine (50 eventos) e a página de cada evento em paralelo, e as telas atuais do hub passam a usar esses dados. Como a API não expõe estoque, o lote em venda vira, no hub, um lote com `maxSelectable` ingressos; o aviso de "últimos ingressos" não aparece no modo real (Decisões, item 2). Filtros e busca do hub continuam no navegador, sobre os eventos carregados. O checkout segue em demonstração até o REQ6.
+- **Carga**: `tsts/LoadTests/events-public-tests.js` com o perfil proposto (200 VUs, p95 < 300 ms), a confirmar.
 
 ## Decisões em aberto
 

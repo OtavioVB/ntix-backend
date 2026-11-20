@@ -1,5 +1,5 @@
 import { authorizedRequest } from "./auth";
-import type { ApiDataResult } from "./client";
+import { requestJson, type ApiDataResult } from "./client";
 
 /** Situação do evento (REQ9). Só a publicação (REQ10) leva a PUBLISHED. */
 export type EventStatus = "DRAFT" | "PUBLISHED";
@@ -100,4 +100,81 @@ export function updateTicketBatch(slug: string, eventId: string, batchId: string
 /** POST .../events/{id}/publication: sem corpo; devolve o evento publicado. */
 export function publishProducerEvent(slug: string, eventId: string): Promise<ApiDataResult<ProducerEvent>> {
   return authorizedRequest("POST", `${eventsRoute(slug)}/${encodeURIComponent(eventId)}/publication`);
+}
+
+// Vitrine pública (REQ11): anônima, sem token.
+
+export type EventSaleState = "ON_SALE" | "UPCOMING" | "SOLD_OUT" | "CLOSED";
+
+export type PublicProducer = { slug: string; name: string };
+
+/** Item de `GET /api/v1/events`: sem estoque nem vendidos. */
+export type PublicEventSummary = {
+  slug: string;
+  title: string;
+  category: EventCategory;
+  startsAt: string;
+  venueName: string;
+  city: string;
+  state: string;
+  imageUrl?: string;
+  producer: PublicProducer;
+  priceFromCents?: number;
+  saleState: EventSaleState;
+};
+
+export type PublicEventsPage = { items: PublicEventSummary[]; page: number; pageSize: number; totalItems: number };
+
+/** Lote da página pública: `maxSelectable` já limitado pelo pedido (até 6) e zero fora de venda. */
+export type PublicBatch = {
+  id: string;
+  name: string;
+  note?: string;
+  priceCents: number;
+  salesStartsAt: string;
+  salesEndsAt: string;
+  saleState: BatchSaleState;
+  maxSelectable: number;
+};
+
+export type PublicEvent = {
+  slug: string;
+  title: string;
+  description?: string;
+  category: EventCategory;
+  startsAt: string;
+  endsAt: string;
+  doorsOpenAt?: string;
+  venueName: string;
+  address: string;
+  city: string;
+  state: string;
+  ageRating: AgeRating;
+  imageUrl?: string;
+  producer: PublicProducer;
+  saleState: EventSaleState;
+  maxTicketsPerOrder: number;
+  batches: PublicBatch[];
+};
+
+export type PublicEventsQuery = {
+  producer?: string;
+  category?: EventCategory;
+  city?: string;
+  state?: string;
+  startsFrom?: string;
+  startsTo?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export function searchPublicEvents(query: PublicEventsQuery = {}, signal?: AbortSignal): Promise<ApiDataResult<PublicEventsPage>> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, String(value));
+  const search = params.toString();
+  return requestJson("GET", search ? `/api/v1/events?${search}` : "/api/v1/events", { signal });
+}
+
+export function getPublicEvent(slug: string, signal?: AbortSignal): Promise<ApiDataResult<PublicEvent>> {
+  return requestJson("GET", `/api/v1/events/${encodeURIComponent(slug)}`, { signal });
 }

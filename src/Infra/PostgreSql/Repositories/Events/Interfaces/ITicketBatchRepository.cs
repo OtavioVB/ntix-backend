@@ -14,6 +14,9 @@ public interface ITicketBatchRepository
     /// <summary>Lote do evento do produtor, travado até o fim da transação (a mesma trava que a reserva do REQ6 usa).</summary>
     Task<TicketBatchModel?> GetByIdForUpdateAsync(Guid producerId, Guid eventId, Guid batchId, CancellationToken cancellationToken = default);
 
+    /// <summary>Lotes de vários eventos de uma vez, para a vitrine (REQ11) não fazer uma consulta por evento.</summary>
+    Task<IReadOnlyList<TicketBatchModel>> ListByEventIdsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken cancellationToken = default);
+
     Task<TicketBatchWriteResult> UpdateAsync(TicketBatchModel batch, CancellationToken cancellationToken = default);
 
     /// <summary>

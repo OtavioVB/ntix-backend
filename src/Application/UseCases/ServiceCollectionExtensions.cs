@@ -54,6 +54,10 @@ using Application.UseCases.PublishEvent;
 using Application.UseCases.PublishEvent.Inputs;
 using Application.UseCases.UpdateTicketBatch;
 using Application.UseCases.UpdateTicketBatch.Inputs;
+using Application.UseCases.GetPublicEvent;
+using Application.UseCases.GetPublicEvent.Inputs;
+using Application.UseCases.SearchPublicEvents;
+using Application.UseCases.SearchPublicEvents.Inputs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -111,6 +115,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUseCase<UpdateTicketBatchUseCaseInput, TicketBatchOutput>, UpdateTicketBatchUseCase>();
         services.AddSingleton<PublishEventDiagnostics>();
         services.AddScoped<IUseCase<PublishEventUseCaseInput, ProducerEventOutput>, PublishEventUseCase>();
+
+        services.AddSingleton(configuration.GetSection("OrderConfiguration").Get<OrderConfiguration>() ?? new OrderConfiguration());
+        services.AddSingleton<SearchPublicEventsDiagnostics>();
+        services.AddScoped<IUseCase<SearchPublicEventsUseCaseInput, PublicEventsPageOutput>, SearchPublicEventsUseCase>();
+        services.AddSingleton<GetPublicEventDiagnostics>();
+        services.AddScoped<IUseCase<GetPublicEventUseCaseInput, PublicEventOutput>, GetPublicEventUseCase>();
 
         return services;
     }
