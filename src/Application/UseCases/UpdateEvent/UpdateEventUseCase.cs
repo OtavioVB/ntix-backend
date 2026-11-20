@@ -94,6 +94,7 @@ public sealed class UpdateEventUseCase : IUseCase<UpdateEventUseCaseInput, Produ
             }
 
             var updated = updateResult.Output!;
+            var changedFields = string.Join(", ", current.GetChangedFields(input.Details));
 
             await _eventRepository.UpdateAsync(EventConversions.ToModel(updated), cancellationToken);
 
@@ -101,7 +102,7 @@ public sealed class UpdateEventUseCase : IUseCase<UpdateEventUseCaseInput, Produ
 
             RecordOutcome(UpdateEventDiagnostics.OUTCOME_UPDATED);
 
-            UpdateEventLog.Updated(_logger, updated.Id.Value, producerSlug, string.Join(", ", current.GetChangedFields(input.Details)));
+            UpdateEventLog.Updated(_logger, updated.Id.Value, producerSlug, changedFields);
 
             return MethodResult<ProducerEventOutput>.Success(EventConversions.ToOutput(updated));
         }

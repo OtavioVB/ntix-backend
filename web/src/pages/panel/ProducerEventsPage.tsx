@@ -21,7 +21,7 @@ import {
 
 const DATE_FORMAT = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short" });
 
-function SelectField({ id, label, value, error, onChange, children }: { id: string; label: string; value: string; error?: string; onChange: (value: string) => void; children: ReactNode }) {
+function SelectField({ id, label, value, error, onChange, children }: Readonly<{ id: string; label: string; value: string; error?: string; onChange: (value: string) => void; children: ReactNode }>) {
   return (
     <div className="n-field">
       <label className="n-field__label" htmlFor={id}>{label}</label>
@@ -34,7 +34,7 @@ function SelectField({ id, label, value, error, onChange, children }: { id: stri
 }
 
 /** Criação e edição: o mesmo formulário, porque a edição substitui todos os campos (REQ9). */
-function EventFormSection({ editing, onSave, onCancel }: { editing?: ProducerEvent; onSave: (form: EventForm) => Promise<EventFormErrors>; onCancel: () => void }) {
+function EventFormSection({ editing, onSave, onCancel }: Readonly<{ editing?: ProducerEvent; onSave: (form: EventForm) => Promise<EventFormErrors>; onCancel: () => void }>) {
   const [form, setForm] = useState<EventForm>(editing ? formFromEvent(editing) : EMPTY_EVENT_FORM);
   const [errors, setErrors] = useState<EventFormErrors>({});
   const [sending, setSending] = useState(false);
@@ -119,6 +119,8 @@ export function ProducerEventsPage() {
       } else {
         setLoadError(result.notifications[0]?.message ?? "Não foi possível carregar os eventos.");
       }
+    }).catch(() => {
+      if (!controller.signal.aborted) setLoadError("Não foi possível carregar os eventos.");
     });
 
     return () => controller.abort();

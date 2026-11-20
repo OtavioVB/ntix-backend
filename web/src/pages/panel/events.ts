@@ -119,6 +119,15 @@ export function validateEvent(form: EventForm, now = Date.now()): EventFormError
   if (!form.category) errors.category = "Escolha a categoria do evento.";
   if (!form.ageRating) errors.ageRating = "Escolha a classificação etária.";
 
+  const imageUrl = form.imageUrl.trim();
+  if (imageUrl && (!imageUrl.startsWith("https://") || imageUrl.length > LIMITS.imageUrl || /\s/.test(imageUrl))) errors.imageUrl = "A imagem deve ser um endereço https://.";
+
+  return { ...errors, ...validatePeriod(form, now), ...validateVenue(form) };
+}
+
+/** RN5 e RN6: início no futuro, fim depois do início (até 30 dias) e portões até 12 horas antes. */
+function validatePeriod(form: EventForm, now: number): EventFormErrors {
+  const errors: EventFormErrors = {};
   const startsAt = toTime(form.startsAt);
   const endsAt = toTime(form.endsAt);
   const doorsOpenAt = toTime(form.doorsOpenAt);
@@ -132,6 +141,12 @@ export function validateEvent(form: EventForm, now = Date.now()): EventFormError
   if (doorsOpenAt !== null && startsAt !== null && (doorsOpenAt > startsAt || startsAt - doorsOpenAt > MAX_DOORS_ADVANCE_MS))
     errors.doorsOpenAt = "A abertura dos portões deve ser até o início e no máximo 12 horas antes.";
 
+  return errors;
+}
+
+/** RN7: nome, endereço e cidade obrigatórios e a UF. */
+function validateVenue(form: EventForm): EventFormErrors {
+  const errors: EventFormErrors = {};
   const venueName = normalize(form.venueName);
   const address = normalize(form.address);
   const city = normalize(form.city);
@@ -140,9 +155,6 @@ export function validateEvent(form: EventForm, now = Date.now()): EventFormError
   if (address.length === 0 || address.length > LIMITS.address) errors.address = "O endereço do local deve ter de 1 a 256 caracteres.";
   if (city.length === 0 || city.length > LIMITS.city) errors.city = "A cidade deve ter de 1 a 80 caracteres.";
   if (!STATES.includes(form.state)) errors.state = "Escolha a UF.";
-
-  const imageUrl = form.imageUrl.trim();
-  if (imageUrl && (!imageUrl.startsWith("https://") || imageUrl.length > LIMITS.imageUrl || /\s/.test(imageUrl))) errors.imageUrl = "A imagem deve ser um endereço https://.";
 
   return errors;
 }

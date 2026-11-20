@@ -56,11 +56,6 @@ public readonly struct EventPeriodValueObject
         return Build(start, end, doors);
     }
 
-    private static DateTime? TryParse(string? value)
-        => DateTime.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed)
-            ? DateTime.SpecifyKind(parsed, DateTimeKind.Utc)
-            : null;
-
     public static EventPeriodValueObject Build(DateTime? startsAt, DateTime? endsAt, DateTime? doorsOpenAt)
     {
         if (startsAt is null || endsAt is null)
@@ -83,6 +78,11 @@ public readonly struct EventPeriodValueObject
 
         return new EventPeriodValueObject(isValid: true, startsAt: start, endsAt: end, doorsOpenAt: doors, methodResult: MethodResult.Success());
     }
+
+    private static DateTime? TryParse(string? value)
+        => DateTime.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed)
+            ? DateTime.SpecifyKind(parsed, DateTimeKind.Utc)
+            : null;
 
     // Data sem fuso (Unspecified) é tratada como UTC, como a API documenta; com fuso, é convertida.
     private static DateTime ToUtc(DateTime value)
