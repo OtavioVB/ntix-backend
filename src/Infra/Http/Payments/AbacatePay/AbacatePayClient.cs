@@ -17,6 +17,7 @@ public sealed class AbacatePayClient : IPixChargeClient
     public const string PROVIDER_CODE = "ABACATEPAY";
 
     private const string CREATE_ROUTE = "transparents/create";
+    private const int DETAIL_MAX_LENGTH = 200;
 
     private static readonly ActivitySource ACTIVITY_SOURCE = new("Ntix.Http");
 
@@ -54,7 +55,7 @@ public sealed class AbacatePayClient : IPixChargeClient
             activity?.SetTag("http.response.status_code", (int)response.StatusCode);
 
             if (!response.IsSuccessStatusCode)
-                return PixChargeResultModel.ProviderError(GetStatusReason((int)response.StatusCode));
+                return await ReadRefusalAsync(response, timeout.Token);
 
             return await ReadChargeAsync(response, timeout.Token);
         }
@@ -91,6 +92,31 @@ public sealed class AbacatePayClient : IPixChargeClient
         }
     }
 
+    /// <summary>
+    /// Recusa do fornecedor. Na 4xx (422, 400...), o motivo vem no campo <c>error</c> da resposta (ex.: "Property 'data.customer.cellphone' is missing"):
+    /// só esse texto, truncado, vai para o log, para quem opera descobrir o que ajustar sem ler o código. Nunca o corpo inteiro nem os headers.
+    /// </summary>
+    private static async Task<PixChargeResultModel> ReadRefusalAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        var status = (int)response.StatusCode;
+        var reason = GetStatusReason(status);
+
+        if (status is < 400 or >= 500 or 401 or 429)
+            return PixChargeResultModel.ProviderError(reason);
+
+        try
+        {
+            var envelope = await response.Content.ReadFromJsonAsync<ChargeEnvelope>(JSON_OPTIONS, cancellationToken);
+            var detail = envelope?.Error;
+
+            return PixChargeResultModel.ProviderError(reason, detail is { Length: > DETAIL_MAX_LENGTH } ? detail[..DETAIL_MAX_LENGTH] : detail);
+        }
+        catch (JsonException)
+        {
+            return PixChargeResultModel.ProviderError(reason);
+        }
+    }
+
     private static string GetStatusReason(int status)
         => status switch
         {
@@ -122,7 +148,7 @@ public sealed class AbacatePayClient : IPixChargeClient
             },
         };
 
-    private sealed record ChargeEnvelope(bool? Success, ChargeData? Data);
+    private sealed record ChargeEnvelope(bool? Success, ChargeData? Data, string? Error = null);
 
     private sealed record ChargeData(string? Id, string? BrCode, string? BrCodeBase64);
 }

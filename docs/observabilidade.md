@@ -101,7 +101,7 @@ Dashboard: `ntix-payments.json`. Roteiro de validação com o sandbox do fornece
 - `ntix_payments_provider_calls_total{provider, outcome}` conta cada chamada ao fornecedor: `outcome` é `created` ou o motivo da falha (`timeout`, `network`, `http_401`, `http_429`, `http_4xx`, `http_5xx`, `invalid_response`, `no_adapter`, `missing_credential`, `credential_unreadable`). `http_401` num produtor significa credencial errada na conta dele: o produtor precisa corrigir a integração.
 - `ntix_payments_provider_duration_seconds{provider}` é a duração das chamadas, e `ntix_payments_fallback_used_total` conta os Pix gerados por uma integração que não era a de prioridade 1.
 - `providers_failed` é a venda perdida por queda de todas as contas do produtor: alerta de negócio, com o log `7103`. Já `reused` alto é só gente clicando de novo.
-- O `API_KEY`, o `brCode`, o CPF e o e-mail do cliente não aparecem em log, métrica nem span; o span do fornecedor leva só o código dele e o status HTTP.
+- O `API_KEY`, o `brCode`, o CPF e o e-mail do cliente não aparecem em log, métrica nem span; o span do fornecedor leva só o código dele e o status HTTP. Na recusa 4xx, o log `7102` traz também o texto de `error` do fornecedor (truncado em 200 caracteres), para dizer o que ajustar.
 
 ## Funil de cadastro de cliente
 

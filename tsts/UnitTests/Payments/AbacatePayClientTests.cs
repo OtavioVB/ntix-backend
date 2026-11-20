@@ -102,18 +102,75 @@ public sealed class AbacatePayClientTests
     }
 
     [Fact]
-    public async Task Given_CustomerWithoutCellphone_When_Sending_Should_OmitTheField()
+    public async Task Given_CustomerWithoutCellphone_When_Sending_Should_SendAnEmptyStringBecauseTheProviderRequiresTheField()
     {
-        // Arrange
+        // Arrange: no sandbox, ausente ou nulo dão 422 ("Property 'data.customer.cellphone' is missing"); vazio é aceito.
         var (client, handler) = Build((_, _) => Task.FromResult(Json(HttpStatusCode.OK, CREATED_BODY)));
 
         // Act
-        await client.CreatePixChargeAsync("abc_dev_chave", REQUEST with { CustomerCellphone = null });
+        await client.CreatePixChargeAsync("abc_dev_chave", REQUEST with { CustomerCellphone = string.Empty });
 
         // Assert
         using var document = JsonDocument.Parse(handler.Body!);
 
-        Assert.False(document.RootElement.GetProperty("data").GetProperty("customer").TryGetProperty("cellphone", out _));
+        Assert.Equal(string.Empty, document.RootElement.GetProperty("data").GetProperty("customer").GetProperty("cellphone").GetString());
+    }
+
+    [Fact]
+    public async Task Given_ProviderRefusesWithItsReason_When_Charging_Should_KeepOnlyTheErrorTextAsDetail()
+    {
+        // Arrange
+        var (client, _) = Build((_, _) => Task.FromResult(Json((HttpStatusCode)422, """{"success":false,"data":null,"error":"Property 'data.customer.cellphone' is missing"}""")));
+
+        // Act
+        var result = await client.CreatePixChargeAsync("abc_dev_chave", REQUEST);
+
+        // Assert
+        Assert.Equal("http_4xx", result.FailureReason);
+        Assert.Equal("Property 'data.customer.cellphone' is missing", result.FailureDetail);
+    }
+
+    [Fact]
+    public async Task Given_ProviderRefusesWithAVeryLongReason_When_Charging_Should_TruncateTheDetail()
+    {
+        // Arrange
+        var (client, _) = Build((_, _) => Task.FromResult(Json(HttpStatusCode.BadRequest, $$"""{"success":false,"error":"{{new string('x', 500)}}"}""")));
+
+        // Act
+        var result = await client.CreatePixChargeAsync("abc_dev_chave", REQUEST);
+
+        // Assert
+        Assert.Equal(200, result.FailureDetail!.Length);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task Given_RefusalThatIsNotAValidationError_When_Charging_Should_NotCarryTheProviderText(HttpStatusCode status)
+    {
+        // Arrange
+        var (client, _) = Build((_, _) => Task.FromResult(Json(status, """{"success":false,"error":"texto do fornecedor"}""")));
+
+        // Act
+        var result = await client.CreatePixChargeAsync("abc_dev_chave", REQUEST);
+
+        // Assert
+        Assert.Null(result.FailureDetail);
+    }
+
+    [Fact]
+    public async Task Given_ValidationRefusalWithABodyThatIsNotJson_When_Charging_Should_ReportTheStatusWithoutDetail()
+    {
+        // Arrange
+        var (client, _) = Build((_, _) => Task.FromResult(Json(HttpStatusCode.BadRequest, "<html>Bad Request</html>")));
+
+        // Act
+        var result = await client.CreatePixChargeAsync("abc_dev_chave", REQUEST);
+
+        // Assert
+        Assert.Equal("http_4xx", result.FailureReason);
+        Assert.Null(result.FailureDetail);
     }
 
     [Theory]

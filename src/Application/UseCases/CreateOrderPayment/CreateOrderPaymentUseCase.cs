@@ -267,7 +267,9 @@ public sealed class CreateOrderPaymentUseCase : IUseCase<CreateOrderPaymentUseCa
                 return (result, candidate.IntegrationId, attempts);
             }
 
-            CreateOrderPaymentLog.AttemptFailed(_logger, attempts, candidate.IntegrationId, candidate.ProviderCode, orderCode, result.FailureReason!);
+            CreateOrderPaymentLog.AttemptFailed(
+                _logger, attempts, candidate.IntegrationId, candidate.ProviderCode, orderCode, result.FailureReason!,
+                result.FailureDetail is null ? string.Empty : $" Fornecedor: {result.FailureDetail}");
         }
 
         return (null, Guid.Empty, attempts);
@@ -312,9 +314,10 @@ public sealed class CreateOrderPaymentUseCase : IUseCase<CreateOrderPaymentUseCa
             CustomerTaxId: customer.Document,
             CustomerCellphone: FormatCellphone(customer.PhoneNumber));
 
-    // O cliente guarda só os 11 dígitos (DDD e número); o fornecedor recebe com máscara, e só quando o cliente tem celular.
-    private static string? FormatCellphone(string? digits)
-        => digits is { Length: 11 } ? $"({digits[..2]}) {digits[2..7]}-{digits[7..]}" : null;
+    // O cliente guarda só os 11 dígitos (DDD e número); o fornecedor recebe com máscara. O AbacatePay exige o campo, sem validar o formato:
+    // sem celular cadastrado, vai vazio, nunca um número inventado (confirmado no sandbox: ausente ou nulo dão 422, vazio é aceito).
+    private static string FormatCellphone(string? digits)
+        => digits is { Length: 11 } ? $"({digits[..2]}) {digits[2..7]}-{digits[7..]}" : string.Empty;
 
     private async Task<MethodResult<CreateOrderPaymentOutput>> ReuseAsync(Order order, Payment latest, DateTime now)
     {

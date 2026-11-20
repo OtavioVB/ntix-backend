@@ -32,6 +32,20 @@ Para ver o fallback, cadastre uma segunda integração, na rota depois da primei
 
 ## Pontos a confirmar no sandbox
 
-- Se o AbacatePay aceita a criação sem `cellphone` (o cliente tem celular opcional; o campo só vai quando existe).
-- A validade mínima do Pix na criação (a documentação diverge: 60 s no sandbox, 300 s na criação; a Ntix adota 300 s).
+- ~~Se o AbacatePay aceita a criação sem `cellphone`~~: **não aceita**. O campo é obrigatório (texto), sem validação de formato; vazio é aceito, ausente ou nulo dão 422. A Ntix envia `""` quando o cliente não tem celular. Conferir que a conta de produção aceita o vazio.
+- A validade mínima do Pix: o sandbox aceitou `expiresIn` de 60, 120 e 300 s; a documentação diverge (60 s no sandbox, 300 s na criação) e a Ntix mantém 300 s por prudência.
 - O formato do celular que o fornecedor aceita (`(81) 99999-0000` é o que a Ntix envia).
+
+## Contrato automatizado (na máquina, fora da esteira)
+
+`AbacatePaySandboxTests` exercita o `AbacatePayClient` real contra o sandbox: Pix com e sem celular, descrição com acentos e emoji, valor mínimo, valor abaixo do mínimo, CPF inválido e chave inválida. Roda só com a chave de desenvolvimento no ambiente da execução, sem gravá-la em arquivo:
+
+```powershell
+$env:ABACATEPAY_SANDBOX_API_KEY = "abc_dev_..."; dotnet test tsts/IntegratedTests --filter "FullyQualifiedName~AbacatePaySandboxTests"
+```
+
+Sem a variável, os testes aparecem como ignorados. Rode-os sempre que mudar o corpo da requisição ou a leitura da resposta.
+
+## Diagnóstico de uma recusa
+
+O log `7102` ("Tentativa N falhou na integração ...") traz o motivo curto (`http_4xx`, `http_401`, `timeout`...) e, em recusa 4xx, o texto que o fornecedor devolveu em `error`. Exemplos reais do sandbox: `Property 'data.customer.cellphone' is missing` (campo obrigatório ausente), `Expected number to be greater or equal to 100` (valor abaixo de R$ 1,00), `Invalid taxId` (CPF inválido) e `Disallowed character in description` (caractere não permitido na descrição).

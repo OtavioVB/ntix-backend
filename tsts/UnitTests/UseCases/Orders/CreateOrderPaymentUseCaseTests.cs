@@ -169,16 +169,34 @@ public sealed class CreateOrderPaymentUseCaseTests : IDisposable
     }
 
     [Fact]
-    public async Task Given_CustomerWithoutCellphone_When_Paying_Should_ChargeWithoutIt()
+    public async Task Given_CustomerWithoutCellphone_When_Paying_Should_ChargeWithAnEmptyCellphoneBecauseTheProviderRequiresTheField()
     {
         // Arrange
         _customerRepository.GetByIdAsync(OrderTestData.CUSTOMER_ID, Arg.Any<CancellationToken>()).Returns(CustomerSessionTestData.NewCustomer(OrderTestData.CUSTOMER_ID, phone: null));
 
         // Act
+        var result = await PayAsync();
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(string.Empty, Assert.Single(_pixClient.Calls).Request.CustomerCellphone);
+    }
+
+    [Fact]
+    public async Task Given_ProviderRefusesWithItsReason_When_Paying_Should_LogTheReasonSoTheOperatorKnowsWhatToFix()
+    {
+        // Arrange: o caso real do sandbox, em que a API recusou por um campo obrigatório ausente.
+        _pixClient.FailWith(KEY_A, PixChargeResultModel.ProviderError("http_4xx", "Property 'data.customer.cellphone' is missing"));
+        _pixClient.FailWith(KEY_B, PixChargeResultModel.ProviderError("http_4xx"));
+
+        // Act
         await PayAsync();
 
         // Assert
-        Assert.Null(Assert.Single(_pixClient.Calls).Request.CustomerCellphone);
+        var logs = _logger.Logs.Where(log => log.EventId == 7102).Select(log => log.Message).ToArray();
+
+        Assert.Contains(logs, message => message.Contains("http_4xx. Fornecedor: Property 'data.customer.cellphone' is missing"));
+        Assert.Contains(logs, message => message.EndsWith("http_4xx."));
     }
 
     [Fact]
