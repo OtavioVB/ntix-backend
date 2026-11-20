@@ -38,6 +38,8 @@ function createdOrder() {
 function stubApi(orderAnswer: () => Response | Promise<Response>) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith("/api/v1/orders") && init?.method === "POST") return orderAnswer();
+    if (url.endsWith("/payment-methods")) return jsonResponse(200, { methods: [{ method: "PIX" }] });
+    if (url.endsWith("/payments") && init?.method === "POST") return jsonResponse(201, { id: "p1", method: "PIX", status: "PENDING", amountCents: 24000, expiresAt: new Date(Date.now() + 13 * 60_000).toISOString(), pix: { copyPasteCode: "00020101-pix-do-servidor", qrCodeImage: "data:image/png;base64,AAAA" } });
     if (url.includes("/api/v1/events?")) return jsonResponse(200, { items: [{ slug: "festival-horizonte" }], page: 1, pageSize: 50, totalItems: 1 });
     if (url.endsWith("/api/v1/events/festival-horizonte")) return jsonResponse(200, PUBLIC_EVENT);
 
@@ -97,14 +99,16 @@ describe("checkout com a API real", () => {
     expect(JSON.parse(init.body as string)).toEqual({ eventSlug: "festival-horizonte", salesChannel: "HUB", items: [{ batchId: "b1", quantity: 2 }] });
   });
 
-  it("usa o código do pedido do servidor ao gerar o Pix", async () => {
+  it("gera o Pix pela API e mostra o copia e cola do servidor, sem o formulário da demonstração", async () => {
     stubApi(() => jsonResponse(201, createdOrder()));
     const user = userEvent.setup();
 
     renderCheckout();
     await user.click(await screen.findByRole("button", { name: /Gerar Pix de/ }));
 
-    expect((await screen.findAllByText(/NX7K2QH9MP/)).length).toBeGreaterThan(0);
+    expect(await screen.findByLabelText("Pix copia e cola")).toHaveValue("00020101-pix-do-servidor");
+    expect(screen.queryByRole("button", { name: "Simular pagamento do Pix" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Cartão de crédito" })).not.toBeInTheDocument();
   });
 
   it("volta ao evento com a mensagem da API quando o estoque não basta", async () => {

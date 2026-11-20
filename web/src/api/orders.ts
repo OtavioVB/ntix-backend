@@ -29,9 +29,38 @@ export type ApiOrder = {
   event: { slug: string; title: string; startsAt: string; venueName: string; city: string; state: string; imageUrl?: string };
   items: ApiOrderItem[];
   tickets: { code: string; batchName: string; holderName: string; status: string }[];
+  payment?: ApiPayment;
 };
 
 /** POST /api/v1/orders: cria o pedido e reserva os ingressos por 15 minutos. Exige o access token do comprador. */
 export function postOrder(request: CreateOrderRequest, signal?: AbortSignal): Promise<ApiDataResult<ApiOrder>> {
   return customerAuthorizedRequest("POST", "/api/v1/orders", { body: request, signal });
+}
+
+/** Cobrança do pedido (REQ7). O bloco `pix` só vem com a cobrança PENDING e dentro da validade. */
+export type ApiPayment = {
+  id: string;
+  method: "PIX";
+  status: "PENDING" | "PAID" | "EXPIRED";
+  amountCents: number;
+  expiresAt: string;
+  pix?: { copyPasteCode: string; qrCodeImage: string };
+};
+
+/** GET /api/v1/orders/{code}: o pedido, com a cobrança mais recente em `payment`. O checkout consulta a cada poucos segundos. */
+export function getOrder(code: string, signal?: AbortSignal): Promise<ApiDataResult<ApiOrder>> {
+  return customerAuthorizedRequest("GET", `/api/v1/orders/${encodeURIComponent(code)}`, { signal });
+}
+
+/** GET /api/v1/orders/{code}/payment-methods: só o que funciona para o produtor do pedido. */
+export function getOrderPaymentMethods(code: string, signal?: AbortSignal): Promise<ApiDataResult<{ methods: { method: string }[] }>> {
+  return customerAuthorizedRequest("GET", `/api/v1/orders/${encodeURIComponent(code)}/payment-methods`, { signal });
+}
+
+/**
+ * POST /api/v1/orders/{code}/payments (`CreateOrderPaymentV1Request`): gera o Pix (201) ou devolve o pendente que já existe (200).
+ * O valor não vai no corpo: é o total do pedido.
+ */
+export function postOrderPayment(code: string, method: "PIX", signal?: AbortSignal): Promise<ApiDataResult<ApiPayment>> {
+  return customerAuthorizedRequest("POST", `/api/v1/orders/${encodeURIComponent(code)}/payments`, { body: { method }, signal });
 }

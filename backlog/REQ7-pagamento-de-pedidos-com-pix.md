@@ -1,6 +1,6 @@
 # REQ7 - Pagamento de Pedidos com Pix
 
-- **Status**: Proposto
+- **Status**: Implementado (aguardando validação)
 - **Área**: comprador / pagamentos
 - **Depende de**: REQ6 (criação de pedidos); REQ4 (integrações e ranqueamento); REQ12 (autenticação do cliente)
 - **Habilita**: REQ8 (efetivação)
@@ -297,6 +297,26 @@ Funcionalidade: Pagamento de pedidos com Pix
     Quando João paga o pedido "NX7K2QH9MP"
     Então recebe 404 com ORDER_NOT_FOUND_NOTIFICATION_CODE
 ```
+
+## Decisões tomadas na implementação
+
+Implementado na ordem da jornada, depois do REQ6. O que o requisito não definia foi decidido assim, seguindo as decisões provisórias dele:
+
+- **Dependência**: `Microsoft.Extensions.Http` 10.0.14 em `Infra`, com a [RFC 0008](../docs/rfcs/0008-microsoft-extensions-http.md). Sem Polly.
+- **Configuração**: `PaymentConfiguration` (`ConfirmationGraceSeconds` 120, `PixMinimumSeconds` 300, `MaxProviderAttempts` 3) e `AbacatePayConfiguration` (`BaseUrl`, `TimeoutSeconds` 5), ambas com padrão no código e no `appsettings`. A validade mínima do Pix é do fornecedor, mas fica em `PaymentConfiguration` para o domínio (`PixWindow`) não conhecer o AbacatePay.
+- **Rotas**: `GET /api/v1/orders/{code}/payment-methods` e `POST /api/v1/orders/{code}/payments`, no `OrdersV1Controller`. 201 gera o Pix e 200 devolve o pendente (o caso de uso diz qual pelo `Reused`); o 201 aponta o `Location` para o pedido.
+- **Transações**: o ranqueamento do REQ4 abre a própria transação, e ela não aninha. O caso de uso lê o pedido sem travar (para saber o produtor), roda o ranqueamento e só então abre a transação que trava o pedido (`FOR UPDATE`) e faz o resto, com a chamada ao fornecedor dentro dela, como o requisito pede.
+- **Vencimento gravado**: pedido vencido grava `EXPIRED` no pedido (e no Pix pendente) e confirma a transação antes de recusar com `ORDER_EXPIRED`. Pix pendente vencido é gravado `EXPIRED` antes de gerar o novo, e a recusa por janela curta também confirma essa gravação.
+- **Falha da integração por dentro**: além das falhas do fornecedor, são motivos de falha que passam para a próxima: `no_adapter` (fornecedor sem adaptador), `missing_credential` (integração sem `API_KEY`) e `credential_unreadable` (valor cifrado adulterado ou de outra chave). Nenhuma delas derruba o pagamento enquanto houver outra integração.
+- **`expiresAt` do Pix** é o que a Ntix calculou (`PixWindow`), e não o devolvido pelo AbacatePay, para o contador e a folga de confirmação não dependerem do formato de data do fornecedor.
+- **Celular**: o cliente guarda 11 dígitos; o fornecedor recebe `(81) 99999-0000`, e o campo sai do corpo quando o cliente não tem celular (decisões em aberto 5, a confirmar no sandbox).
+- **QR Code em base64 no banco** (decisão em aberto 4): adotado como o requisito descreveu. O front só usa a imagem se for `data:image/...`; senão, gera o QR do copia e cola com `qrcode.react`.
+- **Sem `GetPendingByOrderAsync`**: o pagamento pendente é sempre o mais recente do pedido, então `GetLatestByOrderAsync` basta. `IProducerIntegrationRepository.GetCredentialsAsync` também não foi preciso: `GetByProducerAsync` já traz as credenciais cifradas.
+- **Consulta do pedido** (`GET /orders/{code}`) passa a trazer o bloco `payment`, com `pix` só para a cobrança pendente e válida.
+- **Front (`?api=real`)**: o checkout mostra só Pix, gerado pela API (o cartão da demonstração fica escondido), com QR Code, copia e cola, contador pelo `expiresAt` do Pix e consulta do pedido a cada 3 s. O pagamento confirmado (REQ8) mostra o aviso e leva a "Meus ingressos"; a conta do comprador na API real é o REQ13.
+- **Testes**: a esteira usa o `FakePixChargeClient` (`tsts/UnitTests`) no lugar do AbacatePay. O roteiro manual no sandbox está em [docs/pagamento-pix-sandbox.md](../docs/pagamento-pix-sandbox.md).
+- **Carga**: `tsts/LoadTests/orders-payments-tests.js`, com o perfil proposto (50 VUs, p95 do `POST` < 1,5 s e do segundo clique < 500 ms), contra um fornecedor falso. Escrito, não executado.
+- **Dashboard** `ntix-payments.json` e seção "Pagamento do pedido com Pix (REQ7)" de `docs/observabilidade.md`.
 
 ## Decisões em aberto
 

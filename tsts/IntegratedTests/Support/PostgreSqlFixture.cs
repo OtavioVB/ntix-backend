@@ -1,5 +1,6 @@
 using Application.UseCases;
 using Infra.Cryptography.Credentials;
+using Infra.Http.Payments.Interfaces;
 using Infra.PostgreSql.Base.UnitOfWork;
 using Infra.PostgreSql.Repositories.Customers;
 using Infra.PostgreSql.Repositories.Customers.Models;
@@ -31,6 +32,9 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
 
     public IServiceProvider Services => _serviceProvider!;
 
+    /// <summary>Fornecedor de Pix falso: o teste integrado não chama o AbacatePay (REQ7).</summary>
+    public FakePixChargeClient PixClient { get; } = new();
+
     public async Task InitializeAsync()
     {
         _database = await PostgreSqlTestDatabase.CreateAsync();
@@ -57,6 +61,7 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
             .AddEventRepositoriesConfiguration(configuration)
             .AddOrderRepositoriesConfiguration(configuration)
             .AddCredentialCipherConfiguration(configuration)
+            .AddSingleton<IPixChargeClient>(PixClient)
             .AddUseCasesConfiguration(configuration)
             .BuildServiceProvider();
     }

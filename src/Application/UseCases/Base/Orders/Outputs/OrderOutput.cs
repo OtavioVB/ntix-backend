@@ -19,4 +19,5 @@ public sealed record OrderOutput(
     long TotalCents,
     OrderEventOutput Event,
     IReadOnlyList<OrderItemOutput> Items,
-    IReadOnlyList<OrderTicketOutput> Tickets);
+    IReadOnlyList<OrderTicketOutput> Tickets,
+    OrderPaymentOutput? Payment = null);

@@ -38,6 +38,20 @@ public sealed class OrderRepository : IOrderRepository
         WHERE code = @code AND id_customer = @id_customer;
         """;
 
+    private const string SELECT_BY_CODE_FOR_UPDATE_SQL = """
+        SELECT id_order, code, id_producer, id_event, id_customer, sales_channel, total_amount, status, expires_at, paid_at,
+               created_at, created_correlation_id, updated_at, updated_correlation_id
+        FROM orders.orders
+        WHERE code = @code AND id_customer = @id_customer
+        FOR UPDATE;
+        """;
+
+    private const string UPDATE_STATUS_SQL = """
+        UPDATE orders.orders
+        SET status = @status, paid_at = @paid_at, updated_at = @updated_at, updated_correlation_id = @updated_correlation_id
+        WHERE id_order = @id_order;
+        """;
+
     private const string SELECT_ITEMS_SQL = """
         SELECT id_order_item, id_ticket_batch, batch_name, quantity, unit_price
         FROM orders.order_item
@@ -104,13 +118,34 @@ public sealed class OrderRepository : IOrderRepository
         return OrderCreationResult.Created;
     }
 
-    public async Task<OrderModel?> GetByCodeAsync(string code, Guid customerId, CancellationToken cancellationToken = default)
+    public Task<OrderModel?> GetByCodeAsync(string code, Guid customerId, CancellationToken cancellationToken = default)
+        => ReadByCodeAsync(SELECT_BY_CODE_SQL, nameof(GetByCodeAsync), code, customerId, cancellationToken);
+
+    public Task<OrderModel?> GetByCodeForUpdateAsync(string code, Guid customerId, CancellationToken cancellationToken = default)
+        => ReadByCodeAsync(SELECT_BY_CODE_FOR_UPDATE_SQL, nameof(GetByCodeForUpdateAsync), code, customerId, cancellationToken);
+
+    public async Task UpdateStatusAsync(OrderModel order, CancellationToken cancellationToken = default)
     {
-        using var activity = StartDatabaseActivity(nameof(GetByCodeAsync), "orders.orders");
+        using var activity = StartDatabaseActivity(nameof(UpdateStatusAsync), "orders.orders");
+
+        await using var command = _unitOfWork.CreateCommand(UPDATE_STATUS_SQL);
+
+        command.Parameters.Add("@id_order", NpgsqlDbType.Uuid).Value = order.Id;
+        command.Parameters.Add("@status", NpgsqlDbType.Varchar, ENUM_MAX_LENGTH).Value = order.Status;
+        command.Parameters.Add("@paid_at", NpgsqlDbType.TimestampTz).Value = (object?)order.PaidAt ?? DBNull.Value;
+        command.Parameters.Add("@updated_at", NpgsqlDbType.TimestampTz).Value = order.UpdatedAt;
+        command.Parameters.Add("@updated_correlation_id", NpgsqlDbType.Uuid).Value = order.UpdatedCorrelationId;
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private async Task<OrderModel?> ReadByCodeAsync(string sql, string operation, string code, Guid customerId, CancellationToken cancellationToken)
+    {
+        using var activity = StartDatabaseActivity(operation, "orders.orders");
 
         OrderModel? order;
 
-        await using (var command = _unitOfWork.CreateCommand(SELECT_BY_CODE_SQL))
+        await using (var command = _unitOfWork.CreateCommand(sql))
         {
             command.Parameters.Add("@code", NpgsqlDbType.Varchar, CODE_MAX_LENGTH).Value = code;
             command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = customerId;

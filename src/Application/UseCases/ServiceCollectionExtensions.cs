@@ -69,6 +69,10 @@ using Application.UseCases.RevokeCustomerSession;
 using Application.UseCases.RevokeCustomerSession.Inputs;
 using Application.UseCases.Base.Orders.Outputs;
 using Application.UseCases.CreateOrder;
+using Application.UseCases.CreateOrderPayment;
+using Application.UseCases.CreateOrderPayment.Inputs;
+using Application.UseCases.GetOrderPaymentMethods;
+using Application.UseCases.GetOrderPaymentMethods.Inputs;
 using Application.UseCases.CreateOrder.Inputs;
 using Application.UseCases.GetCustomerOrder;
 using Application.UseCases.GetCustomerOrder.Inputs;
@@ -138,6 +142,11 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<CreateOrderDiagnostics>();
         services.AddScoped<IUseCase<CreateOrderUseCaseInput, OrderOutput>, CreateOrderUseCase>();
+        services.AddSingleton(configuration.GetSection("PaymentConfiguration").Get<PaymentConfiguration>() ?? new PaymentConfiguration());
+        services.AddSingleton<GetOrderPaymentMethodsDiagnostics>();
+        services.AddScoped<IUseCase<GetOrderPaymentMethodsUseCaseInput, PaymentMethodsOutput>, GetOrderPaymentMethodsUseCase>();
+        services.AddSingleton<CreateOrderPaymentDiagnostics>();
+        services.AddScoped<IUseCase<CreateOrderPaymentUseCaseInput, CreateOrderPaymentOutput>, CreateOrderPaymentUseCase>();
         services.AddSingleton<GetCustomerOrderDiagnostics>();
         services.AddScoped<IUseCase<GetCustomerOrderUseCaseInput, OrderOutput>, GetCustomerOrderUseCase>();
 

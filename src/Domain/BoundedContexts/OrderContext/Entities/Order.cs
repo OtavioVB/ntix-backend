@@ -159,6 +159,10 @@ public sealed record Order
     public OrderStatus GetEffectiveStatus(DateTime now)
         => Status == OrderStatus.PENDING_PAYMENT && ExpiresAt.Value <= now ? OrderStatus.EXPIRED : Status;
 
+    /// <summary>RN12: grava o vencimento da reserva na próxima escrita do pedido.</summary>
+    public Order MarkExpired(DateTime now, IdValueObject correlationId)
+        => this with { Status = OrderStatus.EXPIRED, UpdatedAt = DateTimeValueObject.Build(now), UpdatedCorrelationId = correlationId };
+
     private static MethodResult<Order> Failure(string code, string message)
         => MethodResult<Order>.Error([Notification.Error(code, message)]);
 }

@@ -21,6 +21,7 @@ import { eventDay } from "../../hub/rules";
 import { useHub, usePurchase } from "../../hub/useHub";
 import { formatCents } from "../../platform/money";
 import { AuthForm } from "./AuthForm";
+import { PixPayment } from "./PixPayment";
 import { EventImage } from "./parts";
 
 const METHODS = [
@@ -47,7 +48,7 @@ function Countdown({ expiresAt, onExpire }: { expiresAt: number; onExpire: () =>
 
 type CardErrors = { number?: string; holder?: string; expiry?: string; cvv?: string; declined?: string };
 
-function PaymentForm({ event, items, orderCode, totalCents, onFinish }: { event: HubEvent; items: ReturnType<typeof itemsFromSelection>; orderCode?: string; totalCents: number; onFinish: () => void }) {
+function PaymentForm({ event, items, totalCents, onFinish }: { event: HubEvent; items: ReturnType<typeof itemsFromSelection>; totalCents: number; onFinish: () => void }) {
   const { addOrder } = usePurchase();
   const navigate = useNavigate();
   const [method, setMethod] = useState<"PIX" | "CARD">("PIX");
@@ -61,7 +62,7 @@ function PaymentForm({ event, items, orderCode, totalCents, onFinish }: { event:
   const total = totalCents;
 
   function payWithPix() {
-    const order = createOrder(event, items, { method: "PIX", status: "PENDING" }, Date.now(), orderCode);
+    const order = createOrder(event, items, { method: "PIX", status: "PENDING" }, Date.now());
     onFinish();
     addOrder(order);
     navigate(`/conta/pedidos/${order.code}`);
@@ -88,7 +89,7 @@ function PaymentForm({ event, items, orderCode, totalCents, onFinish }: { event:
       setBusy(false);
       return;
     }
-    const order = createOrder(event, items, { method: "CARD", status: "PAID", paidAt: now, brand: cardBrand(digits), last4: digits.slice(-4), installments }, now, orderCode);
+    const order = createOrder(event, items, { method: "CARD", status: "PAID", paidAt: now, brand: cardBrand(digits), last4: digits.slice(-4), installments }, now);
     onFinish();
     addOrder(order);
     navigate(`/conta/pedidos/${order.code}/confirmado`, { replace: true });
@@ -234,14 +235,12 @@ export function CheckoutPage() {
                 {serverOrder.status === "failed" && (
                   <p className="auth-form__error" role="alert">{serverOrder.message} <Link to={`/eventos/${event.slug}`}>Voltar ao evento</Link></p>
                 )}
-                {(serverOrder.status === "idle" || serverOrder.status === "ready") && (
-                  <PaymentForm
-                    event={event}
-                    items={items}
-                    orderCode={serverOrder.status === "ready" ? serverOrder.order.code : undefined}
-                    totalCents={totalCents}
-                    onFinish={() => { finishing.current = true; }}
-                  />
+                {serverOrder.status === "idle" && (
+                  <PaymentForm event={event} items={items} totalCents={totalCents} onFinish={() => { finishing.current = true; }} />
+                )}
+                {/* API real: só Pix, gerado pelo servidor na conta do produtor (REQ7). O cartão volta quando houver adaptador. */}
+                {serverOrder.status === "ready" && (
+                  <PixPayment orderCode={serverOrder.order.code} totalCents={totalCents} onOrderExpired={() => leave({ cartExpired: true })} />
                 )}
               </>
             ) : (
