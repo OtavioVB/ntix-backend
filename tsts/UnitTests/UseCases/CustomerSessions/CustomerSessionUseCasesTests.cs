@@ -95,7 +95,7 @@ public sealed class CustomerSessionUseCasesTests : IDisposable
         var token = new JsonWebToken(result.Output.AccessToken);
         Assert.Equal(_customer.Id.ToString(), token.Subject);
         Assert.Equal("CUSTOMER", token.GetClaim("actor").Value);
-        Assert.DoesNotContain(token.Claims, claim => claim.Value.Contains("Marina") || claim.Value.Contains(CustomerSessionTestData.CPF) || claim.Value.Contains("@"));
+        Assert.DoesNotContain(token.Claims, claim => claim.Value.Contains("Marina") || claim.Value.Contains(CustomerSessionTestData.CPF) || claim.Value.Contains('@'));
         ThenOutcomeRecorded("ntix.customers.sessions.create.outcomes", CreateCustomerSessionDiagnostics.OUTCOME_CREATED);
     }
 
