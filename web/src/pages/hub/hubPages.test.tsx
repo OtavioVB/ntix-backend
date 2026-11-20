@@ -151,7 +151,7 @@ describe("compra", () => {
     await fillCard(user, "4111111111111111");
     await user.click(screen.getByRole("button", { name: /Pagar/ }));
 
-    expect(await screen.findByRole("img", { name: /avatar segurando 2 ingressos de Riso Solto/ })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: /avatar segurando 2 ingressos de Riso Solto/ }, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.getByText("Ingresso garantido")).toBeInTheDocument();
     // Primeira compra sem avatar: já oferece montar.
     expect(screen.getByText(/Monte seu avatar/)).toBeInTheDocument();

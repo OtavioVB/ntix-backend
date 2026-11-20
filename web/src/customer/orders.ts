@@ -97,8 +97,9 @@ function issueTickets(code: string, items: OrderItem[]): IssuedTicket[] {
   );
 }
 
-export function createOrder(event: HubEvent, items: OrderItem[], payment: OrderPayment, now: number): CustomerOrder {
-  const code = newOrderCode(now);
+/** Na API real o código é o do pedido já criado no servidor (REQ6); na demonstração, um código local. */
+export function createOrder(event: HubEvent, items: OrderItem[], payment: OrderPayment, now: number, serverCode?: string): CustomerOrder {
+  const code = serverCode ?? newOrderCode(now);
   return {
     code,
     createdAt: now,

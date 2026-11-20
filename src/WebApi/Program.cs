@@ -5,6 +5,7 @@ using Infra.FileSystem.Whitelabels;
 using Infra.PostgreSql.Base.UnitOfWork;
 using Infra.PostgreSql.Repositories.Customers;
 using Infra.PostgreSql.Repositories.Events;
+using Infra.PostgreSql.Repositories.Orders;
 using Infra.PostgreSql.Repositories.Outbox;
 using Infra.PostgreSql.Repositories.Payments;
 using Infra.PostgreSql.Repositories.Producers;
@@ -41,6 +42,7 @@ public class Program
             .AddOutboxRepositoryConfiguration(builder.Configuration)
             .AddPaymentRepositoriesConfiguration(builder.Configuration)
             .AddEventRepositoriesConfiguration(builder.Configuration)
+            .AddOrderRepositoriesConfiguration(builder.Configuration)
             .AddCredentialCipherConfiguration(builder.Configuration)
             .AddWhitelabelReaderConfiguration(builder.Configuration);
 

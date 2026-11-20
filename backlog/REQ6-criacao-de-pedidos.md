@@ -1,6 +1,6 @@
 # REQ6 - Criação de Pedidos
 
-- **Status**: Proposto
+- **Status**: Implementado (aguardando validação)
 - **Área**: comprador / vendas
 - **Depende de**: REQ11 (vitrine e lotes publicados); REQ12 (autenticação do cliente)
 - **Habilita**: REQ7 (pagamento), REQ8 (efetivação), REQ13 (pedidos do cliente)
@@ -311,6 +311,22 @@ Funcionalidade: Criação de pedidos
     Quando Marina faz o primeiro pedido com o produtor "mare-cultural"
     Então Marina passa a ser cliente de "mare-cultural"
 ```
+
+## Decisões tomadas na implementação
+
+Implementado na ordem da jornada, depois do REQ12. O que o requisito não definia foi decidido assim, seguindo as decisões provisórias dele:
+
+- **Reserva de 15 minutos** (`OrderConfiguration:ReservationMinutes`) e **limite de 6 ingressos por pedido** (`MaxTicketsPerOrder`), sem limite de pedidos abertos por comprador (Decisões em aberto, itens 1 a 3).
+- **Rotas**: `POST /api/v1/orders` (201 com `Location`) e `GET /api/v1/orders/{code}`, num controller próprio (`OrdersV1Controller`), com a política `Customer`. O `ExecutionUser` é o id do cliente do token.
+- **Lotes do pedido lidos pelo evento**: `ITicketBatchRepository.ListByIdsForUpdateAsync(eventId, ids)` traz só os lotes daquele evento, em ordem de id e com `FOR UPDATE`. O lote de outro evento simplesmente não volta, e o domínio responde `BATCH_NOT_FOUND` (RN4). O `GetByIdForUpdateAsync` do REQ10 continua sendo o do produtor.
+- **Estoque somado depois da trava**: `GetSalesAsync` soma itens de pedidos `PAID` (vendidos) e `PENDING_PAYMENT` com `expires_at` no futuro (reservados), na mesma transação. É a mesma consulta da vitrine (REQ11) e do painel do produtor (REQ10), que deixaram de mostrar zero.
+- **Código do pedido**: sorteado uma vez e, se `ux_orders_code` colidir, sorteado de novo até 5 vezes com savepoint, mantendo a reserva. Esgotar as tentativas é falha inesperada (500).
+- **Recusa devolve todos os lotes com problema**: a falta de estoque de dois lotes vira duas notificações, uma por lote, com o nome e quantos ainda dá para escolher.
+- **`GetByCodeForUpdateAsync` e `GetByCode` sem cliente não foram criados**: o REQ7 e o REQ8 criam o que precisarem. Hoje só existe `GetByCodeAsync(code, customerId)`.
+- **Pedido sem evento**: a FK composta `(id_event, id_producer)` garante o evento do pedido; a consulta ainda responde 404 se ele sumir, em vez de falhar.
+- **Front (`?api=real`)**: o pedido é criado quando a pessoa chega ao checkout conectada (depois do login, se ela ainda não estava). O pedido fica no carrinho (`cart.order`), então recarregar o checkout reaproveita a reserva enquanto ela vale, em vez de criar outra. O prazo do contador e o total vêm do servidor. 409, lote fora de venda e limite voltam ao evento com a mensagem da API; sessão expirada e falha de rede ficam no checkout com o aviso. O pagamento segue em demonstração até o REQ7 (o código do pedido da demonstração passa a ser o do servidor). Também foi corrigido o checkout, que mandava para a home enquanto a vitrine real ainda carregava.
+- **Carga**: `tsts/LoadTests/orders-create-tests.js`, com o perfil de disputa proposto (100 VUs, lote de 1.000, p95 < 800 ms). Escrito, não executado; o teardown confere vendidos + reservados do lote.
+- **Dashboard** `ntix-orders.json` e seção "Pedidos (REQ6)" de `docs/observabilidade.md`.
 
 ## Decisões em aberto
 

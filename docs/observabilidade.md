@@ -76,6 +76,19 @@ Dashboard: `ntix-customer-sessions.json`.
 - `ntix_customers_sessions_login_rate_limited_total` conta os logins barrados pelo limite de tentativas; `ntix_customers_sessions_refresh_reuse_total`, os reusos de refresh token (família revogada).
 - O login aparece nos logs só ofuscado (`***.456.789-**` ou `ma***@exemplo.com`); a senha e os tokens, nunca.
 
+## Pedidos (REQ6)
+
+Dashboard: `ntix-orders.json`.
+
+| Fluxo | Métricas no Prometheus | Desfechos (`outcome`) |
+|---|---|---|
+| Criação do pedido | `ntix_orders_create_requests_total`, `..._outcomes_total` | `created`, `insufficient_availability`, `not_on_sale`, `event_not_found`, `validation_failed`, `error` |
+| Consulta do pedido | `ntix_orders_get_requests_total`, `..._outcomes_total` | `served`, `order_not_found`, `validation_failed`, `error` |
+
+- `ntix_orders_batch_lock_duration_seconds` é o tempo esperando a trava `FOR UPDATE` dos lotes do pedido. O dashboard mostra p50, p95 e p99: o p95 sobe quando muitos compradores disputam o mesmo lote (lançamento de evento grande). É o sinal para trocar a soma de vendidos por um contador por lote, como o requisito prevê.
+- `insufficient_availability` alto num evento é venda esgotando, não defeito. Já `error` é sempre falha inesperada, com o log `6104` e o trace do pedido.
+- O pedido aparece nos logs pelo código (`NX...`), pelo evento e pelo produtor; o cliente é o `ExecutionUser` do escopo. O corpo do pedido, que tem só lotes e quantidades, não é registrado.
+
 ## Funil de cadastro de cliente
 
 | Passo | Métrica no Prometheus | Filtro |
