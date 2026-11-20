@@ -113,6 +113,8 @@ public sealed class StockConcurrencyTests
         }
 
         public Task<OrderModel?> GetByCodeAsync(string code, Guid customerId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<OrderModel?> GetByCodeForUpdateAsync(string code, Guid customerId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task UpdateStatusAsync(OrderModel order, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private static async Task<MethodResult<Application.UseCases.Base.Orders.Outputs.OrderOutput>[]> ReserveConcurrentlyAsync(StockWorld world, int contenders, int quantityEach, bool useLock)
