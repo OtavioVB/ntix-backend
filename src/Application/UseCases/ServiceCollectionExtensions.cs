@@ -58,6 +58,15 @@ using Application.UseCases.GetPublicEvent;
 using Application.UseCases.GetPublicEvent.Inputs;
 using Application.UseCases.SearchPublicEvents;
 using Application.UseCases.SearchPublicEvents.Inputs;
+using Application.UseCases.Base.Customers.Outputs;
+using Application.UseCases.CreateCustomerSession;
+using Application.UseCases.CreateCustomerSession.Inputs;
+using Application.UseCases.GetCurrentCustomer;
+using Application.UseCases.GetCurrentCustomer.Inputs;
+using Application.UseCases.RefreshCustomerSession;
+using Application.UseCases.RefreshCustomerSession.Inputs;
+using Application.UseCases.RevokeCustomerSession;
+using Application.UseCases.RevokeCustomerSession.Inputs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -144,5 +153,23 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUseCase<RefreshProducerSessionUseCaseInput, ProducerSessionOutput>, RefreshProducerSessionUseCase>();
         services.AddSingleton<RevokeProducerSessionDiagnostics>();
         services.AddScoped<IUseCase<RevokeProducerSessionUseCaseInput>, RevokeProducerSessionUseCase>();
+
+        AddCustomerSessions(services, configuration);
+    }
+
+    // Login, renovação, logout e meus dados do cliente (REQ12), com a mesma JwtConfiguration e o mesmo limitador do REQ5.
+    private static void AddCustomerSessions(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSingleton(configuration.GetSection("CustomerSessionConfiguration").Get<CustomerSessionConfiguration>() ?? new CustomerSessionConfiguration());
+        services.AddSingleton<CustomerAccessTokenIssuer>();
+
+        services.AddSingleton<CreateCustomerSessionDiagnostics>();
+        services.AddScoped<IUseCase<CreateCustomerSessionUseCaseInput, CustomerSessionOutput>, CreateCustomerSessionUseCase>();
+        services.AddSingleton<RefreshCustomerSessionDiagnostics>();
+        services.AddScoped<IUseCase<RefreshCustomerSessionUseCaseInput, CustomerSessionOutput>, RefreshCustomerSessionUseCase>();
+        services.AddSingleton<RevokeCustomerSessionDiagnostics>();
+        services.AddScoped<IUseCase<RevokeCustomerSessionUseCaseInput>, RevokeCustomerSessionUseCase>();
+        services.AddSingleton<GetCurrentCustomerDiagnostics>();
+        services.AddScoped<IUseCase<GetCurrentCustomerUseCaseInput, CurrentCustomerOutput>, GetCurrentCustomerUseCase>();
     }
 }

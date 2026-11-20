@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddCustomerRepositoryConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<ICustomerSessionRepository, CustomerSessionRepository>();
 
         return services;
     }

@@ -36,12 +36,19 @@ public sealed class LoginAttemptLimiter
 
     /// <summary>Registra a tentativa. Falso quando o e-mail já usou todas as tentativas da janela.</summary>
     public bool TryAcquire(EmailValueObject email)
+        => TryAcquire(email.Value);
+
+    /// <summary>
+    /// Mesmo limite para outra chave de login (ex.: o do cliente, REQ12, prefixado com <c>customer:</c> para não somar com o do
+    /// produtor). A chave é guardada só pelo SHA-256.
+    /// </summary>
+    public bool TryAcquire(string loginKey)
     {
         var now = _timeProvider.GetUtcNow();
 
         RemoveExpiredWindows(now);
 
-        var window = _windows.GetOrAdd(GetKey(email), _ => new AttemptWindow(now));
+        var window = _windows.GetOrAdd(GetKey(loginKey), _ => new AttemptWindow(now));
 
         lock (window)
         {
@@ -62,8 +69,11 @@ public sealed class LoginAttemptLimiter
 
     /// <summary>Tempo até a janela do e-mail reabrir, em segundos inteiros (header <c>Retry-After</c>). Zero quando está aberta.</summary>
     public int GetRetryAfterSeconds(EmailValueObject email)
+        => email.IsValid ? GetRetryAfterSeconds(email.Value) : 0;
+
+    public int GetRetryAfterSeconds(string loginKey)
     {
-        if (!email.IsValid || !_windows.TryGetValue(GetKey(email), out var window))
+        if (!_windows.TryGetValue(GetKey(loginKey), out var window))
             return 0;
 
         var now = _timeProvider.GetUtcNow();
@@ -79,8 +89,8 @@ public sealed class LoginAttemptLimiter
         }
     }
 
-    private static string GetKey(EmailValueObject email)
-        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(email.Value)));
+    private static string GetKey(string loginKey)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(loginKey)));
 
     // Uma varredura por janela, para e-mails que não voltam não ocuparem memória para sempre.
     private void RemoveExpiredWindows(DateTimeOffset now)

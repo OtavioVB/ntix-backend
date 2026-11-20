@@ -12,6 +12,9 @@ public static class AuthenticationExtensions
     /// <summary>Política dos endpoints do painel do produtor: token válido e slug da rota igual ao do token.</summary>
     public const string PRODUCER_USER_POLICY = "ProducerUser";
 
+    /// <summary>Política dos endpoints do comprador (REQ12, RN7): token válido com <c>actor = CUSTOMER</c>. Token de produtor não passa.</summary>
+    public const string CUSTOMER_POLICY = "Customer";
+
     private static readonly TimeSpan CLOCK_SKEW = TimeSpan.FromSeconds(30);
 
     /// <summary>
@@ -53,7 +56,12 @@ public static class AuthenticationExtensions
                 .RequireAuthenticatedUser()
                 .RequireClaim(ProducerClaims.SUBJECT)
                 .RequireClaim(ProducerClaims.PRODUCER_SLUG)
-                .AddRequirements(new ProducerSlugRequirement()));
+                .AddRequirements(new ProducerSlugRequirement()))
+            .AddPolicy(CUSTOMER_POLICY, policy => policy
+                .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+                .RequireAuthenticatedUser()
+                .RequireClaim(CustomerClaims.SUBJECT)
+                .RequireClaim(CustomerClaims.ACTOR, CustomerClaims.CUSTOMER_ACTOR));
 
         return services;
     }
@@ -61,4 +69,8 @@ public static class AuthenticationExtensions
     /// <summary>Usuário do produtor que fez a requisição (RN10 do REQ5): é ele o <c>ExecutionUser</c>, e não o header.</summary>
     public static string? GetProducerUserId(this ClaimsPrincipal user)
         => user.FindFirst(ProducerClaims.SUBJECT)?.Value;
+
+    /// <summary>Cliente que fez a requisição (REQ12, RN8): é ele o <c>ExecutionUser</c>.</summary>
+    public static string? GetCustomerId(this ClaimsPrincipal user)
+        => user.FindFirst(CustomerClaims.SUBJECT)?.Value;
 }
