@@ -10,8 +10,8 @@ internal static partial class CreateOrderPaymentLog
     public static partial void Created(ILogger logger, Guid paymentId, string orderCode, Guid integrationId, string provider, int attempt);
 
     [LoggerMessage(EventId = 7102, Level = LogLevel.Warning,
-        Message = "Tentativa {Attempt} falhou na integração {IntegrationId} ({Provider}) do pedido {OrderCode}: {Reason}.")]
-    public static partial void AttemptFailed(ILogger logger, int attempt, Guid integrationId, string provider, string orderCode, string reason);
+        Message = "Tentativa {Attempt} falhou na integração {IntegrationId} ({Provider}) do pedido {OrderCode}: {Reason}.{Detail}")]
+    public static partial void AttemptFailed(ILogger logger, int attempt, Guid integrationId, string provider, string orderCode, string reason, string detail);
 
     [LoggerMessage(EventId = 7103, Level = LogLevel.Error, Message = "Nenhuma integração gerou o Pix do pedido {OrderCode}: {Attempts} tentativa(s).")]
     public static partial void AllFailed(ILogger logger, string orderCode, int attempts);
