@@ -13,9 +13,11 @@ O domínio de pagamentos fica dividido em quatro requisitos. Este (REQ4) é a fu
 | REQ | Título | Entrega |
 |---|---|---|
 | **REQ4** | Integrações de pagamento do produtor | Catálogo de fornecedores, integrações do produtor com credenciais em chave-valor, rotas por método com prioridade e o ranqueamento da integração a usar |
-| REQ6 | Criação de pedidos | Pedido do comprador, com itens, valor e método escolhido, em `PENDING_PAYMENT` |
+| REQ6 | Criação de pedidos | Pedido do comprador, com itens e valor, em `PENDING_PAYMENT`, reservando os ingressos (o método é escolhido no REQ7) |
 | REQ7 | Pagamento de pedidos | Cobrança no fornecedor eleito pelo ranqueamento do REQ4, com troca para a próxima integração quando a primeira estiver indisponível |
-| REQ8 | Efetivação dos pagamentos | Confirmação pelo fornecedor (webhook), pedido `PAID`, evento na outbox e lançamento no extrato |
+| REQ8 | Efetivação dos pagamentos | Confirmação pelo fornecedor (webhook), pedido `PAID`, ingressos emitidos e `OrderPaid` na outbox (o extrato fica para o requisito de carteira) |
+
+A jornada completa de compra, com os domínios de eventos, lotes, vitrine e login do cliente (REQ9 a REQ13), está em [docs/jornada-de-compra.md](../docs/jornada-de-compra.md).
 
 ```mermaid
 sequenceDiagram
