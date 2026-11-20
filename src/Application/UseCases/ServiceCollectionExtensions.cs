@@ -67,6 +67,11 @@ using Application.UseCases.RefreshCustomerSession;
 using Application.UseCases.RefreshCustomerSession.Inputs;
 using Application.UseCases.RevokeCustomerSession;
 using Application.UseCases.RevokeCustomerSession.Inputs;
+using Application.UseCases.Base.Orders.Outputs;
+using Application.UseCases.CreateOrder;
+using Application.UseCases.CreateOrder.Inputs;
+using Application.UseCases.GetCustomerOrder;
+using Application.UseCases.GetCustomerOrder.Inputs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -130,6 +135,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUseCase<SearchPublicEventsUseCaseInput, PublicEventsPageOutput>, SearchPublicEventsUseCase>();
         services.AddSingleton<GetPublicEventDiagnostics>();
         services.AddScoped<IUseCase<GetPublicEventUseCaseInput, PublicEventOutput>, GetPublicEventUseCase>();
+
+        services.AddSingleton<CreateOrderDiagnostics>();
+        services.AddScoped<IUseCase<CreateOrderUseCaseInput, OrderOutput>, CreateOrderUseCase>();
+        services.AddSingleton<GetCustomerOrderDiagnostics>();
+        services.AddScoped<IUseCase<GetCustomerOrderUseCaseInput, OrderOutput>, GetCustomerOrderUseCase>();
 
         return services;
     }

@@ -48,6 +48,8 @@ function EventBody({ event }: { event: HubEvent }) {
   const isPast = event.date < now;
   const related = events.filter((other) => other.id !== event.id && other.date >= now && (other.category === event.category || other.city === event.city)).slice(0, 8);
   const expired = Boolean((state as { cartExpired?: boolean } | null)?.cartExpired);
+  // Pedido recusado na API real (estoque, lote fora de venda, limite): a mensagem da API diz o que ainda dá para escolher.
+  const orderRefused = (state as { orderRefused?: string } | null)?.orderRefused;
 
   function continueToCheckout() {
     update({ cart: { eventId: event.id, slug: event.slug, selection, expiresAt: Date.now() + CART_MINUTES * 60_000 } });
@@ -94,6 +96,7 @@ function EventBody({ event }: { event: HubEvent }) {
                 {flag === "LAST" && <Badge live>Últimos ingressos</Badge>}
               </div>
               {expired && <p className="event-notice" role="alert">Sua reserva expirou e os ingressos voltaram para a venda. Escolha de novo para continuar.</p>}
+              {orderRefused && <p className="event-notice" role="alert">{orderRefused} Escolha de novo para continuar.</p>}
               {isPast ? (
                 <p className="event-notice">Este evento já aconteceu.</p>
               ) : (

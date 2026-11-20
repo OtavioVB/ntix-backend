@@ -5,7 +5,10 @@ import { demoOrders, type CustomerOrder } from "./orders";
 /** Conta única do comprador (P-32). Sem senha: ela iria para a API e não fica no navegador. */
 export type CustomerAccount = { name: string; email: string; document: string };
 
-export type CartState = { eventId: string; slug: string; selection: Record<string, number>; expiresAt: number };
+/** Pedido já criado na API (REQ6) para esta seleção: recarregar o checkout reaproveita a reserva em vez de criar outra. */
+export type CartOrder = { code: string; expiresAt: number; totalCents: number };
+
+export type CartState = { eventId: string; slug: string; selection: Record<string, number>; expiresAt: number; order?: CartOrder };
 
 export type CustomerState = {
   account: CustomerAccount | null;

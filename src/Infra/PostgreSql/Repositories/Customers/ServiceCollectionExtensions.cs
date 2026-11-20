@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<ICustomerSessionRepository, CustomerSessionRepository>();
+        services.AddScoped<IProducerCustomerRepository, ProducerCustomerRepository>();
 
         return services;
     }

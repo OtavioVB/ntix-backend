@@ -103,6 +103,14 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Carga: k6. O cadastro de conta, o cadastro de produtor e a consulta do whitelabel (REQ3) usam o perfil moderado: até 50 usuários virtuais, p95 abaixo de 500 ms e menos de 1% de erros.
 - Carga do login do produtor (REQ5): 50 VUs, p95 abaixo de 1 s e menos de 1% de erros, porque o hash da senha é lento de propósito; a renovação usa o perfil moderado. O script cadastra contas suficientes para nenhuma passar do limite de tentativas.
 
+### Pedidos e reserva de estoque (REQ6)
+- Reserva sem rotina em segundo plano: o pedido grava `expires_at` (agora + `OrderConfiguration:ReservationMinutes`, 15), e vendidos e reservados são somados na hora (`TicketBatchRepository.GetSalesAsync`): itens de pedidos `PAID` mais os de `PENDING_PAYMENT` com `expires_at` no futuro. `EXPIRED` é derivado na leitura (`Order.GetEffectiveStatus`) e só seria gravado numa próxima escrita do pedido.
+- Quem reserva trava antes de somar: `ListByIdsForUpdateAsync(eventId, ids)` devolve só os lotes do evento, em ordem de id, com `FOR UPDATE`, na mesma transação da soma e da gravação do pedido. Nenhuma chamada externa dentro dessa transação.
+- Preço e nome do lote são congelados no item do pedido; o corpo da requisição nunca leva preço.
+- Código público de pedido e de ingresso: prefixo, alfabeto sem caracteres ambíguos (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`) e `RandomNumberGenerator`, com índice único e nova tentativa sob savepoint na colisão.
+- Recurso do comprador é consultado por `(code, id_customer)`: o de outro comprador responde 404, como inexistente.
+- Front (`?api=real`): o recurso criado no servidor fica guardado junto do estado local da tela (ex.: `cart.order`), para recarregar a página reaproveitar a reserva em vez de criar outra; prazo e total vêm do servidor.
+
 ### Listas públicas (REQ11)
 - Paginação por `page` (a partir de 1) e `pageSize` (padrão 20, máximo 50); a resposta traz `items`, `page`, `pageSize` e `totalItems`. Filtro inválido recusa a consulta inteira com uma notificação por filtro.
 - Endpoint público de leitura é `[AllowAnonymous]`, aceita `X-Execution-User` opcional e responde com `Cache-Control: public, max-age=15` quando o dado muda com a venda.

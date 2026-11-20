@@ -13,7 +13,9 @@ import {
   isValidExpiry,
   onlyDigits,
 } from "../../customer/payments";
-import { useCustomer } from "../../customer/session";
+import { placeServerOrder } from "../../customer/serverOrder";
+import { useCustomer, type CartOrder, type CartState } from "../../customer/session";
+import { isRealApi } from "../../api/mode";
 import type { HubEvent } from "../../hub/catalog";
 import { eventDay } from "../../hub/rules";
 import { useHub, usePurchase } from "../../hub/useHub";
@@ -45,7 +47,7 @@ function Countdown({ expiresAt, onExpire }: { expiresAt: number; onExpire: () =>
 
 type CardErrors = { number?: string; holder?: string; expiry?: string; cvv?: string; declined?: string };
 
-function PaymentForm({ event, items, onFinish }: { event: HubEvent; items: ReturnType<typeof itemsFromSelection>; onFinish: () => void }) {
+function PaymentForm({ event, items, orderCode, totalCents, onFinish }: { event: HubEvent; items: ReturnType<typeof itemsFromSelection>; orderCode?: string; totalCents: number; onFinish: () => void }) {
   const { addOrder } = usePurchase();
   const navigate = useNavigate();
   const [method, setMethod] = useState<"PIX" | "CARD">("PIX");
@@ -56,10 +58,10 @@ function PaymentForm({ event, items, onFinish }: { event: HubEvent; items: Retur
   const [installments, setInstallments] = useState(1);
   const [errors, setErrors] = useState<CardErrors>({});
   const [busy, setBusy] = useState(false);
-  const total = orderTotal(items);
+  const total = totalCents;
 
   function payWithPix() {
-    const order = createOrder(event, items, { method: "PIX", status: "PENDING" }, Date.now());
+    const order = createOrder(event, items, { method: "PIX", status: "PENDING" }, Date.now(), orderCode);
     onFinish();
     addOrder(order);
     navigate(`/conta/pedidos/${order.code}`);
@@ -86,7 +88,7 @@ function PaymentForm({ event, items, onFinish }: { event: HubEvent; items: Retur
       setBusy(false);
       return;
     }
-    const order = createOrder(event, items, { method: "CARD", status: "PAID", paidAt: now, brand: cardBrand(digits), last4: digits.slice(-4), installments }, now);
+    const order = createOrder(event, items, { method: "CARD", status: "PAID", paidAt: now, brand: cardBrand(digits), last4: digits.slice(-4), installments }, now, orderCode);
     onFinish();
     addOrder(order);
     navigate(`/conta/pedidos/${order.code}/confirmado`, { replace: true });
@@ -127,29 +129,90 @@ function PaymentForm({ event, items, onFinish }: { event: HubEvent; items: Retur
   );
 }
 
+type ServerOrderState =
+  | { status: "idle" }
+  | { status: "creating" }
+  | { status: "ready"; order: CartOrder }
+  | { status: "failed"; message: string };
+
+/**
+ * Pedido na API real (REQ6): com a pessoa conectada, pede os ingressos uma vez por carrinho e guarda o pedido no carrinho,
+ * para recarregar o checkout reaproveitar a reserva. Na demonstração não faz nada.
+ */
+function useServerOrder(
+  event: HubEvent | undefined,
+  items: ReturnType<typeof itemsFromSelection>,
+  cart: CartState | null,
+  enabled: boolean,
+  onCreated: (order: CartOrder) => void,
+  onUnavailable: (message: string) => void,
+): ServerOrderState {
+  const [failure, setFailure] = useState<string | null>(null);
+  const requested = useRef(false);
+  const reusable = cart?.order && cart.order.expiresAt > Date.now() ? cart.order : null;
+
+  useEffect(() => {
+    if (!enabled || !event || reusable || requested.current) return;
+    requested.current = true;
+
+    void placeServerOrder(event.slug, items).then((outcome) => {
+      if (outcome.kind === "created") onCreated(outcome);
+      else if (outcome.kind === "unavailable") onUnavailable(outcome.message);
+      else setFailure(outcome.message);
+    });
+  }, [enabled, event, items, reusable, onCreated, onUnavailable]);
+
+  if (!enabled) return { status: "idle" };
+  if (reusable) return { status: "ready", order: reusable };
+  return failure === null ? { status: "creating" } : { status: "failed", message: failure };
+}
+
 export function CheckoutPage() {
   const { slug } = useParams();
-  const { findBySlug } = useHub();
+  const { findBySlug, loading } = useHub();
   const { customer, update } = useCustomer();
   const navigate = useNavigate();
   const event = findBySlug(slug);
   const cart = customer.cart;
   const finishing = useRef(false);
   const items = useMemo(() => (event && cart ? itemsFromSelection(event, cart.selection) : []), [event, cart]);
+  const signedIn = customer.loggedIn && customer.account;
+  const validCart = Boolean(event && cart && cart.eventId === event.id && items.length > 0);
 
-  function expire() {
+  function leave(state: { cartExpired: true } | { orderRefused: string }) {
     finishing.current = true;
     update({ cart: null });
-    navigate(`/eventos/${slug}`, { replace: true, state: { cartExpired: true } });
+    navigate(`/eventos/${slug}`, { replace: true, state });
+  }
+
+  const serverOrder = useServerOrder(
+    event,
+    items,
+    cart,
+    isRealApi() && Boolean(signedIn) && validCart,
+    (order) => update({ cart: cart ? { ...cart, order } : null }),
+    (message) => leave({ orderRefused: message }),
+  );
+
+  // Vitrine real ainda carregando (recarregar o checkout): não manda para a home antes de a API responder.
+  if (!event && loading) {
+    return (
+      <div className="checkout">
+        <title>Finalizar compra · Ntix</title>
+        <div className="n-container"><p className="n-lead" role="status">Carregando o evento…</p></div>
+      </div>
+    );
   }
 
   if (!event) return <Navigate to="/" replace />;
   // Ao concluir a compra ou expirar a reserva o carrinho esvazia: sem isto, este redirecionamento venceria o destino certo.
   if (finishing.current) return null;
-  if (!cart || cart.eventId !== event.id || items.length === 0) return <Navigate to={`/eventos/${event.slug}`} replace />;
+  if (!cart || !validCart) return <Navigate to={`/eventos/${event.slug}`} replace />;
 
-  const signedIn = customer.loggedIn && customer.account;
   const day = eventDay(event.date);
+  // Na API real, o prazo e o total são os do pedido no servidor (RN7, RN9).
+  const expiresAt = serverOrder.status === "ready" ? serverOrder.order.expiresAt : cart.expiresAt;
+  const totalCents = serverOrder.status === "ready" ? serverOrder.order.totalCents : orderTotal(items);
 
   return (
     <div className="checkout">
@@ -167,7 +230,19 @@ export function CheckoutPage() {
             {signedIn ? (
               <>
                 <p className="checkout-who">Comprando como <strong>{customer.account!.name}</strong></p>
-                <PaymentForm event={event} items={items} onFinish={() => { finishing.current = true; }} />
+                {serverOrder.status === "creating" && <p className="signup__note" role="status">Reservando seus ingressos…</p>}
+                {serverOrder.status === "failed" && (
+                  <p className="auth-form__error" role="alert">{serverOrder.message} <Link to={`/eventos/${event.slug}`}>Voltar ao evento</Link></p>
+                )}
+                {(serverOrder.status === "idle" || serverOrder.status === "ready") && (
+                  <PaymentForm
+                    event={event}
+                    items={items}
+                    orderCode={serverOrder.status === "ready" ? serverOrder.order.code : undefined}
+                    totalCents={totalCents}
+                    onFinish={() => { finishing.current = true; }}
+                  />
+                )}
               </>
             ) : (
               <AuthForm />
@@ -186,8 +261,8 @@ export function CheckoutPage() {
                 <li key={item.batchId}><span>{item.quantity} × {item.name}</span><b className="n-figure">{formatCents(item.quantity * item.unitPriceCents)}</b></li>
               ))}
             </ul>
-            <div className="purchase-box__total"><span>Total · {ticketCount(items)} {ticketCount(items) === 1 ? "ingresso" : "ingressos"}</span><strong>{formatCents(orderTotal(items))}</strong></div>
-            <Countdown expiresAt={cart.expiresAt} onExpire={expire} />
+            <div className="purchase-box__total"><span>Total · {ticketCount(items)} {ticketCount(items) === 1 ? "ingresso" : "ingressos"}</span><strong>{formatCents(totalCents)}</strong></div>
+            {(serverOrder.status === "idle" || serverOrder.status === "ready") && <Countdown key={expiresAt} expiresAt={expiresAt} onExpire={() => leave({ cartExpired: true })} />}
           </div>
         </aside>
       </div>

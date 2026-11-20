@@ -41,6 +41,27 @@ public sealed class TicketBatchRepository : ITicketBatchRepository
         FOR UPDATE;
         """;
 
+    // Trava dos lotes do pedido (REQ6, RN8), em ordem de id: dois pedidos com os mesmos lotes travam na mesma ordem e não geram deadlock.
+    // O filtro por evento deixa de fora o lote de outro evento (RN4).
+    private const string SELECT_BY_IDS_FOR_UPDATE_SQL = SELECT_COLUMNS + """
+
+        WHERE id_event = @id_event AND id_ticket_batch = ANY(@id_ticket_batches)
+        ORDER BY id_ticket_batch
+        FOR UPDATE;
+        """;
+
+    // Vendidos: itens de pedidos pagos. Reservados: itens de pedidos aguardando pagamento com a reserva ainda valendo (RN8);
+    // os vencidos não contam, sem rotina que os devolva ao estoque (RN12).
+    private const string SELECT_SALES_SQL = """
+        SELECT item.id_ticket_batch,
+               COALESCE(SUM(item.quantity) FILTER (WHERE o.status = 'PAID'), 0),
+               COALESCE(SUM(item.quantity) FILTER (WHERE o.status = 'PENDING_PAYMENT' AND o.expires_at > @now), 0)
+        FROM orders.order_item item
+        JOIN orders.orders o ON o.id_order = item.id_order
+        WHERE item.id_ticket_batch = ANY(@id_ticket_batches)
+        GROUP BY item.id_ticket_batch;
+        """;
+
     private const string INSERT_SQL = """
         INSERT INTO events.ticket_batch (id_ticket_batch, id_event, id_producer, name, note, price, quantity, sales_starts_at, sales_ends_at, status,
                                          created_at, created_correlation_id, updated_at, updated_correlation_id)
@@ -116,9 +137,39 @@ public sealed class TicketBatchRepository : ITicketBatchRepository
         return (await ReadBatchesAsync(command, cancellationToken)).SingleOrDefault();
     }
 
-    // Os pedidos ainda não existem (REQ6): nenhum lote tem vendidos nem reservados. O REQ6 troca esta implementação pela soma dos itens.
-    public Task<IReadOnlyDictionary<Guid, TicketBatchSalesModel>> GetSalesAsync(IReadOnlyCollection<Guid> batchIds, DateTime now, CancellationToken cancellationToken = default)
-        => Task.FromResult<IReadOnlyDictionary<Guid, TicketBatchSalesModel>>(batchIds.Distinct().ToDictionary(id => id, _ => new TicketBatchSalesModel(Sold: 0, Reserved: 0)));
+    public async Task<IReadOnlyList<TicketBatchModel>> ListByIdsForUpdateAsync(Guid eventId, IReadOnlyCollection<Guid> batchIds, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(ListByIdsForUpdateAsync));
+
+        await using var command = _unitOfWork.CreateCommand(SELECT_BY_IDS_FOR_UPDATE_SQL);
+
+        command.Parameters.Add("@id_event", NpgsqlDbType.Uuid).Value = eventId;
+        command.Parameters.Add("@id_ticket_batches", NpgsqlDbType.Array | NpgsqlDbType.Uuid).Value = batchIds.ToArray();
+
+        return await ReadBatchesAsync(command, cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, TicketBatchSalesModel>> GetSalesAsync(IReadOnlyCollection<Guid> batchIds, DateTime now, CancellationToken cancellationToken = default)
+    {
+        var sales = batchIds.Distinct().ToDictionary(id => id, _ => new TicketBatchSalesModel(Sold: 0, Reserved: 0));
+
+        if (sales.Count == 0)
+            return sales;
+
+        using var activity = StartDatabaseActivity(nameof(GetSalesAsync));
+
+        await using var command = _unitOfWork.CreateCommand(SELECT_SALES_SQL);
+
+        command.Parameters.Add("@id_ticket_batches", NpgsqlDbType.Array | NpgsqlDbType.Uuid).Value = sales.Keys.ToArray();
+        command.Parameters.Add("@now", NpgsqlDbType.TimestampTz).Value = now;
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+            sales[reader.GetGuid(0)] = new TicketBatchSalesModel(Sold: (int)reader.GetInt64(1), Reserved: (int)reader.GetInt64(2));
+
+        return sales;
+    }
 
     private async Task<TicketBatchWriteResult> WriteAsync(string sql, string operation, TicketBatchModel batch, bool includeCreation, CancellationToken cancellationToken)
     {

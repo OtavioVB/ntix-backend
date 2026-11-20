@@ -20,8 +20,13 @@ public interface ITicketBatchRepository
     Task<TicketBatchWriteResult> UpdateAsync(TicketBatchModel batch, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Vendidos e reservados por lote, para a disponibilidade. Até os pedidos existirem (REQ6), todos os lotes têm zero;
-    /// o REQ6 passa a somar os itens dos pedidos.
+    /// Lotes do evento pelos ids, travados até o fim da transação e em ordem de id (REQ6, RN8). O lote que não é do evento não volta (RN4).
+    /// </summary>
+    Task<IReadOnlyList<TicketBatchModel>> ListByIdsForUpdateAsync(Guid eventId, IReadOnlyCollection<Guid> batchIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Vendidos (itens de pedidos pagos) e reservados (itens de pedidos aguardando pagamento dentro da reserva) por lote, para a
+    /// disponibilidade. Todo lote pedido aparece no resultado, com zero quando não tem itens.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, TicketBatchSalesModel>> GetSalesAsync(IReadOnlyCollection<Guid> batchIds, DateTime now, CancellationToken cancellationToken = default);
 }
