@@ -45,6 +45,15 @@ using Application.UseCases.GetProducerEvents.Inputs;
 using Application.UseCases.GetProducerEvents.Outputs;
 using Application.UseCases.UpdateEvent;
 using Application.UseCases.UpdateEvent.Inputs;
+using Application.UseCases.CreateTicketBatch;
+using Application.UseCases.CreateTicketBatch.Inputs;
+using Application.UseCases.GetTicketBatches;
+using Application.UseCases.GetTicketBatches.Inputs;
+using Application.UseCases.GetTicketBatches.Outputs;
+using Application.UseCases.PublishEvent;
+using Application.UseCases.PublishEvent.Inputs;
+using Application.UseCases.UpdateTicketBatch;
+using Application.UseCases.UpdateTicketBatch.Inputs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -94,6 +103,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUseCase<GetProducerEventUseCaseInput, ProducerEventOutput>, GetProducerEventUseCase>();
         services.AddSingleton<UpdateEventDiagnostics>();
         services.AddScoped<IUseCase<UpdateEventUseCaseInput, ProducerEventOutput>, UpdateEventUseCase>();
+        services.AddSingleton<CreateTicketBatchDiagnostics>();
+        services.AddScoped<IUseCase<CreateTicketBatchUseCaseInput, TicketBatchOutput>, CreateTicketBatchUseCase>();
+        services.AddSingleton<GetTicketBatchesDiagnostics>();
+        services.AddScoped<IUseCase<GetTicketBatchesUseCaseInput, GetTicketBatchesUseCaseOutput>, GetTicketBatchesUseCase>();
+        services.AddSingleton<UpdateTicketBatchDiagnostics>();
+        services.AddScoped<IUseCase<UpdateTicketBatchUseCaseInput, TicketBatchOutput>, UpdateTicketBatchUseCase>();
+        services.AddSingleton<PublishEventDiagnostics>();
+        services.AddScoped<IUseCase<PublishEventUseCaseInput, ProducerEventOutput>, PublishEventUseCase>();
 
         return services;
     }

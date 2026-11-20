@@ -1,7 +1,7 @@
 {
   "uid": "ntix-producer-events-funnel",
   "title": "Ntix Funil de Eventos do Produtor",
-  "description": "REQ9: criação, alteração, lista e consulta de eventos no painel do produtor.",
+  "description": "REQ9 e REQ10: eventos, lotes e publicação no painel do produtor.",
   "tags": [
     "ntix",
     "negocio",
@@ -10,7 +10,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": {
     "from": "now-24h",
@@ -922,6 +922,1050 @@
           "refId": "D",
           "legendFormat": "Erros por exceção",
           "expr": "sum(increase(ntix_events_get_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Solicitações no período: criação de lote",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 36
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_events_batches_create_requests_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de sucesso: criação de lote",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 36
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 0.99
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_events_batches_create_outcomes_total{service_name=\"$service\", outcome=~\"created|updated|served|published\"}[$__range])) / sum(increase(ntix_events_batches_create_outcomes_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo: criação de lote",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lotes criados"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Evento inexistente"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Evento já iniciado"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Nome de lote repetido"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "Lotes criados",
+          "expr": "sum(increase(ntix_events_batches_create_outcomes_total{service_name=\"$service\", outcome=\"created\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "Pararam na validação",
+          "expr": "sum(increase(ntix_events_batches_create_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "Evento inexistente",
+          "expr": "sum(increase(ntix_events_batches_create_outcomes_total{service_name=\"$service\", outcome=\"event_not_found\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "D",
+          "legendFormat": "Evento já iniciado",
+          "expr": "sum(increase(ntix_events_batches_create_outcomes_total{service_name=\"$service\", outcome=\"event_already_started\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "E",
+          "legendFormat": "Nome de lote repetido",
+          "expr": "sum(increase(ntix_events_batches_create_outcomes_total{service_name=\"$service\", outcome=\"name_already_exists\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "F",
+          "legendFormat": "Erros por exceção",
+          "expr": "sum(increase(ntix_events_batches_create_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Solicitações no período: alteração de lote",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 45
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_events_batches_update_requests_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de sucesso: alteração de lote",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 45
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 0.99
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_events_batches_update_outcomes_total{service_name=\"$service\", outcome=~\"created|updated|served|published\"}[$__range])) / sum(increase(ntix_events_batches_update_outcomes_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo: alteração de lote",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 45
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lotes alterados"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Evento inexistente"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lote inexistente"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Evento já iniciado"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Nome de lote repetido"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Quantidade abaixo do vendido"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "Lotes alterados",
+          "expr": "sum(increase(ntix_events_batches_update_outcomes_total{service_name=\"$service\", outcome=\"updated\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "Pararam na validação",
+          "expr": "sum(increase(ntix_events_batches_update_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "Evento inexistente",
+          "expr": "sum(increase(ntix_events_batches_update_outcomes_total{service_name=\"$service\", outcome=\"event_not_found\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "D",
+          "legendFormat": "Lote inexistente",
+          "expr": "sum(increase(ntix_events_batches_update_outcomes_total{service_name=\"$service\", outcome=\"batch_not_found\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "E",
+          "legendFormat": "Evento já iniciado",
+          "expr": "sum(increase(ntix_events_batches_update_outcomes_total{service_name=\"$service\", outcome=\"event_already_started\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "F",
+          "legendFormat": "Nome de lote repetido",
+          "expr": "sum(increase(ntix_events_batches_update_outcomes_total{service_name=\"$service\", outcome=\"name_already_exists\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "G",
+          "legendFormat": "Quantidade abaixo do vendido",
+          "expr": "sum(increase(ntix_events_batches_update_outcomes_total{service_name=\"$service\", outcome=\"quantity_below_sold\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "H",
+          "legendFormat": "Erros por exceção",
+          "expr": "sum(increase(ntix_events_batches_update_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Solicitações no período: lista de lotes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 54
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_events_batches_list_requests_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de sucesso: lista de lotes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 54
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 0.99
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_events_batches_list_outcomes_total{service_name=\"$service\", outcome=~\"created|updated|served|published\"}[$__range])) / sum(increase(ntix_events_batches_list_outcomes_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo: lista de lotes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 54
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Consultas atendidas"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Evento inexistente"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "Consultas atendidas",
+          "expr": "sum(increase(ntix_events_batches_list_outcomes_total{service_name=\"$service\", outcome=\"served\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "Pararam na validação",
+          "expr": "sum(increase(ntix_events_batches_list_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "Evento inexistente",
+          "expr": "sum(increase(ntix_events_batches_list_outcomes_total{service_name=\"$service\", outcome=\"event_not_found\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "D",
+          "legendFormat": "Erros por exceção",
+          "expr": "sum(increase(ntix_events_batches_list_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Solicitações no período: publicação de evento",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 63
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_events_publish_requests_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de sucesso: publicação de evento",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 63
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 0.99
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_events_publish_outcomes_total{service_name=\"$service\", outcome=~\"created|updated|served|published\"}[$__range])) / sum(increase(ntix_events_publish_outcomes_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo: publicação de evento",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 63
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Eventos publicados"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Evento inexistente"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Evento já publicado"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Evento já iniciado"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sem lote em venda"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sem forma de pagamento"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "Eventos publicados",
+          "expr": "sum(increase(ntix_events_publish_outcomes_total{service_name=\"$service\", outcome=\"published\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "Pararam na validação",
+          "expr": "sum(increase(ntix_events_publish_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "Evento inexistente",
+          "expr": "sum(increase(ntix_events_publish_outcomes_total{service_name=\"$service\", outcome=\"event_not_found\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "D",
+          "legendFormat": "Evento já publicado",
+          "expr": "sum(increase(ntix_events_publish_outcomes_total{service_name=\"$service\", outcome=\"not_draft\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "E",
+          "legendFormat": "Evento já iniciado",
+          "expr": "sum(increase(ntix_events_publish_outcomes_total{service_name=\"$service\", outcome=\"event_already_started\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "F",
+          "legendFormat": "Sem lote em venda",
+          "expr": "sum(increase(ntix_events_publish_outcomes_total{service_name=\"$service\", outcome=\"without_batch\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "G",
+          "legendFormat": "Sem forma de pagamento",
+          "expr": "sum(increase(ntix_events_publish_outcomes_total{service_name=\"$service\", outcome=\"without_payment_method\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "H",
+          "legendFormat": "Erros por exceção",
+          "expr": "sum(increase(ntix_events_publish_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
         }
       ]
     }

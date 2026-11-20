@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddEventRepositoriesConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<ITicketBatchRepository, TicketBatchRepository>();
 
         return services;
     }

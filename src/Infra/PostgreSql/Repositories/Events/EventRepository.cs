@@ -66,6 +66,12 @@ public sealed class EventRepository : IEventRepository
         WHERE id_producer = @id_producer AND id_event = @id_event;
         """;
 
+    private const string UPDATE_STATUS_SQL = """
+        UPDATE events.event
+        SET status = @status, updated_at = @updated_at, updated_correlation_id = @updated_correlation_id
+        WHERE id_producer = @id_producer AND id_event = @id_event;
+        """;
+
     private static readonly ActivitySource ACTIVITY_SOURCE = new("Ntix.PostgreSql");
 
     private readonly PostgreSqlUnitOfWork _unitOfWork;
@@ -150,6 +156,21 @@ public sealed class EventRepository : IEventRepository
         await using var command = _unitOfWork.CreateCommand(UPDATE_SQL);
 
         AddEditableParameters(command, @event);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task UpdateStatusAsync(EventModel @event, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(UpdateStatusAsync));
+
+        await using var command = _unitOfWork.CreateCommand(UPDATE_STATUS_SQL);
+
+        command.Parameters.Add("@id_event", NpgsqlDbType.Uuid).Value = @event.Id;
+        command.Parameters.Add("@id_producer", NpgsqlDbType.Uuid).Value = @event.ProducerId;
+        command.Parameters.Add("@status", NpgsqlDbType.Varchar, ENUM_MAX_LENGTH).Value = @event.Status;
+        command.Parameters.Add("@updated_at", NpgsqlDbType.TimestampTz).Value = @event.UpdatedAt;
+        command.Parameters.Add("@updated_correlation_id", NpgsqlDbType.Uuid).Value = @event.UpdatedCorrelationId;
 
         await command.ExecuteNonQueryAsync(cancellationToken);
     }

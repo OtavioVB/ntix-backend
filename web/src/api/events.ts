@@ -56,3 +56,48 @@ export function createProducerEvent(slug: string, request: EventRequest): Promis
 export function updateProducerEvent(slug: string, id: string, request: EventRequest): Promise<ApiDataResult<ProducerEvent>> {
   return authorizedRequest("PUT", `${eventsRoute(slug)}/${encodeURIComponent(id)}`, { body: request });
 }
+
+/** Situação do lote (REQ10): pausar é INACTIVE. */
+export type BatchStatus = "ACTIVE" | "INACTIVE";
+
+/** Estado de venda derivado pela API (REQ10, RN7). */
+export type BatchSaleState = "PAUSED" | "UPCOMING" | "CLOSED" | "SOLD_OUT" | "ON_SALE";
+
+/** `TicketBatchV1Request` do OpenAPI: o mesmo corpo na criação e na edição. Preço em centavos. */
+export type TicketBatchRequest = {
+  name: string;
+  note?: string;
+  priceCents: number;
+  quantity: number;
+  salesStartsAt: string;
+  salesEndsAt: string;
+  status: BatchStatus;
+};
+
+export type TicketBatch = Omit<TicketBatchRequest, "note"> & {
+  id: string;
+  note?: string;
+  soldQuantity: number;
+  reservedQuantity: number;
+  availableQuantity: number;
+  saleState: BatchSaleState;
+};
+
+const batchesRoute = (slug: string, eventId: string) => `${eventsRoute(slug)}/${encodeURIComponent(eventId)}/batches`;
+
+export function getTicketBatches(slug: string, eventId: string, signal?: AbortSignal): Promise<ApiDataResult<TicketBatch[]>> {
+  return authorizedRequest("GET", batchesRoute(slug, eventId), { signal });
+}
+
+export function createTicketBatch(slug: string, eventId: string, request: TicketBatchRequest): Promise<ApiDataResult<TicketBatch>> {
+  return authorizedRequest("POST", batchesRoute(slug, eventId), { body: request });
+}
+
+export function updateTicketBatch(slug: string, eventId: string, batchId: string, request: TicketBatchRequest): Promise<ApiDataResult<TicketBatch>> {
+  return authorizedRequest("PUT", `${batchesRoute(slug, eventId)}/${encodeURIComponent(batchId)}`, { body: request });
+}
+
+/** POST .../events/{id}/publication: sem corpo; devolve o evento publicado. */
+export function publishProducerEvent(slug: string, eventId: string): Promise<ApiDataResult<ProducerEvent>> {
+  return authorizedRequest("POST", `${eventsRoute(slug)}/${encodeURIComponent(eventId)}/publication`);
+}

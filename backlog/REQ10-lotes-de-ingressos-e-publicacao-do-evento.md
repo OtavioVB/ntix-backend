@@ -1,6 +1,6 @@
 # REQ10 - Lotes de Ingressos e Publicação do Evento
 
-- **Status**: Proposto
+- **Status**: Implementado (aguardando validação)
 - **Área**: produtor / catálogo
 - **Depende de**: REQ9 (eventos do produtor); REQ4 (ranqueamento de integrações, usado na publicação)
 - **Habilita**: REQ11 (vitrine), REQ6 (pedidos)
@@ -279,6 +279,20 @@ Funcionalidade: Lotes de ingressos e publicação do evento
     Quando o produtor publica o evento
     Então recebe 409 com EVENT_NOT_DRAFT_NOTIFICATION_CODE
 ```
+
+## Decisões tomadas na implementação
+
+Implementado na ordem da jornada, depois do REQ9. O que o requisito não definia foi decidido assim:
+
+- **Ranqueamento na mesma transação da publicação**: `PublishEventUseCase` lê rotas, integrações e catálogo pelos repositórios do REQ4 e aplica o serviço de domínio `PaymentIntegrationRanking`, em vez de chamar o `RankPaymentIntegrationsUseCase`, que abre a própria transação no mesmo Unit of Work.
+- **Métodos com adaptador** em `PaymentMethodsWithAdapter` (`PaymentContext`), hoje só `PIX`. Rota só de boleto ou cartão não publica.
+- **Trava do evento** (`FOR UPDATE`) na criação de lote e na publicação, para as duas não se cruzarem; a edição de lote trava o próprio lote, a mesma trava que a reserva do REQ6 vai usar.
+- **Vendidos e reservados** vêm de `ITicketBatchRepository.GetSalesAsync`, que devolve zero até o REQ6 somar os pedidos. O contrato da lista já traz `soldQuantity`, `reservedQuantity` e `availableQuantity`.
+- **Venda depois do fim do evento** usa o código `BATCH_SALES_PERIOD_INVALID`, com a mensagem "A venda do lote deve terminar até o fim do evento.".
+- **Publicação recusada por evento já iniciado** responde 400 `EVENT_ALREADY_STARTED`, como na edição; `EVENT_NOT_DRAFT` é o único 409 da publicação.
+- **Id da rota que não é GUID** responde 404, como evento ou lote inexistente.
+- **Front**: com `?api=real`, cada evento da aba Eventos tem o botão "Lotes", que abre a lista de lotes com pausar/reativar, o formulário de novo lote (preço em reais, enviado em centavos) e o botão "Publicar evento" enquanto for rascunho. Sem a flag, a demonstração não muda.
+- **Carga**: perfil moderado em `tsts/LoadTests/producers-batches-tests.js`; a publicação fica fora, porque acontece uma vez por evento.
 
 ## Decisões em aberto
 

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Badge, Button, TextField } from "../../design-system";
 import { createProducerEvent, getProducerEvents, updateProducerEvent, type EventStatus, type ProducerEvent } from "../../api/events";
 import { useProducerSession } from "../../producer/session";
+import { EventBatchesSection } from "./EventBatchesSection";
 import {
   AGE_RATING_LABELS,
   CATEGORY_LABELS,
@@ -98,13 +99,14 @@ function EventFormSection({ editing, onSave, onCancel }: Readonly<{ editing?: Pr
 
 /**
  * Aba Eventos com a API real (REQ9, `?api=real`): lista, filtro por situação, criação em rascunho e edição.
- * Lotes e publicação chegam no REQ10.
+ * Lotes e publicação do evento escolhido (REQ10) ficam em `EventBatchesSection`.
  */
 export function ProducerEventsPage() {
   const { session } = useProducerSession();
   const [events, setEvents] = useState<ProducerEvent[]>([]);
   const [filter, setFilter] = useState<EventStatus | "">("");
   const [editing, setEditing] = useState<ProducerEvent>();
+  const [managing, setManaging] = useState<ProducerEvent>();
   const [loadError, setLoadError] = useState<string>();
   const [reload, setReload] = useState(0);
 
@@ -166,6 +168,7 @@ export function ProducerEventsPage() {
                   </div>
                   <Badge live={event.status === "PUBLISHED"}>{STATUS_LABELS[event.status]}</Badge>
                   <button type="button" className="team-list__remove" aria-label={`Editar ${event.title}`} onClick={() => setEditing(event)}>Editar</button>
+                  <button type="button" className="team-list__remove" aria-label={`Lotes de ${event.title}`} onClick={() => setManaging(event)}>Lotes</button>
                 </li>
               ))}
             </ul>
@@ -177,6 +180,18 @@ export function ProducerEventsPage() {
           <EventFormSection editing={editing} onSave={save} onCancel={() => setEditing(undefined)} />
         </section>
       </div>
+
+      {managing && (
+        <EventBatchesSection
+          key={managing.id}
+          slug={session.slug}
+          event={managing}
+          onPublished={(published) => {
+            setManaging(published);
+            setReload((value) => value + 1);
+          }}
+        />
+      )}
     </>
   );
 }

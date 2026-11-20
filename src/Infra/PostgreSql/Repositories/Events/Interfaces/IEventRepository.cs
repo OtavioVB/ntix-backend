@@ -21,4 +21,7 @@ public interface IEventRepository
 
     /// <summary>Substitui os campos editáveis. Slug, situação e criação não mudam.</summary>
     Task UpdateAsync(EventModel @event, CancellationToken cancellationToken = default);
+
+    /// <summary>Grava a nova situação do evento (publicação, REQ10).</summary>
+    Task UpdateStatusAsync(EventModel @event, CancellationToken cancellationToken = default);
 }

@@ -50,7 +50,13 @@ Dashboard: `ntix-producer-events-funnel.json`.
 | Lista de eventos | `ntix_events_list_requests_total`, `..._outcomes_total` | `served`, `validation_failed`, `producer_not_found`, `error` |
 | Consulta de evento | `ntix_events_get_requests_total`, `..._outcomes_total` | `served`, `validation_failed`, `producer_not_found`, `event_not_found`, `error` |
 
-- A alteração registra no log só os nomes dos campos que mudaram (`title`, `period`, `venue`...), nunca os valores de texto livre.
+| Criação de lote (REQ10) | `ntix_events_batches_create_requests_total`, `..._outcomes_total` | `created`, `validation_failed`, `event_not_found`, `event_already_started`, `name_already_exists`, `error` |
+| Alteração de lote (REQ10) | `ntix_events_batches_update_requests_total`, `..._outcomes_total` | `updated`, `validation_failed`, `event_not_found`, `batch_not_found`, `event_already_started`, `name_already_exists`, `quantity_below_sold`, `error` |
+| Lista de lotes (REQ10) | `ntix_events_batches_list_requests_total`, `..._outcomes_total` | `served`, `validation_failed`, `event_not_found`, `error` |
+| Publicação de evento (REQ10) | `ntix_events_publish_requests_total`, `..._outcomes_total` | `published`, `validation_failed`, `event_not_found`, `not_draft`, `event_already_started`, `without_batch`, `without_payment_method`, `error` |
+
+- A alteração de evento registra no log só os nomes dos campos que mudaram (`title`, `period`, `venue`...), nunca os valores de texto livre.
+- `without_payment_method` na publicação indica produtora sem integração Pix disponível: o caminho é a aba Integrações.
 
 ## Funil de cadastro de cliente
 
