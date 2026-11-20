@@ -3,7 +3,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { overviewSegment, panelPath } from "../../producer/paths";
 import { useProducerSession } from "../../producer/session";
 import { ApprovalPage } from "./ApprovalPage";
+import { isRealApi } from "../../api/mode";
 import { EventsPage } from "./EventsPage";
+import { ProducerEventsPage } from "./ProducerEventsPage";
 import { IntegrationsPage } from "./IntegrationsPage";
 import { LOCKED_DOMAINS, LockedPage } from "./LockedPage";
 import { OverviewPage } from "./OverviewPage";
@@ -32,7 +34,8 @@ export default function PanelRoutes() {
       <Route element={<PanelLayout />}>
         {/* No subdomínio do produtor, a raiz é o cadastro: a visão geral ganha caminho próprio. */}
         {overviewPath ? <Route path={overviewPath} element={overview} /> : <Route index element={overview} />}
-        <Route path="eventos" element={<ByStatus rehearsal={<EventsPage />} production={<EventsListPage />} />} />
+        {/* Com ?api=real, a aba fala com a API (REQ9) em qualquer situação da produtora: o rascunho não depende da aprovação. */}
+        <Route path="eventos" element={isRealApi() ? <ProducerEventsPage /> : <ByStatus rehearsal={<EventsPage />} production={<EventsListPage />} />} />
         <Route path="eventos/novo" element={<ByStatus rehearsal={toEvents} production={<EventFormPage />} />} />
         <Route path="eventos/:eventId" element={<ByStatus rehearsal={toEvents} production={<EventDetailPage />} />} />
         <Route path="vendas" element={<ByStatus rehearsal={<LockedPage domain={LOCKED_DOMAINS.vendas} />} production={<SalesPage />} />} />

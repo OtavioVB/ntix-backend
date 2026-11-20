@@ -1,6 +1,6 @@
 # REQ9 - Eventos do Produtor
 
-- **Status**: Proposto
+- **Status**: Implementado (aguardando validação)
 - **Área**: produtor / catálogo
 - **Depende de**: REQ5 (autenticação do usuário do produtor)
 - **Habilita**: REQ10 (lotes e publicação), REQ11 (vitrine), REQ6 (pedidos)
@@ -257,6 +257,21 @@ Funcionalidade: Eventos do produtor
     Quando o produtor tenta editá-lo
     Então recebe 400 com EVENT_ALREADY_STARTED_NOTIFICATION_CODE
 ```
+
+## Decisões tomadas na implementação
+
+O usuário pediu a implementação do REQ6 pela ordem da jornada, começando por este requisito. O que o requisito não definia foi decidido assim:
+
+- **Produtora pelo slug da rota**, como no REQ4 (`IProducerRepository.GetIdBySlugAsync`): a política `ProducerUser` já garante que o slug é o do token.
+- **Datas recebidas como texto ISO 8601** no `EventV1Request` e lidas pelo `EventPeriodValueObject`: data ilegível vira a notificação do próprio campo (`EVENT_PERIOD_INVALID` ou `EVENT_DOORS_OPEN_INVALID`), em vez de um `ProblemDetails` do framework. Data sem fuso é tratada como UTC.
+- **Início no passado** devolve `EVENT_PERIOD_INVALID`, com a mensagem "O evento deve começar no futuro."; o contrato não tinha código próprio.
+- **Local com uma notificação por campo**: `EVENT_VENUE_NAME_INVALID`, `EVENT_VENUE_ADDRESS_INVALID` e `EVENT_VENUE_CITY_INVALID`, no lugar do `EVENT_VENUE_INVALID` único do contrato, para o formulário apontar o campo.
+- **Edição também exige início no futuro**: levar para o passado um evento que ainda não começou é recusado com `EVENT_PERIOD_INVALID`.
+- **Lista devolve o evento completo** (o mesmo formato da consulta), não só o resumo do contrato: um formato só para o painel, sem perda.
+- **Id da rota que não é GUID** responde 404 `EVENT_NOT_FOUND`, igual a evento inexistente.
+- **Instante truncado em microssegundos** na criação e na edição, a precisão do PostgreSQL, para a resposta ser igual ao que fica gravado.
+- **Front**: com `?api=real`, a aba Eventos usa a API em qualquer situação da produtora (rascunho não depende de aprovação), com `datetime-local` na hora do navegador convertida para UTC. Sem a flag, a demonstração continua igual.
+- **Carga**: perfil moderado proposto no item 6, em `tsts/LoadTests/producers-events-tests.js`.
 
 ## Decisões em aberto
 

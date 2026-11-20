@@ -39,6 +39,19 @@ flowchart LR
 - Logs e spans citam a chave da credencial (`API_KEY`), nunca o valor. O valor secreto também não sai na API: a leitura mostra só os últimos caracteres.
 - Para provocar o desfecho `error` nos testes de funil (`tsts/LoadTests/producers-payments-funnel-tests.js`), pare o PostgreSQL durante a execução.
 
+## Eventos do produtor (REQ9)
+
+Dashboard: `ntix-producer-events-funnel.json`.
+
+| Fluxo | Métricas no Prometheus | Desfechos (`outcome`) |
+|---|---|---|
+| Criação de evento | `ntix_events_create_requests_total`, `..._outcomes_total` | `created`, `validation_failed`, `producer_not_found`, `error` |
+| Alteração de evento | `ntix_events_update_requests_total`, `..._outcomes_total` | `updated`, `validation_failed`, `event_not_found`, `already_started`, `producer_not_found`, `error` |
+| Lista de eventos | `ntix_events_list_requests_total`, `..._outcomes_total` | `served`, `validation_failed`, `producer_not_found`, `error` |
+| Consulta de evento | `ntix_events_get_requests_total`, `..._outcomes_total` | `served`, `validation_failed`, `producer_not_found`, `event_not_found`, `error` |
+
+- A alteração registra no log só os nomes dos campos que mudaram (`title`, `period`, `venue`...), nunca os valores de texto livre.
+
 ## Funil de cadastro de cliente
 
 | Passo | Métrica no Prometheus | Filtro |
