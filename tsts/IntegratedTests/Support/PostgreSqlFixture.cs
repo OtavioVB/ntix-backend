@@ -182,6 +182,10 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
         return events;
     }
 
+    /// <summary>Conexão própria, para o teste controlar a transação (ex.: gravar sem passar pela trava da aplicação).</summary>
+    public Task<NpgsqlConnection> OpenConnectionAsync()
+        => _database!.OpenConnectionAsync();
+
     public Task<int> ExecuteAsync(string sql, params NpgsqlParameter[] parameters)
         => _database!.ExecuteAsync(sql, parameters);
 
