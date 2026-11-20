@@ -9,6 +9,9 @@ using Application.UseCases.GetProducerEvents.Inputs;
 using Application.UseCases.GetProducerEvents.Outputs;
 using Application.UseCases.UpdateEvent;
 using Application.UseCases.UpdateEvent.Inputs;
+using Application.UseCases.PublishEvent;
+using Application.UseCases.PublishEvent.Inputs;
+using Domain.BoundedContexts.EventContext.Entities;
 using Domain.CrossCutting.NotificationContext.Interfaces;
 using Domain.ValueObjects;
 using Microsoft.AspNetCore.Authorization;
@@ -160,6 +163,36 @@ public sealed class ProducerEventsV1Controller : ControllerBase
                 notifications: result.Notifications,
                 canceledCode: UpdateEventUseCase.UPDATE_EVENT_CANCELED_NOTIFICATION_CODE,
                 notFoundCodes: [UpdateEventUseCase.PRODUCER_NOT_FOUND_NOTIFICATION_CODE, UpdateEventUseCase.EVENT_NOT_FOUND_NOTIFICATION_CODE]);
+        }
+
+        return Ok(result.Output);
+    }
+
+    /// <summary>Publica o evento (REQ10): exige rascunho, lote em venda futura e um método de pagamento disponível.</summary>
+    [HttpPost("{eventId}/publication")]
+    public async Task<IActionResult> PublishEventAsync(
+        [FromServices] IUseCase<PublishEventUseCaseInput, ProducerEventOutput> useCase,
+        [FromRoute] string? slug,
+        [FromRoute] string? eventId,
+        [FromHeader(Name = AuditableInfoValueObject.CORRELATION_ID_HEADER_KEY)] string? correlationId,
+        [FromHeader(Name = AuditableInfoValueObject.ORIGIN_SERVICE_HEADER_KEY)] string? originService,
+        [FromHeader(Name = AuditableInfoValueObject.REQUESTED_AT_HEADER_KEY)] string? requestedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await useCase.ExecuteAsync(
+            input: PublishEventUseCaseInput.Create(slug, eventId),
+            auditableInfo: BuildAuditableInfo(correlationId, originService, requestedAt),
+            cancellationToken: cancellationToken);
+
+        if (result.IsError)
+        {
+            if (result.Notifications.Any(notification => notification.Code == Event.EVENT_NOT_DRAFT_NOTIFICATION_CODE))
+                return Conflict(result.Notifications);
+
+            return ToErrorResult(
+                notifications: result.Notifications,
+                canceledCode: PublishEventUseCase.PUBLISH_EVENT_CANCELED_NOTIFICATION_CODE,
+                notFoundCodes: [PublishEventUseCase.EVENT_NOT_FOUND_NOTIFICATION_CODE]);
         }
 
         return Ok(result.Output);

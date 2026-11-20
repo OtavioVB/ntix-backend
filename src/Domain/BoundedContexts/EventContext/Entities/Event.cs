@@ -62,7 +62,7 @@ public sealed record Event
     private const string EVENT_STARTS_IN_PAST_NOTIFICATION_MESSAGE = "O evento deve começar no futuro.";
 
     public const string EVENT_ALREADY_STARTED_NOTIFICATION_CODE = "EVENT_ALREADY_STARTED";
-    private const string EVENT_ALREADY_STARTED_NOTIFICATION_MESSAGE = "O evento já começou e não pode mais ser alterado.";
+    public const string EVENT_ALREADY_STARTED_NOTIFICATION_MESSAGE = "O evento já começou e não pode mais ser alterado.";
 
     /// <summary>Slug base do título, antes de conferir se está livre na base.</summary>
     public static SlugValueObject BuildBaseSlug(EventTitleValueObject title)
@@ -91,6 +91,41 @@ public sealed record Event
             createdCorrelationId: correlationId,
             updatedAt: timestamp,
             updatedCorrelationId: correlationId));
+    }
+
+    public const string EVENT_NOT_DRAFT_NOTIFICATION_CODE = "EVENT_NOT_DRAFT";
+    private const string EVENT_NOT_DRAFT_NOTIFICATION_MESSAGE = "Só um evento em rascunho pode ser publicado.";
+
+    public const string EVENT_WITHOUT_BATCH_NOTIFICATION_CODE = "EVENT_WITHOUT_BATCH";
+    private const string EVENT_WITHOUT_BATCH_NOTIFICATION_MESSAGE = "Crie ao menos um lote ativo, com venda ainda aberta, antes de publicar o evento.";
+
+    public const string EVENT_WITHOUT_PAYMENT_METHOD_NOTIFICATION_CODE = "EVENT_WITHOUT_PAYMENT_METHOD";
+    private const string EVENT_WITHOUT_PAYMENT_METHOD_NOTIFICATION_MESSAGE = "Configure uma integração de pagamento para Pix na aba Integrações antes de publicar o evento.";
+
+    /// <summary>
+    /// Publica o evento (REQ10, RN10): só em rascunho, antes de começar, com ao menos um lote ativo cuja venda não terminou
+    /// e com algum método de pagamento disponível para a produtora. Publicado, não volta para rascunho (RN11).
+    /// </summary>
+    public MethodResult<Event> Publish(IReadOnlyList<TicketBatch> batches, bool hasPaymentMethod, DateTime now, IdValueObject correlationId)
+    {
+        if (Status != EventStatus.DRAFT)
+            return MethodResult<Event>.Error([Notification.Error(EVENT_NOT_DRAFT_NOTIFICATION_CODE, EVENT_NOT_DRAFT_NOTIFICATION_MESSAGE)]);
+
+        if (!CanBeEdited(now))
+            return MethodResult<Event>.Error([Notification.Error(EVENT_ALREADY_STARTED_NOTIFICATION_CODE, EVENT_ALREADY_STARTED_NOTIFICATION_MESSAGE)]);
+
+        if (!batches.Any(batch => batch.Details.Status.Value == BatchStatus.ACTIVE && batch.Details.SalesPeriod.EndsAt > now))
+            return MethodResult<Event>.Error([Notification.Error(EVENT_WITHOUT_BATCH_NOTIFICATION_CODE, EVENT_WITHOUT_BATCH_NOTIFICATION_MESSAGE)]);
+
+        if (!hasPaymentMethod)
+            return MethodResult<Event>.Error([Notification.Error(EVENT_WITHOUT_PAYMENT_METHOD_NOTIFICATION_CODE, EVENT_WITHOUT_PAYMENT_METHOD_NOTIFICATION_MESSAGE)]);
+
+        return MethodResult<Event>.Success(this with
+        {
+            Status = EventStatus.PUBLISHED,
+            UpdatedAt = DateTimeValueObject.Build(now),
+            UpdatedCorrelationId = correlationId,
+        });
     }
 
     /// <summary>Reconstrói o evento gravado, sem revalidar regras que dependem do relógio.</summary>
