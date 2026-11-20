@@ -3,6 +3,7 @@ using Infra.Cryptography.Credentials;
 using Infra.PostgreSql.Base.UnitOfWork;
 using Infra.PostgreSql.Repositories.Customers;
 using Infra.PostgreSql.Repositories.Customers.Models;
+using Infra.PostgreSql.Repositories.Events;
 using Infra.PostgreSql.Repositories.Outbox;
 using Infra.PostgreSql.Repositories.Outbox.Models;
 using Infra.PostgreSql.Repositories.Payments;
@@ -52,6 +53,7 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
             .AddProducerRepositoryConfiguration(configuration)
             .AddOutboxRepositoryConfiguration(configuration)
             .AddPaymentRepositoriesConfiguration(configuration)
+            .AddEventRepositoriesConfiguration(configuration)
             .AddCredentialCipherConfiguration(configuration)
             .AddUseCasesConfiguration(configuration)
             .BuildServiceProvider();

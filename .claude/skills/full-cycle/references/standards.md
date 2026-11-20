@@ -72,6 +72,8 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Pagamentos (REQ4): por enquanto, o único fornecedor do catálogo é o AbacatePay. As chaves e os métodos de um fornecedor vêm da documentação dele.
 
 ### Modo de trabalho
+- A jornada de compra (`docs/jornada-de-compra.md`) é entregue na ordem do roteiro, um requisito por PR (REQ9 → REQ10 → REQ11 → REQ12 → REQ6 → REQ7 → REQ8 → REQ13). Pedido de implementar um requisito com pré-requisito ainda não entregue começa pelo pré-requisito, sem atalho (decidido no REQ6).
+- O front chama a API com `?api=real` (a flag existente em `web/src/api/mode.ts`); não há `?api=live` (confirmado no REQ6).
 - Quando o usuário pedir a implementação sem perguntas, decida pelas estratégias já registradas aqui e no requisito, e registre cada decisão na seção "Decisões tomadas na implementação" do próprio requisito (ex.: REQ4).
 
 ### Padrões de código

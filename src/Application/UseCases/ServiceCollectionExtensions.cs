@@ -35,6 +35,16 @@ using Application.UseCases.RefreshProducerSession;
 using Application.UseCases.RefreshProducerSession.Inputs;
 using Application.UseCases.RevokeProducerSession;
 using Application.UseCases.RevokeProducerSession.Inputs;
+using Application.UseCases.Base.Events.Outputs;
+using Application.UseCases.CreateEvent;
+using Application.UseCases.CreateEvent.Inputs;
+using Application.UseCases.GetProducerEvent;
+using Application.UseCases.GetProducerEvent.Inputs;
+using Application.UseCases.GetProducerEvents;
+using Application.UseCases.GetProducerEvents.Inputs;
+using Application.UseCases.GetProducerEvents.Outputs;
+using Application.UseCases.UpdateEvent;
+using Application.UseCases.UpdateEvent.Inputs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -75,6 +85,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUseCase<ReplacePaymentRouteUseCaseInput, ReplacePaymentRouteUseCaseOutput>, ReplacePaymentRouteUseCase>();
         services.AddSingleton<RankPaymentIntegrationsDiagnostics>();
         services.AddScoped<IUseCase<RankPaymentIntegrationsUseCaseInput, RankPaymentIntegrationsUseCaseOutput>, RankPaymentIntegrationsUseCase>();
+
+        services.AddSingleton<CreateEventDiagnostics>();
+        services.AddScoped<IUseCase<CreateEventUseCaseInput, ProducerEventOutput>, CreateEventUseCase>();
+        services.AddSingleton<GetProducerEventsDiagnostics>();
+        services.AddScoped<IUseCase<GetProducerEventsUseCaseInput, GetProducerEventsUseCaseOutput>, GetProducerEventsUseCase>();
+        services.AddSingleton<GetProducerEventDiagnostics>();
+        services.AddScoped<IUseCase<GetProducerEventUseCaseInput, ProducerEventOutput>, GetProducerEventUseCase>();
+        services.AddSingleton<UpdateEventDiagnostics>();
+        services.AddScoped<IUseCase<UpdateEventUseCaseInput, ProducerEventOutput>, UpdateEventUseCase>();
 
         return services;
     }
