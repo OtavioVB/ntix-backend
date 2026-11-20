@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { Button, Segmented, TextField } from "../../design-system";
 import { demoAccountState, useCustomer } from "../../customer/session";
 import { formatDocument, isValidDocument } from "../../producer/legal";
+import { isRealApi } from "../../api/mode";
+import { signInCustomer, signUpCustomer } from "../../customer/signIn";
 
 const MODES = [
   { value: "signup", label: "Criar conta" },
@@ -23,7 +25,10 @@ export function AuthForm({ onDone }: { onDone?: () => void }) {
   const [identifier, setIdentifier] = useState("");
   const [errors, setErrors] = useState<Errors>({});
 
-  function handleSignup(event: FormEvent) {
+  const real = isRealApi();
+  const [sending, setSending] = useState(false);
+
+  async function handleSignup(event: FormEvent) {
     event.preventDefault();
     const found: Errors = {};
     if (name.trim().length < 2) found.name = "Informe seu nome.";
@@ -33,13 +38,44 @@ export function AuthForm({ onDone }: { onDone?: () => void }) {
     setErrors(found);
     if (Object.keys(found).length) return;
 
-    update({ account: { name: name.trim(), email: email.trim(), document }, loggedIn: true });
+    if (real) {
+      setSending(true);
+      const result = await signUpCustomer(name, email, document, password);
+      setSending(false);
+      if (!result.ok) {
+        setErrors({ [result.field ?? "password"]: result.message });
+        return;
+      }
+      update({ account: result.account, loggedIn: true });
+    } else {
+      update({ account: { name: name.trim(), email: email.trim(), document }, loggedIn: true });
+    }
     setPassword("");
     onDone?.();
   }
 
-  function handleLogin(event: FormEvent) {
+  async function handleLogin(event: FormEvent) {
     event.preventDefault();
+
+    // API real (REQ12): e-mail ou CPF e senha conferidos no servidor; a conta da tela vem de "meus dados".
+    if (real) {
+      if (!identifier.trim() || !password) {
+        setErrors({ login: "Informe o e-mail ou CPF e a senha." });
+        return;
+      }
+      setSending(true);
+      const result = await signInCustomer(identifier, password);
+      setSending(false);
+      if (!result.ok) {
+        setErrors({ login: result.message });
+        return;
+      }
+      update({ account: result.account, loggedIn: true });
+      setPassword("");
+      onDone?.();
+      return;
+    }
+
     const typed = identifier.trim().toLowerCase();
     const account = customer.account;
     const matches = account && (account.email.toLowerCase() === typed || account.document.replace(/\D/g, "") === typed.replace(/\D/g, ""));
@@ -67,14 +103,14 @@ export function AuthForm({ onDone }: { onDone?: () => void }) {
           <TextField id="customer-email" label="E-mail" type="email" inputMode="email" autoComplete="email" maxLength={254} value={email} error={errors.email} onChange={(event) => setEmail(event.target.value)} />
           <TextField id="customer-document" label="CPF" inputMode="numeric" className="n-figure" autoComplete="off" maxLength={14} value={document} error={errors.document} onChange={(event) => setDocument(formatDocument("INDIVIDUAL", event.target.value))} />
           <TextField id="customer-password" label="Senha" type="password" autoComplete="new-password" value={password} error={errors.password} onChange={(event) => setPassword(event.target.value)} />
-          <Button type="submit" block arrow>Criar conta e continuar</Button>
+          <Button type="submit" block arrow disabled={sending}>Criar conta e continuar</Button>
         </form>
       ) : (
         <form className="auth-form__fields" onSubmit={handleLogin} noValidate>
           <TextField id="customer-identifier" label="E-mail ou CPF" autoComplete="username" value={identifier} onChange={(event) => setIdentifier(event.target.value)} />
           <TextField id="customer-login-password" label="Senha" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
           <p className="auth-form__error" role="alert">{errors.login}</p>
-          <Button type="submit" block arrow>Entrar</Button>
+          <Button type="submit" block arrow disabled={sending}>Entrar</Button>
         </form>
       )}
       <p className="signup__note">

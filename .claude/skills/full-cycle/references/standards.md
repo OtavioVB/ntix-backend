@@ -67,6 +67,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Senha do cliente: obrigatória, com ao menos 8 caracteres, uma letra maiúscula, uma minúscula, um número e um símbolo. É persistida como hash que combina a chave privada do servidor com o hash da senha, e cada cliente tem o próprio salt.
 - Celular do cliente: opcional, com DDD e número.
 - Autenticação do produtor (REQ5): access token JWT curto (15 min) e refresh token rotativo, gravado só como hash e revogável no banco ([RFC 0007](../../../../docs/rfcs/0007-autenticacao-jwt-bearer.md)).
+- Autenticação do cliente (REQ12): o mesmo desenho, com refresh token de 30 dias, login por e-mail ou CPF e o claim `actor = CUSTOMER`. Endpoint do comprador usa `[Authorize(Policy = AuthenticationExtensions.CUSTOMER_POLICY)]`, e o `ExecutionUser` é `User.GetCustomerId()`.
 - Usuário do produtor `PENDING` (e-mail não verificado) faz login até existir a verificação de e-mail; `BLOCKED` não.
 - Login do produtor: no máximo 10 tentativas por e-mail a cada 15 minutos; a partir daí, 429 com `Retry-After` (REQ5).
 - Pagamentos (REQ4): por enquanto, o único fornecedor do catálogo é o AbacatePay. As chaves e os métodos de um fornecedor vêm da documentação dele.

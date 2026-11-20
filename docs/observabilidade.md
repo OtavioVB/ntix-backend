@@ -62,6 +62,20 @@ Dashboard: `ntix-producer-events-funnel.json`.
 - A alteração de evento registra no log só os nomes dos campos que mudaram (`title`, `period`, `venue`...), nunca os valores de texto livre.
 - `without_payment_method` na publicação indica produtora sem integração Pix disponível: o caminho é a aba Integrações.
 
+## Sessão do cliente (REQ12)
+
+Dashboard: `ntix-customer-sessions.json`.
+
+| Fluxo | Métricas no Prometheus | Desfechos (`outcome`) |
+|---|---|---|
+| Login | `ntix_customers_sessions_create_requests_total`, `..._outcomes_total` | `created`, `invalid_credentials`, `rate_limited`, `validation_failed`, `error` |
+| Renovação | `ntix_customers_sessions_refresh_requests_total`, `..._outcomes_total` | `refreshed`, `invalid_token`, `reuse_detected`, `validation_failed`, `error` |
+| Logout | `ntix_customers_sessions_revoke_requests_total`, `..._outcomes_total` | `revoked`, `not_found`, `validation_failed`, `error` |
+| Meus dados | `ntix_customers_me_requests_total`, `..._outcomes_total` | `served`, `customer_not_found`, `validation_failed`, `error` |
+
+- `ntix_customers_sessions_login_rate_limited_total` conta os logins barrados pelo limite de tentativas; `ntix_customers_sessions_refresh_reuse_total`, os reusos de refresh token (família revogada).
+- O login aparece nos logs só ofuscado (`***.456.789-**` ou `ma***@exemplo.com`); a senha e os tokens, nunca.
+
 ## Funil de cadastro de cliente
 
 | Passo | Métrica no Prometheus | Filtro |

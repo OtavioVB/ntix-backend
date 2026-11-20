@@ -33,7 +33,69 @@ public sealed class CustomerRepository : ICustomerRepository
         VALUES (@id_customer, @full_name, @email, @document, @slug, @password_hash, @password_salt, @phone_number, @created_at, @created_correlation_id);
         """;
 
+    private const string SELECT_COLUMNS = """
+        SELECT id_customer, full_name, email, document, slug, password_hash, password_salt, phone_number, created_at, created_correlation_id
+        FROM customers.customer
+        """;
+
+    private const string SELECT_BY_EMAIL_SQL = SELECT_COLUMNS + " WHERE email = @email;";
+    private const string SELECT_BY_DOCUMENT_SQL = SELECT_COLUMNS + " WHERE document = @document;";
+    private const string SELECT_BY_ID_SQL = SELECT_COLUMNS + " WHERE id_customer = @id_customer;";
+
     private static readonly ActivitySource ACTIVITY_SOURCE = new("Ntix.PostgreSql");
+
+    public async Task<CustomerModel?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(GetByEmailAsync));
+
+        await using var command = _unitOfWork.CreateCommand(SELECT_BY_EMAIL_SQL);
+
+        command.Parameters.Add("@email", NpgsqlDbType.Varchar, EMAIL_MAX_LENGTH).Value = email;
+
+        return await ReadSingleAsync(command, cancellationToken);
+    }
+
+    public async Task<CustomerModel?> GetByDocumentAsync(string document, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(GetByDocumentAsync));
+
+        await using var command = _unitOfWork.CreateCommand(SELECT_BY_DOCUMENT_SQL);
+
+        command.Parameters.Add("@document", NpgsqlDbType.Char, DOCUMENT_LENGTH).Value = document;
+
+        return await ReadSingleAsync(command, cancellationToken);
+    }
+
+    public async Task<CustomerModel?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(GetByIdAsync));
+
+        await using var command = _unitOfWork.CreateCommand(SELECT_BY_ID_SQL);
+
+        command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = id;
+
+        return await ReadSingleAsync(command, cancellationToken);
+    }
+
+    private static async Task<CustomerModel?> ReadSingleAsync(Npgsql.NpgsqlCommand command, CancellationToken cancellationToken)
+    {
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        if (!await reader.ReadAsync(cancellationToken))
+            return null;
+
+        return new CustomerModel(
+            Id: reader.GetGuid(0),
+            FullName: reader.GetString(1),
+            Email: reader.GetString(2),
+            Document: reader.GetString(3),
+            Slug: reader.GetString(4),
+            PasswordHash: reader.GetFieldValue<byte[]>(5),
+            PasswordSalt: reader.GetFieldValue<byte[]>(6),
+            PhoneNumber: await reader.IsDBNullAsync(7, cancellationToken) ? null : reader.GetString(7),
+            CreatedAt: reader.GetDateTime(8),
+            CreatedCorrelationId: reader.GetGuid(9));
+    }
 
     private readonly PostgreSqlUnitOfWork _unitOfWork;
 

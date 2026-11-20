@@ -1,3 +1,4 @@
+import { signOutCustomer } from "../../api/customerAuth";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -404,7 +405,7 @@ export function ProfilePage() {
           <div><dt>E-mail</dt><dd>{account.email}</dd></div>
           <div><dt>CPF</dt><dd className="n-figure">{account.document}</dd></div>
         </dl>
-        <Button variant="ghost" onClick={() => { update({ loggedIn: false }); navigate("/"); }}>Sair da conta</Button>
+        <Button variant="ghost" onClick={() => { void signOutCustomer(); update({ loggedIn: false }); navigate("/"); }}>Sair da conta</Button>
         <button
           type="button"
           className="signup__back"
