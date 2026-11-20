@@ -1,0 +1,861 @@
+{
+  "uid": "ntix-customer-sessions",
+  "title": "Ntix Sessões do Cliente",
+  "description": "REQ12: login, renovação, logout e meus dados do comprador.",
+  "tags": [
+    "ntix",
+    "negocio",
+    "funil",
+    "clientes"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Serviço",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(ntix_customers_sessions_create_requests_total, service_name)",
+          "refId": "service"
+        },
+        "definition": "label_values(ntix_customers_sessions_create_requests_total, service_name)",
+        "refresh": 2,
+        "current": {
+          "text": "ntix-webapi",
+          "value": "ntix-webapi"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Solicitações no período: login do cliente",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_customers_sessions_create_requests_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de sucesso: login do cliente",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_customers_sessions_create_outcomes_total{service_name=\"$service\", outcome=~\"created|refreshed|revoked|served\"}[$__range])) / sum(increase(ntix_customers_sessions_create_outcomes_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo: login do cliente",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Logins aceitos"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Credencial inválida"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Limite de tentativas"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "Logins aceitos",
+          "expr": "sum(increase(ntix_customers_sessions_create_outcomes_total{service_name=\"$service\", outcome=\"created\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "Credencial inválida",
+          "expr": "sum(increase(ntix_customers_sessions_create_outcomes_total{service_name=\"$service\", outcome=\"invalid_credentials\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "Limite de tentativas",
+          "expr": "sum(increase(ntix_customers_sessions_create_outcomes_total{service_name=\"$service\", outcome=\"rate_limited\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "D",
+          "legendFormat": "Pararam na validação",
+          "expr": "sum(increase(ntix_customers_sessions_create_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "E",
+          "legendFormat": "Erros por exceção",
+          "expr": "sum(increase(ntix_customers_sessions_create_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Solicitações no período: renovação da sessão",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 9
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_customers_sessions_refresh_requests_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de sucesso: renovação da sessão",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 9
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_customers_sessions_refresh_outcomes_total{service_name=\"$service\", outcome=~\"created|refreshed|revoked|served\"}[$__range])) / sum(increase(ntix_customers_sessions_refresh_outcomes_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo: renovação da sessão",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Renovações"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token inválido"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Reuso de token"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "Renovações",
+          "expr": "sum(increase(ntix_customers_sessions_refresh_outcomes_total{service_name=\"$service\", outcome=\"refreshed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "Token inválido",
+          "expr": "sum(increase(ntix_customers_sessions_refresh_outcomes_total{service_name=\"$service\", outcome=\"invalid_token\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "Reuso de token",
+          "expr": "sum(increase(ntix_customers_sessions_refresh_outcomes_total{service_name=\"$service\", outcome=\"reuse_detected\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "D",
+          "legendFormat": "Pararam na validação",
+          "expr": "sum(increase(ntix_customers_sessions_refresh_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "E",
+          "legendFormat": "Erros por exceção",
+          "expr": "sum(increase(ntix_customers_sessions_refresh_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Solicitações no período: logout",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 18
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_customers_sessions_revoke_requests_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de sucesso: logout",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 18
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_customers_sessions_revoke_outcomes_total{service_name=\"$service\", outcome=~\"created|refreshed|revoked|served\"}[$__range])) / sum(increase(ntix_customers_sessions_revoke_outcomes_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo: logout",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Logouts"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token desconhecido"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "Logouts",
+          "expr": "sum(increase(ntix_customers_sessions_revoke_outcomes_total{service_name=\"$service\", outcome=\"revoked\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "Token desconhecido",
+          "expr": "sum(increase(ntix_customers_sessions_revoke_outcomes_total{service_name=\"$service\", outcome=\"not_found\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "Pararam na validação",
+          "expr": "sum(increase(ntix_customers_sessions_revoke_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "D",
+          "legendFormat": "Erros por exceção",
+          "expr": "sum(increase(ntix_customers_sessions_revoke_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Solicitações no período: meus dados",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 27
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_customers_me_requests_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de sucesso: meus dados",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 27
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_customers_me_outcomes_total{service_name=\"$service\", outcome=~\"created|refreshed|revoked|served\"}[$__range])) / sum(increase(ntix_customers_me_outcomes_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo: meus dados",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 27
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Consultas atendidas"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cliente inexistente"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "Consultas atendidas",
+          "expr": "sum(increase(ntix_customers_me_outcomes_total{service_name=\"$service\", outcome=\"served\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "Cliente inexistente",
+          "expr": "sum(increase(ntix_customers_me_outcomes_total{service_name=\"$service\", outcome=\"customer_not_found\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "Pararam na validação",
+          "expr": "sum(increase(ntix_customers_me_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "D",
+          "legendFormat": "Erros por exceção",
+          "expr": "sum(increase(ntix_customers_me_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
+        }
+      ]
+    }
+  ]
+}

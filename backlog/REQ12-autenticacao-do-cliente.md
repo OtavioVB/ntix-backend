@@ -1,6 +1,6 @@
 # REQ12 - Autenticação do Cliente
 
-- **Status**: Proposto
+- **Status**: Implementado (aguardando validação)
 - **Área**: comprador / plataforma
 - **Depende de**: cadastro do cliente (`POST /api/v1/customers`, já entregue); REQ5 (infraestrutura de JWT e sessões, reaproveitada)
 - **Habilita**: REQ6 (pedidos), REQ7 (pagamento), REQ13 (pedidos e ingressos do cliente)
@@ -231,6 +231,18 @@ Funcionalidade: Autenticação do cliente
     Quando chama GET /api/v1/customers/me com o token dele
     Então recebe 403
 ```
+
+## Decisões tomadas na implementação
+
+Implementado na ordem da jornada, depois do REQ11. O que o requisito não definia foi decidido assim, seguindo as decisões provisórias do próprio requisito:
+
+- **Refresh token de 30 dias** (`CustomerSessionConfiguration:RefreshTokenDays`, padrão 30) e **limite de 10 tentativas em 15 minutos**, com o mesmo `LoginAttemptLimiter` do REQ5 e a chave `customer:{login normalizado}` (CPF só com dígitos, e-mail normalizado), guardada só pelo SHA-256.
+- **Mesma `JwtConfiguration`** (emissor, audiência, chave e 15 minutos) para o token do cliente; o claim `actor = CUSTOMER` separa os dois tokens. A política `Customer` exige esse claim, e a `ProducerUser` já exigia `producer_slug`, que o token do cliente não tem.
+- **Rotas**: `POST /api/v1/customers/sessions`, `/sessions/refresh`, `/sessions/revoke` e `GET /api/v1/customers/me`, num controller próprio (`CustomerSessionsV1Controller`).
+- **Login em formato inválido** (nem CPF válido nem e-mail) segue até a senha, com o hash calculado com o salt fixo, e responde 401 como credencial inválida. Só o login vazio responde 400 (`LOGIN_REQUIRED`).
+- **Logout com token desconhecido ou fora do formato** responde 204, sem revelar se ele existe.
+- **Front**: com `?api=real`, o formulário do comprador (`AuthForm`) cadastra pela API e faz o login automático em seguida; o login aceita e-mail ou CPF e preenche a conta da tela com "meus dados" (CPF ofuscado). O refresh token fica em `ntix.customer.refresh-token.v1`, separado do produtor, e "Sair da conta" revoga a sessão.
+- **Carga**: `tsts/LoadTests/customers-sessions-tests.js`, com o perfil do login do produtor.
 
 ## Decisões em aberto
 
