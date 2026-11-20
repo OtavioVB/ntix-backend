@@ -1,17 +1,53 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { isRealApi } from "../api/mode";
 import { useCustomer } from "../customer/session";
 import { confirmPayment, soldByBatch, type CustomerOrder } from "../customer/orders";
 import { recordHubSale } from "../platform/hubSale";
 import { useProducerSession } from "../producer/session";
 import { buildCatalog, producerToHubEvent, type HubEvent } from "./catalog";
+import { loadPublicCatalog } from "./publicCatalog";
+
+/**
+ * Vitrine real (REQ11, `?api=real`): os eventos publicados vêm da API. Enquanto carrega, a lista fica vazia; se a API
+ * falhar, também, e `loadError` avisa a tela.
+ */
+function usePublicCatalog(enabled: boolean) {
+  const [events, setEvents] = useState<HubEvent[]>([]);
+  const [loading, setLoading] = useState(enabled);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const controller = new AbortController();
+
+    loadPublicCatalog(undefined, controller.signal)
+      .then((loaded) => {
+        if (controller.signal.aborted) return;
+        setEvents(loaded ?? []);
+        setLoadError(loaded === null);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setLoadError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [enabled]);
+
+  return { events, loading, loadError };
+}
 
 /** Todos os eventos à venda no hub (P-04) e o que este cliente já comprou deles. */
 export function useHub() {
   const { session } = useProducerSession();
   const { customer } = useCustomer();
   const now = useMemo(() => Date.now(), []);
+  const real = isRealApi();
+  const publicCatalog = usePublicCatalog(real);
 
-  const events = useMemo<HubEvent[]>(() => {
+  const demoEvents = useMemo<HubEvent[]>(() => {
     const own = session.status === "ACTIVE" && session.platform
       ? session.platform.events
           .filter((event) => event.status === "ON_SALE" && event.batches.length > 0)
@@ -20,12 +56,14 @@ export function useHub() {
     return [...buildCatalog(now), ...own];
   }, [now, session.status, session.platform, session.name]);
 
-  // Venda de evento de produtor já entra nas vendas dele: não conta duas vezes.
-  const extra = useMemo(() => soldByBatch(customer.orders.filter((order) => !order.event.fromProducer)), [customer.orders]);
+  const events = real ? publicCatalog.events : demoEvents;
+
+  // Venda de evento de produtor já entra nas vendas dele: não conta duas vezes. Na vitrine real, a API já desconta.
+  const extra = useMemo(() => (real ? {} : soldByBatch(customer.orders.filter((order) => !order.event.fromProducer))), [real, customer.orders]);
 
   const findBySlug = useCallback((slug?: string) => events.find((event) => event.slug === slug), [events]);
 
-  return { events, extra, now, findBySlug };
+  return { events, extra, now, findBySlug, loading: real && publicCatalog.loading, loadError: real && publicCatalog.loadError };
 }
 
 /** Registra um pedido pago: ingressos do cliente e, se o evento for de um produtor da sessão, a venda dele. */

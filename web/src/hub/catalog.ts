@@ -262,3 +262,9 @@ export function producerToHubEvent(event: ProducerEvent, data: PlatformData, pro
     })),
   };
 }
+
+/** Arte gerada a partir de uma chave estável (ex.: o slug), para evento sem foto vindo da API (REQ11). */
+export function generatedArt(key: string): ArtSpec {
+  const code = hash(key);
+  return { style: PRODUCER_STYLES[code % 3], palette: PRODUCER_ART[code % 3], seed: code % 10_000 };
+}

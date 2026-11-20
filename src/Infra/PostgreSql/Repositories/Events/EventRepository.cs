@@ -37,6 +37,37 @@ public sealed class EventRepository : IEventRepository
         WHERE id_producer = @id_producer AND id_event = @id_event;
         """;
 
+    // Vitrine (REQ11): filtro ausente é NULL e não restringe. Consultas exatas, sem LIKE; a cidade vem da coluna gerada.
+    private const string PUBLISHED_FILTER = """
+
+        WHERE status = 'PUBLISHED' AND ends_at > @now
+          AND (@id_producer::uuid IS NULL OR id_producer = @id_producer)
+          AND (@category::varchar IS NULL OR category = @category)
+          AND (@state::char(2) IS NULL OR state = @state)
+          AND (@city::varchar IS NULL OR city_normalized = translate(lower(@city), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'))
+          AND (@starts_from::timestamptz IS NULL OR starts_at >= @starts_from)
+          AND (@starts_to::timestamptz IS NULL OR starts_at <= @starts_to)
+        """;
+
+    private const string SEARCH_PUBLISHED_SQL = """
+        SELECT id_event, id_producer, title, slug, description, category, starts_at, ends_at, doors_open_at,
+               venue_name, address, city, state, age_rating, image_url, status,
+               created_at, created_correlation_id, updated_at, updated_correlation_id,
+               COUNT(*) OVER () AS total_items
+        FROM events.event
+        """ + PUBLISHED_FILTER + """
+
+        ORDER BY starts_at, slug
+        OFFSET @offset LIMIT @limit;
+        """;
+
+    private const string COUNT_PUBLISHED_SQL = "SELECT COUNT(*) FROM events.event" + PUBLISHED_FILTER + ";";
+
+    private const string SELECT_PUBLISHED_BY_SLUG_SQL = SELECT_COLUMNS + """
+
+        WHERE slug = @slug AND status = 'PUBLISHED';
+        """;
+
     private const string SELECT_BY_ID_FOR_UPDATE_SQL = SELECT_COLUMNS + """
 
         WHERE id_producer = @id_producer AND id_event = @id_event
@@ -207,6 +238,68 @@ public sealed class EventRepository : IEventRepository
         command.Parameters.Add("@updated_correlation_id", NpgsqlDbType.Uuid).Value = @event.UpdatedCorrelationId;
     }
 
+    public async Task<EventSearchResultModel> SearchPublishedAsync(EventSearchModel filter, DateTime now, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(SearchPublishedAsync));
+
+        await using var command = _unitOfWork.CreateCommand(SEARCH_PUBLISHED_SQL);
+
+        command.Parameters.Add("@now", NpgsqlDbType.TimestampTz).Value = now;
+        command.Parameters.Add("@id_producer", NpgsqlDbType.Uuid).Value = (object?)filter.ProducerId ?? DBNull.Value;
+        command.Parameters.Add("@category", NpgsqlDbType.Varchar, ENUM_MAX_LENGTH).Value = (object?)filter.Category ?? DBNull.Value;
+        command.Parameters.Add("@city", NpgsqlDbType.Varchar, CITY_MAX_LENGTH).Value = (object?)filter.City ?? DBNull.Value;
+        command.Parameters.Add("@state", NpgsqlDbType.Char, STATE_LENGTH).Value = (object?)filter.State ?? DBNull.Value;
+        command.Parameters.Add("@starts_from", NpgsqlDbType.TimestampTz).Value = (object?)filter.StartsFrom ?? DBNull.Value;
+        command.Parameters.Add("@starts_to", NpgsqlDbType.TimestampTz).Value = (object?)filter.StartsTo ?? DBNull.Value;
+        command.Parameters.Add("@offset", NpgsqlDbType.Integer).Value = filter.Offset;
+        command.Parameters.Add("@limit", NpgsqlDbType.Integer).Value = filter.Limit;
+
+        var events = new List<EventModel>();
+        var total = 0;
+
+        // O leitor fecha antes da contagem: a conexão só executa um comando por vez.
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                events.Add(await ReadEventAsync(reader, cancellationToken));
+                total = (int)reader.GetInt64(20);
+            }
+        }
+
+        // Página além do fim não traz linhas nem o total: conta à parte, só nesse caso.
+        if (events.Count == 0 && filter.Offset > 0)
+            total = await CountPublishedAsync(filter, now, cancellationToken);
+
+        return new EventSearchResultModel(events, total);
+    }
+
+    public async Task<EventModel?> GetPublishedBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(GetPublishedBySlugAsync));
+
+        await using var command = _unitOfWork.CreateCommand(SELECT_PUBLISHED_BY_SLUG_SQL);
+
+        command.Parameters.Add("@slug", NpgsqlDbType.Varchar, SLUG_MAX_LENGTH).Value = slug;
+
+        return (await ReadEventsAsync(command, cancellationToken)).SingleOrDefault();
+    }
+
+    private async Task<int> CountPublishedAsync(EventSearchModel filter, DateTime now, CancellationToken cancellationToken)
+    {
+        await using var command = _unitOfWork.CreateCommand(COUNT_PUBLISHED_SQL);
+
+        command.Parameters.Add("@now", NpgsqlDbType.TimestampTz).Value = now;
+        command.Parameters.Add("@id_producer", NpgsqlDbType.Uuid).Value = (object?)filter.ProducerId ?? DBNull.Value;
+        command.Parameters.Add("@category", NpgsqlDbType.Varchar, ENUM_MAX_LENGTH).Value = (object?)filter.Category ?? DBNull.Value;
+        command.Parameters.Add("@city", NpgsqlDbType.Varchar, CITY_MAX_LENGTH).Value = (object?)filter.City ?? DBNull.Value;
+        command.Parameters.Add("@state", NpgsqlDbType.Char, STATE_LENGTH).Value = (object?)filter.State ?? DBNull.Value;
+        command.Parameters.Add("@starts_from", NpgsqlDbType.TimestampTz).Value = (object?)filter.StartsFrom ?? DBNull.Value;
+        command.Parameters.Add("@starts_to", NpgsqlDbType.TimestampTz).Value = (object?)filter.StartsTo ?? DBNull.Value;
+
+        return (int)(long)(await command.ExecuteScalarAsync(cancellationToken))!;
+    }
+
     private static async Task<IReadOnlyList<EventModel>> ReadEventsAsync(NpgsqlCommand command, CancellationToken cancellationToken)
     {
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -214,8 +307,14 @@ public sealed class EventRepository : IEventRepository
         var events = new List<EventModel>();
 
         while (await reader.ReadAsync(cancellationToken))
-        {
-            events.Add(new EventModel(
+            events.Add(await ReadEventAsync(reader, cancellationToken));
+
+        return events;
+    }
+
+    private static async Task<EventModel> ReadEventAsync(NpgsqlDataReader reader, CancellationToken cancellationToken)
+    {
+        return new EventModel(
                 Id: reader.GetGuid(0),
                 ProducerId: reader.GetGuid(1),
                 Title: reader.GetString(2),
@@ -235,9 +334,6 @@ public sealed class EventRepository : IEventRepository
                 CreatedAt: reader.GetDateTime(16),
                 CreatedCorrelationId: reader.GetGuid(17),
                 UpdatedAt: reader.GetDateTime(18),
-                UpdatedCorrelationId: reader.GetGuid(19)));
-        }
-
-        return events;
+                UpdatedCorrelationId: reader.GetGuid(19));
     }
 }

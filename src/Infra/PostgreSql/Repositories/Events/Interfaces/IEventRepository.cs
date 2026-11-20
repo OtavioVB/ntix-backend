@@ -22,6 +22,15 @@ public interface IEventRepository
     /// <summary>Substitui os campos editáveis. Slug, situação e criação não mudam.</summary>
     Task UpdateAsync(EventModel @event, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Vitrine (REQ11): eventos publicados que ainda não terminaram, por início e slug, com o total para a paginação.
+    /// A cidade é comparada normalizada (minúsculas, sem acento), pela coluna gerada <c>city_normalized</c>.
+    /// </summary>
+    Task<EventSearchResultModel> SearchPublishedAsync(EventSearchModel filter, DateTime now, CancellationToken cancellationToken = default);
+
+    /// <summary>Evento publicado pelo slug, mesmo encerrado (links antigos continuam abrindo). Rascunho volta nulo.</summary>
+    Task<EventModel?> GetPublishedBySlugAsync(string slug, CancellationToken cancellationToken = default);
+
     /// <summary>Grava a nova situação do evento (publicação, REQ10).</summary>
     Task UpdateStatusAsync(EventModel @event, CancellationToken cancellationToken = default);
 }

@@ -29,6 +29,12 @@ public sealed class TicketBatchRepository : ITicketBatchRepository
         ORDER BY sales_starts_at, price, id_ticket_batch;
         """;
 
+    private const string SELECT_BY_EVENT_IDS_SQL = SELECT_COLUMNS + """
+
+        WHERE id_event = ANY(@id_events)
+        ORDER BY id_event, sales_starts_at, price, id_ticket_batch;
+        """;
+
     private const string SELECT_BY_ID_FOR_UPDATE_SQL = SELECT_COLUMNS + """
 
         WHERE id_producer = @id_producer AND id_event = @id_event AND id_ticket_batch = @id_ticket_batch
@@ -79,6 +85,20 @@ public sealed class TicketBatchRepository : ITicketBatchRepository
 
         command.Parameters.Add("@id_producer", NpgsqlDbType.Uuid).Value = producerId;
         command.Parameters.Add("@id_event", NpgsqlDbType.Uuid).Value = eventId;
+
+        return await ReadBatchesAsync(command, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<TicketBatchModel>> ListByEventIdsAsync(IReadOnlyCollection<Guid> eventIds, CancellationToken cancellationToken = default)
+    {
+        if (eventIds.Count == 0)
+            return [];
+
+        using var activity = StartDatabaseActivity(nameof(ListByEventIdsAsync));
+
+        await using var command = _unitOfWork.CreateCommand(SELECT_BY_EVENT_IDS_SQL);
+
+        command.Parameters.Add("@id_events", NpgsqlDbType.Array | NpgsqlDbType.Uuid).Value = eventIds.ToArray();
 
         return await ReadBatchesAsync(command, cancellationToken);
     }
