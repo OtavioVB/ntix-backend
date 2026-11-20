@@ -1,0 +1,821 @@
+{
+  "uid": "ntix-payments",
+  "title": "Ntix Pagamentos",
+  "description": "REQ7: geração do Pix do pedido, fallback entre integrações e saúde do fornecedor.",
+  "tags": [
+    "ntix",
+    "negocio",
+    "funil",
+    "pagamentos"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Serviço",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(ntix_payments_pix_create_requests_total, service_name)",
+          "refId": "service"
+        },
+        "definition": "label_values(ntix_payments_pix_create_requests_total, service_name)",
+        "refresh": 2,
+        "current": {
+          "text": "ntix-webapi",
+          "value": "ntix-webapi"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Solicitações no período: geração do Pix",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_payments_pix_create_requests_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de sucesso: geração do Pix",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=~\"created|reused\"}[$__range])) / sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo: geração do Pix",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Logins aceitos"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Credencial inválida"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Limite de tentativas"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "Pix gerados",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=\"created\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "Pix devolvidos (segundo clique)",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=\"reused\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "Todas as integrações falharam",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=\"providers_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "D",
+          "legendFormat": "Reserva curta demais",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=\"window_too_short\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "E",
+          "legendFormat": "Pedido vencido",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=\"order_expired\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "F",
+          "legendFormat": "Pedido já pago",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=\"order_paid\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "G",
+          "legendFormat": "Método sem integração",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=\"unavailable\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "H",
+          "legendFormat": "Pedido não encontrado",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=\"order_not_found\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "I",
+          "legendFormat": "Pararam na validação",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "J",
+          "legendFormat": "Erros por exceção",
+          "expr": "sum(increase(ntix_payments_pix_create_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Solicitações no período: métodos de pagamento do pedido",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 9
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_payments_methods_requests_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de sucesso: métodos de pagamento do pedido",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 9
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_payments_methods_outcomes_total{service_name=\"$service\", outcome=~\"served\"}[$__range])) / sum(increase(ntix_payments_methods_outcomes_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Desfechos por intervalo: métodos de pagamento do pedido",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Logins aceitos"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Credencial inválida"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Limite de tentativas"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "Consultas atendidas",
+          "expr": "sum(increase(ntix_payments_methods_outcomes_total{service_name=\"$service\", outcome=\"served\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "Pedido não encontrado",
+          "expr": "sum(increase(ntix_payments_methods_outcomes_total{service_name=\"$service\", outcome=\"order_not_found\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "Pararam na validação",
+          "expr": "sum(increase(ntix_payments_methods_outcomes_total{service_name=\"$service\", outcome=\"validation_failed\"}[$__rate_interval]))"
+        },
+        {
+          "refId": "D",
+          "legendFormat": "Erros por exceção",
+          "expr": "sum(increase(ntix_payments_methods_outcomes_total{service_name=\"$service\", outcome=\"error\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Chamadas ao fornecedor por desfecho",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Logins aceitos"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Credencial inválida"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Limite de tentativas"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{provider}} {{outcome}}",
+          "expr": "sum by (provider, outcome) (increase(ntix_payments_provider_calls_total{service_name=\"$service\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Taxa de falha das chamadas ao fornecedor",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 12,
+        "y": 18
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ntix_payments_provider_calls_total{service_name=\"$service\", outcome!=\"created\"}[$__range])) / sum(increase(ntix_payments_provider_calls_total{service_name=\"$service\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Pix gerados por integração de fallback",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 18,
+        "y": 18
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "round(sum(increase(ntix_payments_fallback_used_total{service_name=\"$service\"}[$__range])))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Duração das chamadas ao fornecedor (segundos)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Logins aceitos"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Credencial inválida"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Limite de tentativas"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pararam na validação"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros por exceção"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "p50",
+          "expr": "histogram_quantile(0.50, sum by (le, provider) (rate(ntix_payments_provider_duration_seconds_bucket{service_name=\"$service\"}[$__rate_interval])))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "p95",
+          "expr": "histogram_quantile(0.95, sum by (le, provider) (rate(ntix_payments_provider_duration_seconds_bucket{service_name=\"$service\"}[$__rate_interval])))"
+        },
+        {
+          "refId": "C",
+          "legendFormat": "p99",
+          "expr": "histogram_quantile(0.99, sum by (le, provider) (rate(ntix_payments_provider_duration_seconds_bucket{service_name=\"$service\"}[$__rate_interval])))"
+        }
+      ]
+    }
+  ]
+}

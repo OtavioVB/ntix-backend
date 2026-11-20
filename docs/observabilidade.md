@@ -89,6 +89,20 @@ Dashboard: `ntix-orders.json`.
 - `insufficient_availability` alto num evento é venda esgotando, não defeito. Já `error` é sempre falha inesperada, com o log `6104` e o trace do pedido.
 - O pedido aparece nos logs pelo código (`NX...`), pelo evento e pelo produtor; o cliente é o `ExecutionUser` do escopo. O corpo do pedido, que tem só lotes e quantidades, não é registrado.
 
+## Pagamento do pedido com Pix (REQ7)
+
+Dashboard: `ntix-payments.json`. Roteiro de validação com o sandbox do fornecedor: [pagamento-pix-sandbox.md](pagamento-pix-sandbox.md).
+
+| Fluxo | Métricas no Prometheus | Desfechos (`outcome`) |
+|---|---|---|
+| Geração do Pix | `ntix_payments_pix_create_requests_total`, `..._outcomes_total` | `created`, `reused`, `providers_failed`, `window_too_short`, `order_expired`, `order_paid`, `unavailable`, `order_not_found`, `validation_failed`, `error` |
+| Métodos do pedido | `ntix_payments_methods_requests_total`, `..._outcomes_total` | `served`, `order_not_found`, `validation_failed`, `error` |
+
+- `ntix_payments_provider_calls_total{provider, outcome}` conta cada chamada ao fornecedor: `outcome` é `created` ou o motivo da falha (`timeout`, `network`, `http_401`, `http_429`, `http_4xx`, `http_5xx`, `invalid_response`, `no_adapter`, `missing_credential`, `credential_unreadable`). `http_401` num produtor significa credencial errada na conta dele: o produtor precisa corrigir a integração.
+- `ntix_payments_provider_duration_seconds{provider}` é a duração das chamadas, e `ntix_payments_fallback_used_total` conta os Pix gerados por uma integração que não era a de prioridade 1.
+- `providers_failed` é a venda perdida por queda de todas as contas do produtor: alerta de negócio, com o log `7103`. Já `reused` alto é só gente clicando de novo.
+- O `API_KEY`, o `brCode`, o CPF e o e-mail do cliente não aparecem em log, métrica nem span; o span do fornecedor leva só o código dele e o status HTTP.
+
 ## Funil de cadastro de cliente
 
 | Passo | Métrica no Prometheus | Filtro |

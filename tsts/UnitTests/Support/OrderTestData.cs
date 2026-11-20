@@ -2,6 +2,7 @@ using Application.UseCases.Base.Orders;
 using Domain.BoundedContexts.EventContext.Entities;
 using Domain.BoundedContexts.EventContext.Services;
 using Domain.BoundedContexts.OrderContext.Entities;
+using Domain.BoundedContexts.PaymentContext.Entities;
 using Domain.BoundedContexts.OrderContext.Enums;
 using Domain.ValueObjects;
 using Infra.PostgreSql.Repositories.Events.Models;
@@ -55,6 +56,24 @@ public static class OrderTestData
 
     public static OrderModel NewModel(int quantity = 2)
         => OrderConversions.ToModel(NewOrder(quantity)) with { ProducerId = EventTestData.PRODUCER_ID, EventId = EventTestData.EVENT_ID };
+
+    public static readonly Guid INTEGRATION_A_ID = Guid.Parse("a1a1a1a1-b2b2-4c3c-8d4d-e5e5e5e5e5e5");
+    public static readonly Guid INTEGRATION_B_ID = Guid.Parse("b1b1b1b1-c2c2-4d3d-8e4e-f5f5f5f5f5f5");
+
+    /// <summary>Pix pendente de 240,00, válido até 13 minutos depois de <see cref="NOW"/> (a reserva termina aos 15).</summary>
+    public static Payment NewPayment(DateTime? expiresAt = null)
+        => Payment.CreatePix(
+            id: IdValueObject.Build(),
+            orderId: NewOrder().Id,
+            producerId: IdValueObject.Build(EventTestData.PRODUCER_ID.ToString()),
+            integrationId: IdValueObject.Build(INTEGRATION_A_ID.ToString()),
+            amountCents: 24000,
+            providerReference: "pix_char_abc123",
+            pixCopyPaste: "00020101021226950014br.gov.bcb.pix",
+            pixQrCodeImage: "data:image/png;base64,iVBORw0KGgo=",
+            expiresAt: expiresAt ?? NOW.AddMinutes(13),
+            now: NOW,
+            correlationId: CORRELATION_ID);
 
     public static EventModel PublishedEventModel()
         => EventTestData.NewModel() with { Status = "PUBLISHED" };

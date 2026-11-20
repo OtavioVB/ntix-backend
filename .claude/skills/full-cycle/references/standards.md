@@ -111,6 +111,14 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Recurso do comprador é consultado por `(code, id_customer)`: o de outro comprador responde 404, como inexistente.
 - Front (`?api=real`): o recurso criado no servidor fica guardado junto do estado local da tela (ex.: `cart.order`), para recarregar a página reaproveitar a reserva em vez de criar outra; prazo e total vêm do servidor.
 
+### Pagamento com fornecedor externo (REQ7)
+- Fornecedor de pagamento é um adaptador atrás de uma interface em `Infra/Http/Payments` (`IPixChargeClient`, com `ProviderCode`), escolhido pelo código do fornecedor da integração. Fornecedor novo entra com outro adaptador, sem mudar o caso de uso. `HttpClient` tipado por `IHttpClientFactory` ([RFC 0008](../../../../docs/rfcs/0008-microsoft-extensions-http.md)), com tempo limite por tentativa por `CancellationTokenSource`.
+- Falha esperada do fornecedor (timeout, rede, não 2XX, corpo sem o Pix) volta no resultado, sem exceção, com um motivo de baixa cardinalidade (`timeout`, `network`, `http_401`, `http_429`, `http_4xx`, `http_5xx`, `invalid_response`); só o cancelamento de quem chamou propaga. Qualquer falha de uma integração passa para a próxima do ranqueamento, até `PaymentConfiguration:MaxProviderAttempts`.
+- Credencial de terceiro é decifrada só no momento da chamada, em memória; a chave não aparece em log, métrica, span nem exceção, e o span do fornecedor leva só o código dele e o status HTTP. Dado pessoal do cliente vai ao fornecedor só nos campos que ele exige; `metadata` leva apenas ids de negócio.
+- A cobrança é gravada com a integração que a gerou, e a confirmação volta sempre a ela, mesmo que a rota mude depois. O id do pagamento vai ao fornecedor como `externalId`.
+- Operação que chama o fornecedor trava o recurso dela (o pedido, `FOR UPDATE`) durante a chamada, então o segundo clique devolve a mesma cobrança. Um caso de uso que abre transação própria (o ranqueamento) roda antes de a transação do pagamento abrir.
+- A esteira nunca chama o fornecedor: os testes integrados e funcionais registram o `FakePixChargeClient`. Validação com o sandbox do fornecedor é um roteiro manual em `docs/`.
+
 ### Listas públicas (REQ11)
 - Paginação por `page` (a partir de 1) e `pageSize` (padrão 20, máximo 50); a resposta traz `items`, `page`, `pageSize` e `totalItems`. Filtro inválido recusa a consulta inteira com uma notificação por filtro.
 - Endpoint público de leitura é `[AllowAnonymous]`, aceita `X-Execution-User` opcional e responde com `Cache-Control: public, max-age=15` quando o dado muda com a venda.

@@ -1,4 +1,8 @@
 using Microsoft.AspNetCore.Mvc.Testing;
+using Infra.Http.Payments.Interfaces;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Reqnroll;
 using TestSupport;
 using WebApi;
@@ -10,6 +14,9 @@ public sealed class NtixApiHooks
 {
     public static WebApplicationFactory<Program> Factory { get; private set; } = null!;
     public static PostgreSqlTestDatabase Database { get; private set; } = null!;
+
+    /// <summary>Fornecedor de Pix falso: a esteira nunca chama o AbacatePay (REQ7). Limpo a cada cenário.</summary>
+    public static FakePixChargeClient PixClient { get; } = new();
 
     public static readonly string PAYMENT_CREDENTIAL_ENCRYPTION_KEY = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 
@@ -33,7 +40,11 @@ public sealed class NtixApiHooks
         Directory.CreateDirectory(WhitelabelDirectory);
         Environment.SetEnvironmentVariable("WhitelabelConfiguration__DirectoryPath", WhitelabelDirectory);
 
-        Factory = new WebApplicationFactory<Program>();
+        Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IPixChargeClient>();
+            services.AddSingleton<IPixChargeClient>(PixClient);
+        }));
     }
 
     [AfterTestRun]
@@ -49,6 +60,7 @@ public sealed class NtixApiHooks
     [BeforeScenario]
     public Task RemoveDataFromPreviousScenarios()
         => Database.ExecuteAsync("""
+            DELETE FROM payments.payment;
             DELETE FROM orders.order_item;
             DELETE FROM orders.orders;
             DELETE FROM customers.producer_customer;
@@ -68,6 +80,10 @@ public sealed class NtixApiHooks
             DELETE FROM producers.producer_user;
             DELETE FROM producers.producer;
             """);
+
+    [BeforeScenario]
+    public void ResetThePixProviderFake()
+        => PixClient.Reset();
 
     [BeforeScenario]
     public void RemoveWhitelabelFilesFromPreviousScenarios()

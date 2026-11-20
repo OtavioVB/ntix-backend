@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Application.UseCases;
 using Infra.Cryptography.Credentials;
 using Infra.FileSystem.Whitelabels;
+using Infra.Http.Payments;
 using Infra.PostgreSql.Base.UnitOfWork;
 using Infra.PostgreSql.Repositories.Customers;
 using Infra.PostgreSql.Repositories.Events;
@@ -43,6 +44,7 @@ public class Program
             .AddPaymentRepositoriesConfiguration(builder.Configuration)
             .AddEventRepositoriesConfiguration(builder.Configuration)
             .AddOrderRepositoriesConfiguration(builder.Configuration)
+            .AddPixChargeClientsConfiguration(builder.Configuration)
             .AddCredentialCipherConfiguration(builder.Configuration)
             .AddWhitelabelReaderConfiguration(builder.Configuration);
 

@@ -6,6 +6,8 @@ using Infra.PostgreSql.Repositories.Events.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Models;
 using Infra.PostgreSql.Repositories.Orders.Interfaces;
 using Infra.PostgreSql.Repositories.Orders.Models;
+using Infra.PostgreSql.Repositories.Payments.Interfaces;
+using Infra.PostgreSql.Repositories.Payments.Models;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -19,6 +21,7 @@ public sealed class GetCustomerOrderUseCaseTests : IDisposable
 
     private readonly IOrderRepository _orderRepository = Substitute.For<IOrderRepository>();
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
+    private readonly IPaymentRepository _paymentRepository = Substitute.For<IPaymentRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly TestMeterFactory _meterFactory = new();
     private readonly MeasurementCollector _measurements;
@@ -32,7 +35,7 @@ public sealed class GetCustomerOrderUseCaseTests : IDisposable
         _eventRepository.GetByIdAsync(EventTestData.PRODUCER_ID, EventTestData.EVENT_ID, Arg.Any<CancellationToken>()).Returns(OrderTestData.PublishedEventModel());
 
         _measurements = new MeasurementCollector(_meterFactory);
-        _useCase = new GetCustomerOrderUseCase(_orderRepository, _eventRepository, _unitOfWork, _timeProvider, new GetCustomerOrderDiagnostics(_meterFactory), _logger);
+        _useCase = new GetCustomerOrderUseCase(_orderRepository, _eventRepository, _paymentRepository, _unitOfWork, _timeProvider, new GetCustomerOrderDiagnostics(_meterFactory), _logger);
     }
 
     public void Dispose()
@@ -76,6 +79,55 @@ public sealed class GetCustomerOrderUseCaseTests : IDisposable
 
         // Assert
         Assert.Equal("EXPIRED", result.Output!.Status);
+    }
+
+    [Fact]
+    public async Task Given_OrderWithoutPayment_When_Getting_Should_NotShowAPaymentBlock()
+    {
+        // Arrange & Act
+        var result = await _useCase.ExecuteAsync(Input(), EventTestData.AuditableInfo());
+
+        // Assert
+        Assert.Null(result.Output!.Payment);
+    }
+
+    [Fact]
+    public async Task Given_PendingPixWithinItsValidity_When_Getting_Should_ShowThePixToPay()
+    {
+        // Arrange
+        var payment = Application.UseCases.Base.Payments.OrderPaymentConversions.ToModel(OrderTestData.NewPayment());
+
+        _paymentRepository.GetLatestByOrderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(payment);
+
+        // Act
+        var result = await _useCase.ExecuteAsync(Input(), EventTestData.AuditableInfo());
+
+        // Assert
+        var shown = result.Output!.Payment!;
+
+        Assert.Equal("PENDING", shown.Status);
+        Assert.Equal(24000, shown.AmountCents);
+        Assert.Equal(payment.PixCopyPaste, shown.Pix!.CopyPasteCode);
+        Assert.Equal(payment.PixQrCodeImage, shown.Pix.QrCodeImage);
+    }
+
+    [Fact]
+    public async Task Given_PixPastItsValidity_When_Getting_Should_ShowExpiredWithoutThePixCode()
+    {
+        // Arrange
+        var payment = Application.UseCases.Base.Payments.OrderPaymentConversions.ToModel(OrderTestData.NewPayment());
+
+        _paymentRepository.GetLatestByOrderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(payment);
+        _timeProvider.Advance(TimeSpan.FromMinutes(14));
+
+        // Act
+        var result = await _useCase.ExecuteAsync(Input(), EventTestData.AuditableInfo());
+
+        // Assert
+        var shown = result.Output!.Payment!;
+
+        Assert.Equal("EXPIRED", shown.Status);
+        Assert.Null(shown.Pix);
     }
 
     [Fact]
