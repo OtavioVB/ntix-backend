@@ -97,7 +97,7 @@ A imagem da API é construída para a arquitetura detectada no servidor, x86_64 
 | `VPS_JWT_SIGNING_KEY` | Chave que assina o access token do usuário do produtor (REQ5): 32 bytes ou mais em Base64. Gere com `openssl rand -base64 32` |
 | `VPS_PGADMIN_EMAIL` | E-mail de login do PgAdmin em database.ntix.com.br, sem `'` |
 | `VPS_PGADMIN_PASSWORD` | Senha inicial de login do PgAdmin, sem `'` |
-| `VPS_PGADMIN_DATABASE_PASSWORD` | Senha do usuário somente leitura `ntix_pgadmin` do PostgreSQL, sem `'`. Gere com `openssl rand -base64 24` |
+| `VPS_PGADMIN_DATABASE_PASSWORD` | Senha do usuário `ntix_pgadmin` do PostgreSQL, usado pelo PgAdmin, sem `'`. Gere com `openssl rand -base64 24` |
 | `VPS_PGADMIN_ALLOWED_IPS` | IPs ou faixas CIDR que podem abrir database.ntix.com.br, separados por vírgula ou espaço. Ex.: `203.0.113.7, 2001:db8::/64` |
 
 A connection string da API, o endpoint de telemetria e as demais configurações são resolvidos pelo `docker-compose.yml` a partir desse `.env`, a cada deploy.
@@ -139,7 +139,7 @@ Em produção, o PgAdmin fica em <https://database.ntix.com.br>, com o servidor 
 
 Só os IPs de `VPS_PGADMIN_ALLOWED_IPS` chegam ao login; os demais recebem 403. Quando o seu IP mudar, atualize o secret e rode o deploy de novo (**Actions > CI > Run workflow** na `main`).
 
-O PgAdmin conecta com o usuário `ntix_pgadmin`, somente leitura em todo o banco, inclusive em tabelas futuras: ele consulta, mas não altera dados nem estrutura. Na primeira conexão, informe a senha de `VPS_PGADMIN_DATABASE_PASSWORD`. O usuário é recriado a cada deploy, então trocar o secret troca a senha.
+O PgAdmin conecta com o usuário `ntix_pgadmin`, que lê todo o banco, inclusive tabelas futuras, e só altera `producers.producer` (UPDATE), para aprovar o produtor: `UPDATE producers.producer SET status = 'ACTIVE' WHERE id_producer = '<id>';` ou a edição da célula pela grade. Não insere, não apaga e não muda estrutura em nenhuma tabela. Na primeira conexão, informe a senha de `VPS_PGADMIN_DATABASE_PASSWORD`. O usuário é recriado a cada deploy, então trocar o secret troca a senha.
 
 A senha de login do PgAdmin (`VPS_PGADMIN_PASSWORD`) só vale na criação do volume `ntix-pgadmin-volume`. Depois, troque-a pela tela do PgAdmin; trocar o secret não tem efeito.
 

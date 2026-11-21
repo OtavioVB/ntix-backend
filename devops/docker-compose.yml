@@ -30,7 +30,7 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em devops/.env (veja devops/.env.example)}"
       NTIX_DATABASE_HOST: ntix-postgresql-local
       NTIX_DATABASE: ntix
-      # Senha do usuário somente leitura do PgAdmin. Vazia no ambiente local: o usuário não é criado.
+      # Senha do usuário ntix_pgadmin, usado pelo PgAdmin. Vazia no ambiente local: o usuário não é criado.
       PGADMIN_DATABASE_PASSWORD: "${PGADMIN_DATABASE_PASSWORD:-}"
     volumes:
       - ../data:/ntix/data:ro
@@ -164,7 +164,7 @@ services:
       - ntix-network-local
 
   # PgAdmin: acesso ao banco pelo navegador. Na VPS, o nginx (gateway/ntix-database.conf) expõe em
-  # https://database.ntix.com.br só para os IPs permitidos. O servidor ntix já vem cadastrado com o usuário somente leitura.
+  # https://database.ntix.com.br só para os IPs permitidos. O servidor ntix já vem cadastrado com o usuário ntix_pgadmin.
   ntix-pgadmin:
     profiles: ["pgadmin"]
     image: dpage/pgadmin4:9.19.0

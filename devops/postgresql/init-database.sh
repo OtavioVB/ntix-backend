@@ -23,8 +23,10 @@ find "$DATA_DIR" -type f -name '*.sql' | LC_ALL=C sort | while read -r script; d
     psql_command --dbname "$DATABASE" --file "$script"
 done
 
-# Usuário do PgAdmin (database.ntix.com.br): somente leitura em todos os schemas, inclusive tabelas futuras.
-# pg_read_all_data dá SELECT e USAGE sem GRANT por tabela; a sessão também nasce read-only, como segunda barreira.
+# Usuário do PgAdmin (database.ntix.com.br), separado do usuário ntix da API.
+# pg_read_all_data dá SELECT e USAGE em todos os schemas, inclusive tabelas futuras, sem GRANT por tabela.
+# A única escrita é UPDATE em producers.producer, para aprovar o produtor (status ACTIVE) enquanto não há backoffice.
+# INSERT, DELETE e DDL seguem negados em tudo. A sessão não nasce read-only, para a edição pela grade do PgAdmin.
 # A senha é reaplicada a cada execução, então trocar o secret troca a senha. Sem senha (ambiente local), não é criado.
 if [ -n "${PGADMIN_DATABASE_PASSWORD:-}" ]; then
     psql_command --dbname "$DATABASE" --set pgadmin_password="$PGADMIN_DATABASE_PASSWORD" <<'SQL'
@@ -36,10 +38,11 @@ BEGIN
 END
 $$;
 ALTER ROLE ntix_pgadmin WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'pgadmin_password';
-ALTER ROLE ntix_pgadmin SET default_transaction_read_only = on;
+ALTER ROLE ntix_pgadmin RESET default_transaction_read_only;
 GRANT pg_read_all_data TO ntix_pgadmin;
+GRANT UPDATE ON producers.producer TO ntix_pgadmin;
 SQL
-    echo "[ntix] Usuário somente leitura 'ntix_pgadmin' pronto."
+    echo "[ntix] Usuário 'ntix_pgadmin' pronto: leitura em tudo e UPDATE em producers.producer."
 fi
 
 echo "[ntix] Banco '$DATABASE' pronto."
