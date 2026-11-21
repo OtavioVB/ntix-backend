@@ -1,4 +1,6 @@
 import { signOutCustomer } from "../../api/customerAuth";
+import { isRealApi } from "../../api/mode";
+import { RealOrderDetailPage, RealOrdersPage, RealTicketDetailPage, RealTicketsPage } from "./RealAccountPages";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -86,7 +88,7 @@ function ticketEntries(orders: CustomerOrder[]) {
   return orders.flatMap((order) => order.tickets.map((ticket) => ({ order, ticket })));
 }
 
-export function TicketsPage() {
+function DemoTicketsPage() {
   const { customer } = useCustomer();
   const [tab, setTab] = useState<"NEXT" | "PAST">("NEXT");
   const now = Date.now();
@@ -159,7 +161,7 @@ function TicketRow({ order, ticket }: { order: CustomerOrder; ticket: IssuedTick
   );
 }
 
-export function TicketDetailPage() {
+function DemoTicketDetailPage() {
   const { code } = useParams();
   const { customer, avatarOrDefault, updateOrder } = useCustomer();
   const { session } = useProducerSession();
@@ -225,7 +227,7 @@ export function TicketDetailPage() {
   );
 }
 
-export function OrdersPage() {
+function DemoOrdersPage() {
   const { customer } = useCustomer();
   const orders = [...customer.orders].sort((a, b) => b.createdAt - a.createdAt);
 
@@ -305,7 +307,7 @@ function PixPanel({ order }: { order: CustomerOrder }) {
   );
 }
 
-export function OrderDetailPage() {
+function DemoOrderDetailPage() {
   const { code } = useParams();
   const { customer, avatarOrDefault } = useCustomer();
   const order = customer.orders.find((candidate) => candidate.code === code);
@@ -367,6 +369,23 @@ export function OrderDetailPage() {
       )}
     </>
   );
+}
+
+/** Modo da API decide a tela: com `?api=real` os dados vêm do servidor (REQ13); a demonstração segue igual. */
+export function TicketsPage() {
+  return isRealApi() ? <RealTicketsPage /> : <DemoTicketsPage />;
+}
+
+export function TicketDetailPage() {
+  return isRealApi() ? <RealTicketDetailPage /> : <DemoTicketDetailPage />;
+}
+
+export function OrdersPage() {
+  return isRealApi() ? <RealOrdersPage /> : <DemoOrdersPage />;
+}
+
+export function OrderDetailPage() {
+  return isRealApi() ? <RealOrderDetailPage /> : <DemoOrderDetailPage />;
 }
 
 export function AvatarPage() {

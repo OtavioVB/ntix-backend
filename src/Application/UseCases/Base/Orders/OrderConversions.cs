@@ -1,3 +1,4 @@
+using Application.UseCases.Base.Customers.Outputs;
 using Application.UseCases.Base.Orders.Outputs;
 using Domain.BoundedContexts.OrderContext.Entities;
 using Domain.BoundedContexts.OrderContext.Enums;
@@ -61,7 +62,7 @@ public static class OrderConversions
             updatedCorrelationId: IdValueObject.Build(model.UpdatedCorrelationId.ToString()));
 
     /// <summary>Saída do pedido. O status é o efetivo (RN12): reserva vencida aparece como EXPIRED.</summary>
-    public static OrderOutput ToOutput(Order order, EventModel @event, DateTime now, OrderPaymentOutput? payment = null, IReadOnlyList<OrderTicketOutput>? tickets = null)
+    public static OrderOutput ToOutput(Order order, EventModel @event, DateTime now, OrderPaymentOutput? payment = null, IReadOnlyList<OrderTicketOutput>? tickets = null, CustomerProducerOutput? producer = null)
         => new(
             Code: order.Code.Value,
             Status: order.GetEffectiveStatus(now).ToString(),
@@ -87,5 +88,6 @@ public static class OrderConversions
                 .ToArray(),
             Tickets: tickets ?? [],
             Payment: payment,
-            PaidAt: order.PaidAt);
+            PaidAt: order.PaidAt,
+            Producer: producer);
 }

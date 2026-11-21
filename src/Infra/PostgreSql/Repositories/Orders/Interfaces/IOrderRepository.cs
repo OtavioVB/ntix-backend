@@ -17,6 +17,12 @@ public interface IOrderRepository
     /// <summary>Pedido pelo id, travado até o fim da transação, com os itens. Usado pela confirmação do webhook (REQ8, RN6).</summary>
     Task<OrderModel?> GetByIdForUpdateAsync(Guid orderId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Pedidos do comprador, do mais recente ao mais antigo, com o evento e a quantidade de ingressos (REQ13). <paramref name="statusFilter"/>
+    /// é a chave do status efetivo (<c>PAID</c>, <c>PENDING_PAYMENT</c>, <c>EXPIRED</c>) ou nulo para todos.
+    /// </summary>
+    Task<CustomerOrderPageModel> ListByCustomerAsync(Guid customerId, string? statusFilter, DateTime now, int offset, int pageSize, CancellationToken cancellationToken = default);
+
     /// <summary>Grava a nova situação do pedido (vencimento da reserva, REQ7; pagamento, REQ8).</summary>
     Task UpdateStatusAsync(OrderModel order, CancellationToken cancellationToken = default);
 }

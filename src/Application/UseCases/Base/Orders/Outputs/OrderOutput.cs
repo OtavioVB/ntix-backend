@@ -1,3 +1,5 @@
+using Application.UseCases.Base.Customers.Outputs;
+
 namespace Application.UseCases.Base.Orders.Outputs;
 
 /// <summary>Evento do pedido, como o checkout o mostra.</summary>
@@ -21,4 +23,5 @@ public sealed record OrderOutput(
     IReadOnlyList<OrderItemOutput> Items,
     IReadOnlyList<OrderTicketOutput> Tickets,
     OrderPaymentOutput? Payment = null,
-    DateTime? PaidAt = null);
+    DateTime? PaidAt = null,
+    CustomerProducerOutput? Producer = null);
