@@ -25,10 +25,14 @@ function useLoad<T>(load: (signal: AbortSignal) => Promise<ApiDataResult<T>>, ke
     const controller = new AbortController();
     setResult({ state: "loading" });
 
-    load(controller.signal).then((response) => {
-      if (controller.signal.aborted) return;
-      setResult(response.ok ? { state: "ready", data: response.data } : { state: "error", message: response.notifications[0]?.message ?? GENERIC_ERROR });
-    });
+    load(controller.signal)
+      .then((response) => {
+        if (controller.signal.aborted) return;
+        setResult(response.ok ? { state: "ready", data: response.data } : { state: "error", message: response.notifications[0]?.message ?? GENERIC_ERROR });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setResult({ state: "error", message: GENERIC_ERROR });
+      });
 
     return () => controller.abort();
     // `load` muda a cada renderização; a chave decide quando recarregar.
@@ -44,7 +48,7 @@ const STATUS_LABEL: Record<CustomerOrderItem["status"], { label: string; live: b
   EXPIRED: { label: "Expirado", live: false },
 };
 
-function Feedback({ message }: { message: string }) {
+function Feedback({ message }: Readonly<{ message: string }>) {
   return <p role="alert" className="account-alert">{message}</p>;
 }
 
@@ -178,7 +182,7 @@ export function RealTicketsPage() {
   );
 }
 
-function TicketRow({ ticket }: { ticket: CustomerTicketItem }) {
+function TicketRow({ ticket }: Readonly<{ ticket: CustomerTicketItem }>) {
   return (
     <li>
       <Link className="ticket-row" to={`/conta/ingressos/${ticket.code}`}>

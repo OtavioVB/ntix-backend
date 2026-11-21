@@ -10,6 +10,7 @@ namespace Infra.PostgreSql.Repositories.Orders;
 
 public sealed class OrderRepository : IOrderRepository
 {
+    private const string ID_CUSTOMER_PARAM = "@id_customer";
     private const string WRITE_ORDER_SAVEPOINT_NAME = "write_order";
     private const string CODE_UNIQUE_CONSTRAINT_NAME = "ux_orders_code";
 
@@ -98,7 +99,7 @@ public sealed class OrderRepository : IOrderRepository
             command.Parameters.Add("@code", NpgsqlDbType.Varchar, CODE_MAX_LENGTH).Value = order.Code;
             command.Parameters.Add("@id_producer", NpgsqlDbType.Uuid).Value = order.ProducerId;
             command.Parameters.Add("@id_event", NpgsqlDbType.Uuid).Value = order.EventId;
-            command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = order.CustomerId;
+            command.Parameters.Add(ID_CUSTOMER_PARAM, NpgsqlDbType.Uuid).Value = order.CustomerId;
             command.Parameters.Add("@sales_channel", NpgsqlDbType.Varchar, SALES_CHANNEL_MAX_LENGTH).Value = order.SalesChannel;
             command.Parameters.Add("@total_amount", NpgsqlDbType.Numeric).Value = order.TotalAmount;
             command.Parameters.Add("@status", NpgsqlDbType.Varchar, ENUM_MAX_LENGTH).Value = order.Status;
@@ -163,7 +164,7 @@ public sealed class OrderRepository : IOrderRepository
 
         await using (var command = _unitOfWork.CreateCommand(countSql))
         {
-            command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = customerId;
+            command.Parameters.Add(ID_CUSTOMER_PARAM, NpgsqlDbType.Uuid).Value = customerId;
             command.Parameters.Add("@now", NpgsqlDbType.TimestampTz).Value = now;
 
             totalItems = (int)(await command.ExecuteScalarAsync(cancellationToken) ?? 0);
@@ -173,7 +174,7 @@ public sealed class OrderRepository : IOrderRepository
 
         await using (var command = _unitOfWork.CreateCommand(listSql))
         {
-            command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = customerId;
+            command.Parameters.Add(ID_CUSTOMER_PARAM, NpgsqlDbType.Uuid).Value = customerId;
             command.Parameters.Add("@now", NpgsqlDbType.TimestampTz).Value = now;
             command.Parameters.Add("@page_size", NpgsqlDbType.Integer).Value = pageSize;
             command.Parameters.Add("@offset", NpgsqlDbType.Integer).Value = offset;
@@ -227,7 +228,7 @@ public sealed class OrderRepository : IOrderRepository
         await using (var command = _unitOfWork.CreateCommand(sql))
         {
             command.Parameters.Add("@code", NpgsqlDbType.Varchar, CODE_MAX_LENGTH).Value = code;
-            command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = customerId;
+            command.Parameters.Add(ID_CUSTOMER_PARAM, NpgsqlDbType.Uuid).Value = customerId;
 
             order = await ReadOrderAsync(command, cancellationToken);
         }

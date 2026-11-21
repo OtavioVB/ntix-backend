@@ -10,6 +10,11 @@ namespace Infra.PostgreSql.Repositories.Orders;
 
 public sealed class TicketRepository : ITicketRepository
 {
+    private const string DB_SYSTEM_TAG = "db.system.name";
+    private const string DB_SYSTEM_VALUE = "postgresql";
+    private const string DB_COLLECTION_TAG = "db.collection.name";
+    private const string TICKET_COLLECTION = "orders.ticket";
+    private const string ID_CUSTOMER_PARAM = "@id_customer";
     private const string WRITE_TICKET_SAVEPOINT_NAME = "write_ticket";
     private const string CODE_UNIQUE_INDEX_NAME = "ux_ticket_code";
 
@@ -43,8 +48,8 @@ public sealed class TicketRepository : ITicketRepository
     {
         using var activity = ACTIVITY_SOURCE
             .StartActivity($"{nameof(TicketRepository)}.{nameof(CreateManyAsync)}", ActivityKind.Client)
-            ?.SetTag("db.system.name", "postgresql")
-            .SetTag("db.collection.name", "orders.ticket");
+            ?.SetTag(DB_SYSTEM_TAG, DB_SYSTEM_VALUE)
+            .SetTag(DB_COLLECTION_TAG, TICKET_COLLECTION);
 
         // A colisão do código invalidaria a transação; o savepoint devolve o conflito e mantém o pedido em aberto.
         await _unitOfWork.SaveAsync(WRITE_TICKET_SAVEPOINT_NAME, cancellationToken);
@@ -58,7 +63,7 @@ public sealed class TicketRepository : ITicketRepository
                 command.Parameters.Add("@id_ticket", NpgsqlDbType.Uuid).Value = ticket.Id;
                 command.Parameters.Add("@id_order_item", NpgsqlDbType.Uuid).Value = ticket.OrderItemId;
                 command.Parameters.Add("@id_order", NpgsqlDbType.Uuid).Value = ticket.OrderId;
-                command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = ticket.CustomerId;
+                command.Parameters.Add(ID_CUSTOMER_PARAM, NpgsqlDbType.Uuid).Value = ticket.CustomerId;
                 command.Parameters.Add("@id_event", NpgsqlDbType.Uuid).Value = ticket.EventId;
                 command.Parameters.Add("@code", NpgsqlDbType.Varchar, CODE_MAX_LENGTH).Value = ticket.Code;
                 command.Parameters.Add("@holder_name", NpgsqlDbType.Varchar, HOLDER_NAME_MAX_LENGTH).Value = ticket.HolderName;
@@ -108,8 +113,8 @@ public sealed class TicketRepository : ITicketRepository
     {
         using var activity = ACTIVITY_SOURCE
             .StartActivity($"{nameof(TicketRepository)}.{nameof(ListByCustomerAsync)}", ActivityKind.Client)
-            ?.SetTag("db.system.name", "postgresql")
-            .SetTag("db.collection.name", "orders.ticket");
+            ?.SetTag(DB_SYSTEM_TAG, DB_SYSTEM_VALUE)
+            .SetTag(DB_COLLECTION_TAG, TICKET_COLLECTION);
 
         var where = upcoming ? CUSTOMER_TICKET_UPCOMING : CUSTOMER_TICKET_PAST;
         var order = upcoming ? CUSTOMER_TICKET_UPCOMING_ORDER : CUSTOMER_TICKET_PAST_ORDER;
@@ -118,7 +123,7 @@ public sealed class TicketRepository : ITicketRepository
 
         await using (var command = _unitOfWork.CreateCommand(CUSTOMER_TICKET_COUNT + where + ";"))
         {
-            command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = customerId;
+            command.Parameters.Add(ID_CUSTOMER_PARAM, NpgsqlDbType.Uuid).Value = customerId;
             command.Parameters.Add("@now", NpgsqlDbType.TimestampTz).Value = now;
 
             totalItems = (int)(await command.ExecuteScalarAsync(cancellationToken) ?? 0);
@@ -128,7 +133,7 @@ public sealed class TicketRepository : ITicketRepository
 
         await using (var command = _unitOfWork.CreateCommand(CUSTOMER_TICKET_SELECT + where + order))
         {
-            command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = customerId;
+            command.Parameters.Add(ID_CUSTOMER_PARAM, NpgsqlDbType.Uuid).Value = customerId;
             command.Parameters.Add("@now", NpgsqlDbType.TimestampTz).Value = now;
             command.Parameters.Add("@page_size", NpgsqlDbType.Integer).Value = pageSize;
             command.Parameters.Add("@offset", NpgsqlDbType.Integer).Value = offset;
@@ -146,13 +151,13 @@ public sealed class TicketRepository : ITicketRepository
     {
         using var activity = ACTIVITY_SOURCE
             .StartActivity($"{nameof(TicketRepository)}.{nameof(GetByCodeForCustomerAsync)}", ActivityKind.Client)
-            ?.SetTag("db.system.name", "postgresql")
-            .SetTag("db.collection.name", "orders.ticket");
+            ?.SetTag(DB_SYSTEM_TAG, DB_SYSTEM_VALUE)
+            .SetTag(DB_COLLECTION_TAG, TICKET_COLLECTION);
 
         await using var command = _unitOfWork.CreateCommand(CUSTOMER_TICKET_SELECT + CUSTOMER_TICKET_BY_CODE);
 
         command.Parameters.Add("@code", NpgsqlDbType.Varchar, CODE_MAX_LENGTH).Value = code;
-        command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = customerId;
+        command.Parameters.Add(ID_CUSTOMER_PARAM, NpgsqlDbType.Uuid).Value = customerId;
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
@@ -186,8 +191,8 @@ public sealed class TicketRepository : ITicketRepository
     {
         using var activity = ACTIVITY_SOURCE
             .StartActivity($"{nameof(TicketRepository)}.{nameof(ListByOrderAsync)}", ActivityKind.Client)
-            ?.SetTag("db.system.name", "postgresql")
-            .SetTag("db.collection.name", "orders.ticket");
+            ?.SetTag(DB_SYSTEM_TAG, DB_SYSTEM_VALUE)
+            .SetTag(DB_COLLECTION_TAG, TICKET_COLLECTION);
 
         await using var command = _unitOfWork.CreateCommand(SELECT_BY_ORDER_SQL);
 

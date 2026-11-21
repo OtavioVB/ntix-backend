@@ -11,6 +11,7 @@ using Domain.CrossCutting.NotificationContext;
 using Domain.ValueObjects;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Events.Models;
 using Infra.PostgreSql.Repositories.Orders.Interfaces;
 using Infra.PostgreSql.Repositories.Orders.Models;
 using Infra.PostgreSql.Repositories.Payments.Interfaces;
@@ -91,44 +92,15 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
             // Só leitura: a transação dá uma conexão aos repositórios e é desfeita no fim.
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
-            var orderModel = await _orderRepository.GetByCodeAsync(input.Code.Value, input.CustomerId.Value, cancellationToken);
-
-            var eventModel = orderModel is null
-                ? null
-                : await _eventRepository.GetByIdAsync(orderModel.ProducerId, orderModel.EventId, cancellationToken);
-
-            // A cobrança mais recente acompanha o pedido (REQ7): é com ela que o checkout mostra o Pix e acompanha o pagamento.
-            PaymentModel? paymentModel = null;
-
-            if (orderModel is not null && eventModel is not null)
-                paymentModel = await _paymentRepository.GetLatestByOrderAsync(orderModel.Id, cancellationToken);
-
-            // Os ingressos só existem com o pedido pago (REQ8): a lista sai vazia antes disso.
-            IReadOnlyList<TicketListItemModel> ticketModels = orderModel is not null && orderModel.Status == "PAID"
-                ? await _ticketRepository.ListByOrderAsync(orderModel.Id, cancellationToken)
-                : [];
-
-            // Produtor do pedido (REQ13): slug e nome, pelo mesmo perfil da vitrine (REQ11).
-            IReadOnlyList<ProducerProfileModel> producers = orderModel is null
-                ? []
-                : await _producerRepository.GetProfilesByIdsAsync([orderModel.ProducerId], cancellationToken);
+            var read = await ReadOrderAsync(input.Code.Value, input.CustomerId.Value, cancellationToken);
 
             await _unitOfWork.RollbackAsync(CancellationToken.None);
 
             // Pedido sem evento não existe: a FK composta garante o evento do pedido.
-            if (orderModel is null || eventModel is null)
+            if (read.Order is null || read.Event is null)
                 return NotFound();
 
-            var order = OrderConversions.ToOrder(orderModel);
-            var tickets = ticketModels.Select(ticket => new OrderTicketOutput(ticket.Code, ticket.BatchName, ticket.HolderName, ticket.Status)).ToArray();
-            var producer = producers.FirstOrDefault(profile => profile.Id == orderModel.ProducerId);
-            var output = OrderConversions.ToOutput(
-                order,
-                eventModel,
-                now,
-                paymentModel is null ? null : OrderPaymentConversions.ToOutput(OrderPaymentConversions.ToPayment(paymentModel), now),
-                tickets,
-                producer is null ? null : new CustomerProducerOutput(producer.Slug, producer.Name));
+            var output = BuildOutput(read, now);
 
             RecordOutcome(GetCustomerOrderDiagnostics.OUTCOME_SERVED);
 
@@ -151,6 +123,50 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
 
             throw;
         }
+    }
+
+    private sealed record OrderReadModel(
+        OrderModel? Order,
+        EventModel? Event,
+        PaymentModel? Payment,
+        IReadOnlyList<TicketListItemModel> Tickets,
+        ProducerProfileModel? Producer);
+
+    /// <summary>Lê o pedido do cliente com o evento, a cobrança, os ingressos e o produtor. Sem evento, o pedido não existe (FK composta).</summary>
+    private async Task<OrderReadModel> ReadOrderAsync(string code, Guid customerId, CancellationToken cancellationToken)
+    {
+        var orderModel = await _orderRepository.GetByCodeAsync(code, customerId, cancellationToken);
+
+        if (orderModel is null)
+            return new OrderReadModel(null, null, null, [], null);
+
+        var eventModel = await _eventRepository.GetByIdAsync(orderModel.ProducerId, orderModel.EventId, cancellationToken);
+
+        if (eventModel is null)
+            return new OrderReadModel(orderModel, null, null, [], null);
+
+        // A cobrança mais recente acompanha o pedido (REQ7): é com ela que o checkout mostra o Pix e acompanha o pagamento.
+        var paymentModel = await _paymentRepository.GetLatestByOrderAsync(orderModel.Id, cancellationToken);
+
+        // Os ingressos só existem com o pedido pago (REQ8): a lista sai vazia antes disso.
+        IReadOnlyList<TicketListItemModel> tickets = orderModel.Status == "PAID"
+            ? await _ticketRepository.ListByOrderAsync(orderModel.Id, cancellationToken)
+            : [];
+
+        // Produtor do pedido (REQ13): slug e nome, pelo mesmo perfil da vitrine (REQ11).
+        var producers = await _producerRepository.GetProfilesByIdsAsync([orderModel.ProducerId], cancellationToken);
+
+        return new OrderReadModel(orderModel, eventModel, paymentModel, tickets, producers.FirstOrDefault(profile => profile.Id == orderModel.ProducerId));
+    }
+
+    private static OrderOutput BuildOutput(OrderReadModel read, DateTime now)
+    {
+        var order = OrderConversions.ToOrder(read.Order!);
+        var tickets = read.Tickets.Select(ticket => new OrderTicketOutput(ticket.Code, ticket.BatchName, ticket.HolderName, ticket.Status)).ToArray();
+        var payment = read.Payment is null ? null : OrderPaymentConversions.ToOutput(OrderPaymentConversions.ToPayment(read.Payment), now);
+        var producer = read.Producer is null ? null : new CustomerProducerOutput(read.Producer.Slug, read.Producer.Name);
+
+        return OrderConversions.ToOutput(order, read.Event!, now, payment, tickets, producer);
     }
 
     private MethodResult<OrderOutput> NotFound()

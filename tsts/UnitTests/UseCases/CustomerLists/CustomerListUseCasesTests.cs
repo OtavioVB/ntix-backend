@@ -18,7 +18,7 @@ using UnitTests.Support;
 namespace UnitTests.UseCases.CustomerLists;
 
 /// <summary>Casos de uso da área do comprador (REQ13): validação antes do banco, status efetivo, período e isolamento.</summary>
-public sealed class CustomerListUseCasesTests
+public sealed class CustomerListUseCasesTests : IDisposable
 {
     private static readonly Guid CUSTOMER_ID = Guid.Parse("1d2c3b4a-5e6f-4a7b-8c9d-0e1f2a3b4c5d");
     private static readonly Guid PRODUCER_ID = Guid.Parse("8e7f6a5b-4c3d-4e2f-9a1b-0c9d8e7f6a5b");
@@ -45,7 +45,7 @@ public sealed class CustomerListUseCasesTests
     private static CustomerOrderRowModel OrderRow(string code, string status, DateTime expiresAt)
         => new(code, status, expiresAt, OrderTestData.NOW.AddMinutes(-1), null, 240m, 0, PRODUCER_ID, "festival", "Festival", OrderTestData.NOW.AddDays(30), "Recife", "PE", null);
 
-    public void Dispose()
+    void IDisposable.Dispose()
         => _meterFactory.Dispose();
 
     [Fact]

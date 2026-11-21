@@ -1,3 +1,4 @@
+using Domain.BoundedContexts.OrderContext.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Application.UseCases.GetCustomerTickets;
@@ -7,7 +8,7 @@ internal static partial class GetCustomerTicketsLog
 {
     [LoggerMessage(EventId = 7311, Level = LogLevel.Information,
         Message = "Ingressos do cliente listados (período {Period}), página {Page}: {Count} de {TotalItems}.")]
-    public static partial void Served(ILogger logger, string period, int page, int count, int totalItems);
+    public static partial void Served(ILogger logger, TicketPeriod period, int page, int count, int totalItems);
 
     [LoggerMessage(EventId = 7312, Level = LogLevel.Error,
         Message = "Falha inesperada ao listar os ingressos do cliente.")]

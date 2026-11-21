@@ -88,7 +88,7 @@ public sealed class GetCustomerTicketsUseCase : IUseCase<GetCustomerTicketsUseCa
                 PageSize: input.Page.PageSize,
                 TotalItems: page.TotalItems);
 
-            GetCustomerTicketsLog.Served(_logger, input.Filters.TicketPeriod.ToString(), output.Page, output.Items.Count, output.TotalItems);
+            GetCustomerTicketsLog.Served(_logger, input.Filters.TicketPeriod, output.Page, output.Items.Count, output.TotalItems);
             _diagnostics.Finished(GetCustomerTicketsDiagnostics.OUTCOME_SERVED);
 
             return MethodResult<CustomerTicketsPageOutput>.Success(output);

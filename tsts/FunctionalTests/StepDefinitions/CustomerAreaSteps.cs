@@ -52,7 +52,7 @@ public sealed class CustomerAreaSteps
 
     private static string Pt(string name) => $"{name} Souza";
 
-    private async Task<(Guid Id, string Token)> CustomerAsync(string name)
+    private static async Task<(Guid Id, string Token)> CustomerAsync(string name)
     {
         var id = await NtixApiHooks.Database.ScalarAsync<Guid>(CUSTOMER_ID_SQL, new NpgsqlParameter("@name", NpgsqlDbType.Varchar) { Value = Pt(name) });
         var token = NtixApiHooks.Factory.Services.GetRequiredService<CustomerAccessTokenIssuer>().Issue(id, Guid.NewGuid(), DateTime.UtcNow);
@@ -77,7 +77,7 @@ public sealed class CustomerAreaSteps
     private T Read<T>() => JsonSerializer.Deserialize<T>(_body, JSON_OPTIONS)!;
 
     [Given(@"^que os ingressos do pedido mais recente de (\w+) foram emitidos: (\d+) ingressos? ""([^""]*)""$")]
-    public async Task GivenTicketsOfTheLatestOrderWereIssued(string name, int quantity, string batch)
+    public static async Task GivenTicketsOfTheLatestOrderWereIssued(string name, int quantity, string batch)
     {
         var latestId = await NtixApiHooks.Database.ScalarAsync<Guid>(LATEST_ORDER_SQL, new NpgsqlParameter("@name", NpgsqlDbType.Varchar) { Value = Pt(name) });
 

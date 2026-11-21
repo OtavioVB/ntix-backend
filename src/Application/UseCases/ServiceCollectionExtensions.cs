@@ -67,7 +67,6 @@ using Application.UseCases.GetPublicEvent;
 using Application.UseCases.GetPublicEvent.Inputs;
 using Application.UseCases.SearchPublicEvents;
 using Application.UseCases.SearchPublicEvents.Inputs;
-using Application.UseCases.Base.Customers.Outputs;
 using Application.UseCases.CreateCustomerSession;
 using Application.UseCases.CreateCustomerSession.Inputs;
 using Application.UseCases.GetCurrentCustomer;
