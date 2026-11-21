@@ -3,6 +3,7 @@ using Domain.BoundedContexts.EventContext.Entities;
 using Domain.BoundedContexts.EventContext.Enums;
 using Domain.ValueObjects;
 using Infra.PostgreSql.Repositories.Events.Models;
+using Infra.PostgreSql.Repositories.Orders.Models;
 
 namespace Application.UseCases.Base.Events;
 
@@ -74,10 +75,28 @@ public static class EventConversions
             updatedAt: DateTimeValueObject.Build(model.UpdatedAt),
             updatedCorrelationId: IdValueObject.Build(model.UpdatedCorrelationId.ToString()));
 
-    public static ProducerEventOutput ToOutput(Event @event)
-        => ToOutput(ToModel(@event));
+    /// <summary>Resumo de evento sem lote e sem venda (recém-criado).</summary>
+    public static readonly EventSalesSummaryModel NO_SALES = new(Capacity: 0, SoldQuantity: 0, GrossAmount: 0m, PaidOrders: 0);
 
-    public static ProducerEventOutput ToOutput(EventModel model)
+    /// <summary>Saída do painel com a situação exposta em <paramref name="now"/> (REQ14, RN1) e o resumo de vendas.</summary>
+    public static ProducerEventOutput ToOutput(Event @event, EventSalesSummaryModel summary, DateTime now)
+        => ToOutput(ToModel(@event), @event.StatusAt(now).ToString(), summary);
+
+    public static ProducerEventOutput ToOutput(EventModel model, EventSalesSummaryModel summary, DateTime now)
+        => ToOutput(ToEvent(model), summary, now);
+
+    public static ProducerEventSalesSummaryOutput ToSummaryOutput(EventSalesSummaryModel summary)
+        => new(
+            Capacity: summary.Capacity,
+            SoldQuantity: summary.SoldQuantity,
+            GrossCents: ToCents(summary.GrossAmount),
+            PaidOrders: summary.PaidOrders);
+
+    /// <summary>Valor em reais do banco (<c>NUMERIC(18,2)</c>) em centavos para a API.</summary>
+    public static long ToCents(decimal amount)
+        => (long)decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero);
+
+    private static ProducerEventOutput ToOutput(EventModel model, string status, EventSalesSummaryModel summary)
         => new(
             Id: model.Id,
             Slug: model.Slug,
@@ -93,9 +112,10 @@ public static class EventConversions
             State: model.State,
             AgeRating: model.AgeRating,
             ImageUrl: model.ImageUrl,
-            Status: model.Status,
+            Status: status,
             CreatedAt: DateTime.SpecifyKind(model.CreatedAt, DateTimeKind.Utc),
-            UpdatedAt: DateTime.SpecifyKind(model.UpdatedAt, DateTimeKind.Utc));
+            UpdatedAt: DateTime.SpecifyKind(model.UpdatedAt, DateTimeKind.Utc),
+            SalesSummary: ToSummaryOutput(summary));
 
     /// <summary>Id da rota; texto que não é um GUID vira nulo e o caso de uso responde como evento inexistente.</summary>
     public static Guid? ParseEventId(string? eventId)

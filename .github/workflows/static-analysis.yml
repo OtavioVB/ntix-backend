@@ -16,6 +16,7 @@ env:
   DOTNET_VERSION: 10.0.x
   BUILD_CONFIGURATION: Release
   SONAR_SCANNER_VERSION: 12.0.0
+  NODE_VERSION: "24"
   SONAR_HOST_URL: https://sonarcloud.io
   # Arquivos fora do cálculo de cobertura: inicialização, configuração e modelos sem regra de negócio.
   SONAR_COVERAGE_EXCLUSIONS: "**/Program.cs,**/ServiceCollectionExtensions.cs,**/Observability/**,**/Configuration/**,**/Payloads/**,**/Models/**,**/Inputs/**,**/*Log.cs,**/*Diagnostics.cs"
@@ -59,6 +60,12 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+      # O front (web/) também entra na análise: a cobertura do Vitest vai junto com a do .NET (RFC 0011).
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Instalar o SonarScanner
         run: dotnet tool install --global dotnet-sonarscanner --version "$SONAR_SCANNER_VERSION"
@@ -72,6 +79,7 @@ jobs:
             /d:sonar.token="$SONAR_TOKEN" \
             /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml" \
             /d:sonar.cs.vstest.reportsPaths="TestResults/**/*.trx" \
+            /d:sonar.javascript.lcov.reportPaths="web/coverage/lcov.info" \
             /d:sonar.coverage.exclusions="$SONAR_COVERAGE_EXCLUSIONS" \
             /d:sonar.exclusions="$SONAR_EXCLUSIONS" \
             /d:sonar.cpd.exclusions="$SONAR_CPD_EXCLUSIONS" \
@@ -94,6 +102,15 @@ jobs:
               --collect:"XPlat Code Coverage" \
               -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
           done
+
+      - name: Rodar os testes do front com cobertura
+        working-directory: web
+        # --ignore-scripts: nenhum script de instalação de pacote roda na esteira. Os comandos vêm dos scripts do
+        # package.json, com as versões fixadas no lock, sem o npx baixar nada sob demanda.
+        run: |
+          npm ci --ignore-scripts
+          npm run typecheck
+          npm run test -- --coverage
 
       - name: Enviar a análise
         run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"

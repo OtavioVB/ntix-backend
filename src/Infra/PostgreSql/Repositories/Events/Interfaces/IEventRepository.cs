@@ -16,8 +16,11 @@ public interface IEventRepository
     /// <summary>Mesmo que <see cref="GetByIdAsync"/>, travando a linha até o fim da transação.</summary>
     Task<EventModel?> GetByIdForUpdateAsync(Guid producerId, Guid eventId, CancellationToken cancellationToken = default);
 
-    /// <summary>Eventos do produtor por início crescente; <paramref name="status"/> nulo traz todos.</summary>
-    Task<IReadOnlyList<EventModel>> ListByProducerAsync(Guid producerId, string? status, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Eventos do produtor por início crescente; <paramref name="status"/> nulo traz todos (REQ14, RN3): <c>ENDED</c> é todo evento
+    /// cujo término chegou em <paramref name="now"/>; <c>DRAFT</c> e <c>PUBLISHED</c>, os gravados assim que ainda não terminaram.
+    /// </summary>
+    Task<IReadOnlyList<EventModel>> ListByProducerAsync(Guid producerId, string? status, DateTime now, CancellationToken cancellationToken = default);
 
     /// <summary>Substitui os campos editáveis. Slug, situação e criação não mudam.</summary>
     Task UpdateAsync(EventModel @event, CancellationToken cancellationToken = default);

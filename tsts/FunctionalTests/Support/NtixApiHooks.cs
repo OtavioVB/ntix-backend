@@ -37,6 +37,9 @@ public sealed class NtixApiHooks
         Environment.SetEnvironmentVariable("JwtConfiguration__SigningKey", JWT_SIGNING_KEY);
         Environment.SetEnvironmentVariable("OTEL_SDK_DISABLED", bool.TrueString);
 
+        // Chave do webhook de teste: os cenários de vendas (REQ14) confirmam o pagamento pelo webhook assinado, como o AbacatePay.
+        Environment.SetEnvironmentVariable("AbacatePayConfiguration__WebhookPublicKey", UnitTests.Support.WebhookTestData.PUBLIC_KEY);
+
         Directory.CreateDirectory(WhitelabelDirectory);
         Environment.SetEnvironmentVariable("WhitelabelConfiguration__DirectoryPath", WhitelabelDirectory);
 
@@ -63,6 +66,9 @@ public sealed class NtixApiHooks
             DELETE FROM payments.payment_webhook_event;
             DELETE FROM payments.payment;
             DELETE FROM orders.ticket;
+            DELETE FROM orders.sale_entry;
+            DELETE FROM orders.ticket_batch_sales;
+            DELETE FROM orders.event_sales;
             DELETE FROM orders.order_item;
             DELETE FROM orders.orders;
             DELETE FROM customers.producer_customer;

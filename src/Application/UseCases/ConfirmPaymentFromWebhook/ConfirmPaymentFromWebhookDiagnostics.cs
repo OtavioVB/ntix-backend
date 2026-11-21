@@ -42,8 +42,19 @@ public sealed class ConfirmPaymentFromWebhookDiagnostics : FunnelDiagnostics
             unit: "s",
             description: "Tempo entre a criação do Pix e a confirmação pelo webhook.");
 
+        _saleEntriesInDefaultPartition = Meter.CreateCounter<long>(
+            name: "ntix.sales.default_partition.rows",
+            unit: "{row}",
+            description: "Vendas gravadas na partição padrão de orders.sale_entry (REQ14, RN14): faltam partições mensais.");
+
         _paidAfterExpiration.Add(0);
+        _saleEntriesInDefaultPartition.Add(0);
     }
+
+    private readonly Counter<long> _saleEntriesInDefaultPartition;
+
+    public void SaleEntriesInDefaultPartition(int rows)
+        => _saleEntriesInDefaultPartition.Add(rows);
 
     public void PaidAfterExpiration()
         => _paidAfterExpiration.Add(1);

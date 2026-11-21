@@ -68,6 +68,7 @@ export function toHubEvent(event: PublicEvent): HubEvent {
     startsAt: hourOf(event.startsAt),
     ageRating: AGE_RATING_NAMES[event.ageRating] ?? event.ageRating,
     description: (event.description ?? "").split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean),
+    markdown: event.description,
     schedule: [],
     included: [],
     imageUrl: event.imageUrl,

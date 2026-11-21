@@ -47,6 +47,8 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 
 ### Integração contínua
 - GitHub Actions: build, testes unitários e integrados em paralelo, análise estática e, depois, testes funcionais.
+- O job do Sonar roda também os testes do front (`tsc` e `vitest run --coverage`) e envia `web/coverage/lcov.info`: o Quality Gate de 80% vale para o C# e o TypeScript juntos. Cobertura que falta se resolve com teste, não com exclusão (decidido pelo usuário no REQ14, [RFC 0011](../../../../docs/rfcs/0011-cobertura-do-front-no-sonar.md)).
+- Na esteira, pacotes npm entram com `npm ci --ignore-scripts`, e os comandos rodam pelos scripts do `package.json` (`npm run ...`), nunca por `npx`, que pode baixar pacote sob demanda (regras S6505 e S8543 do Sonar).
 - Jobs de build, testes e análise estática no environment `Staging` do GitHub; o deploy no environment `Production`.
 - Valores sensíveis da esteira vêm de secrets do repositório, nunca do arquivo do workflow.
 - Deploy em VPS via SSH, depois dos testes: acesso por secrets, variáveis de ambiente geradas no servidor a cada deploy e API em contêiner construído pelo `Dockerfile`.
@@ -134,6 +136,19 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Paginação por `page` (a partir de 1) e `pageSize` (padrão 20, máximo 50); a resposta traz `items`, `page`, `pageSize` e `totalItems`. Filtro inválido recusa a consulta inteira com uma notificação por filtro.
 - Endpoint público de leitura é `[AllowAnonymous]`, aceita `X-Execution-User` opcional e responde com `Cache-Control: public, max-age=15` quando o dado muda com a venda.
 - Filtro de texto que precisa ignorar maiúsculas e acentos usa coluna gerada normalizada no banco (`translate(lower(...))`) e consulta exata, sem `LIKE`.
+
+### Resumos, gráficos e situações (REQ14)
+- Resumo, composição de vendas e dado de gráfico são calculados na API, nunca no front, e devolvidos de forma performática: estruturas de leitura alimentadas na mesma transação da operação de origem (contadores, tabelas de fatos), com índices e particionamento nativo do PostgreSQL onde a tabela cresce com o tempo. Nada de varrer pedidos a cada leitura, nem de N+1 no front.
+- Card de lista mostra só o resumo da entidade; o detalhe (por lote, por venda) é experiência da página própria.
+- Situação exibida vem da API. Se a situação que a tela precisa não existe (ex.: `ENDED` após o término do evento), ela é criada no back, não derivada no front.
+- Cada entidade do painel tem página própria (lista, `/novo`, `/{id}`, `/{id}/editar`), para o produtor saber qual registro está alterando.
+- Receita líquida e taxas só são criadas sob demanda.
+- Situação que depende só do relógio (ex.: `ENDED`) é calculada no domínio com o `TimeProvider` (`Event.StatusAt`), e o filtro vira SQL sobre índice com `now` como parâmetro; sem coluna nova nem processo agendado (confirmado no REQ14).
+- Tabela de fatos que cresce com o tempo (ex.: `orders.sale_entry`) é particionada por `RANGE` mensal na coluna de data, com partições criadas por script anual em `data/` e uma partição `DEFAULT` de segurança; o insert devolve o `tableoid`, e linha na `DEFAULT` gera log de aviso e métrica. Sem `pg_partman`. Tabelas existentes (`orders.orders`, `order_item`) só são particionadas quando o volume pedir (REQ14).
+- Contador de leitura é somado por upsert atômico (`ON CONFLICT DO UPDATE SET x = x + EXCLUDED.x`) na mesma transação da operação de origem, e um script idempotente em `data/` reconcilia o contador com os fatos, com trava exclusiva durante o recálculo (REQ14).
+
+### Texto rico (REQ14)
+- Texto formatado pelo usuário (descrição do evento) é gravado como Markdown, editado num editor visual que não mostra a sintaxe e renderizado sem HTML cru, com links só `https` ([RFC 0010](../../../../docs/rfcs/0010-editor-de-descricao-em-markdown.md)).
 
 ### Whitelabel (front)
 - Cada implantação é whitelabel: a identidade visual vem de uma configuração em runtime, nunca de build. Hoje `web/public/whitelabel.json` (substituído por implantação, sem rebuild); no futuro, a API, apontada por `VITE_WHITELABEL_URL`, no mesmo formato.

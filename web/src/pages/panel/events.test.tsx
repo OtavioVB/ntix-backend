@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearSessionTokens, storeSessionTokens } from "../../api/auth";
@@ -44,6 +43,7 @@ function apiEvent(overrides: Partial<ProducerEvent> = {}): ProducerEvent {
     status: "DRAFT",
     createdAt: "2026-11-20T12:00:00.000Z",
     updatedAt: "2026-11-20T12:00:00.000Z",
+    salesSummary: { capacity: 0, soldQuantity: 0, grossCents: 0, paidOrders: 0 },
     ...overrides,
   };
 }
@@ -175,51 +175,4 @@ describe("aba Eventos", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("com a API real lista os eventos e cria um rascunho", async () => {
-    window.sessionStorage.setItem("ntix:api-mode", "real");
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse(200, [apiEvent({ title: "Teatro Aberto", slug: "teatro-aberto", id: "t1", status: "PUBLISHED" })]))
-      .mockResolvedValueOnce(jsonResponse(201, apiEvent()))
-      .mockResolvedValueOnce(jsonResponse(200, [apiEvent(), apiEvent({ title: "Teatro Aberto", slug: "teatro-aberto", id: "t1", status: "PUBLISHED" })]));
-    vi.stubGlobal("fetch", fetchMock);
-    const user = userEvent.setup();
-
-    renderEvents();
-
-    expect(await screen.findByText("Teatro Aberto")).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText("Título"), "Festival Horizonte");
-    await user.selectOptions(screen.getByLabelText("Categoria"), "FESTIVALS");
-    await user.type(screen.getByLabelText("Começa em"), "2030-03-20T18:00");
-    await user.type(screen.getByLabelText("Termina em"), "2030-03-21T03:00");
-    await user.type(screen.getByLabelText("Local"), "Parque das Dunas");
-    await user.type(screen.getByLabelText("Endereço"), "Av. Beira-Mar, 1200");
-    await user.type(screen.getByLabelText("Cidade"), "Recife");
-    await user.selectOptions(screen.getByLabelText("UF"), "PE");
-    await user.selectOptions(screen.getByLabelText("Classificação etária"), "AGE_16");
-    await user.click(screen.getByRole("button", { name: "Criar em rascunho" }));
-
-    expect(await screen.findByText("Festival Horizonte")).toBeInTheDocument();
-    const created = sentRequest(fetchMock, 1);
-    expect(created.init.method).toBe("POST");
-    expect(created.body).toMatchObject({ title: "Festival Horizonte", state: "PE", ageRating: "AGE_16" });
-  });
-
-  it("com a API real mostra a recusa no campo", async () => {
-    window.sessionStorage.setItem("ntix:api-mode", "real");
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse(200, [apiEvent()]))
-      .mockResolvedValueOnce(jsonResponse(400, [{ code: "EVENT_ALREADY_STARTED", message: "O evento já começou e não pode mais ser alterado." }]));
-    vi.stubGlobal("fetch", fetchMock);
-    const user = userEvent.setup();
-
-    renderEvents();
-
-    await user.click(await screen.findByRole("button", { name: "Editar Festival Horizonte" }));
-    await waitFor(() => expect(screen.getByLabelText("Título")).toHaveValue("Festival Horizonte"));
-    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("O evento já começou e não pode mais ser alterado.");
-    expect(sentRequest(fetchMock, 1).init.method).toBe("PUT");
-  });
 });

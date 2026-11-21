@@ -534,3 +534,139 @@
     background: var(--n-line);
   }
 }
+
+/* --- Texto rico (REQ14, RFC 0010): editor da descrição e a descrição renderizada ---------------- */
+@layer n-components {
+  .n-markdown {
+    display: grid;
+    gap: var(--n-space-3);
+    max-width: 68ch;
+    overflow-wrap: anywhere;
+  }
+
+  .n-markdown h2,
+  .n-markdown .n-markdown__h2 {
+    margin-top: var(--n-space-2);
+    font-size: var(--n-text-lg);
+    font-weight: 700;
+    color: var(--n-ink);
+  }
+
+  .n-markdown h3,
+  .n-markdown .n-markdown__h3 {
+    font-size: var(--n-text-md);
+    font-weight: 600;
+    color: var(--n-ink);
+  }
+
+  .n-markdown ul,
+  .n-markdown .n-markdown__ul {
+    padding-left: var(--n-space-5);
+    list-style: disc;
+  }
+
+  .n-markdown ol,
+  .n-markdown .n-markdown__ol {
+    padding-left: var(--n-space-5);
+    list-style: decimal;
+  }
+
+  .n-markdown blockquote,
+  .n-markdown .n-markdown__quote {
+    padding-left: var(--n-space-3);
+    border-left: 2px solid var(--n-primary-500);
+    color: var(--n-ink-muted);
+  }
+
+  .n-markdown a,
+  .n-markdown .n-markdown__link {
+    color: var(--n-accent-ink);
+    text-decoration: underline;
+  }
+
+  .n-markdown strong,
+  .n-markdown .n-markdown__bold {
+    font-weight: 700;
+  }
+
+  .n-markdown em,
+  .n-markdown .n-markdown__italic {
+    font-style: italic;
+  }
+
+  .n-rich-text {
+    display: grid;
+    gap: var(--n-space-2);
+  }
+
+  .n-rich-text__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--n-space-1);
+    padding: var(--n-space-1);
+    background: var(--n-surface-2);
+    border: 1px solid var(--n-line);
+    border-radius: var(--n-radius-sm);
+  }
+
+  .n-rich-text__toolbar > button,
+  .n-rich-text__link button {
+    min-height: 2rem;
+    padding: 0 var(--n-space-2);
+    border: 1px solid transparent;
+    border-radius: var(--n-radius-sm);
+    background: transparent;
+    color: var(--n-ink);
+    font-size: var(--n-text-sm);
+    cursor: pointer;
+  }
+
+  .n-rich-text__toolbar > button:hover,
+  .n-rich-text__toolbar > button:focus-visible,
+  .n-rich-text__link button:hover {
+    border-color: var(--n-line);
+    background: var(--n-surface-1);
+  }
+
+  .n-rich-text__link {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--n-space-2);
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    padding: var(--n-space-2);
+    border-top: 1px solid var(--n-line);
+  }
+
+  .n-rich-text__link .n-input {
+    flex: 1 1 16rem;
+  }
+
+  .n-rich-text__content {
+    min-height: 12rem;
+    max-width: none;
+    padding: var(--n-space-3);
+    background: var(--n-surface-1);
+    border: 1px solid var(--n-line);
+    border-radius: var(--n-radius-sm);
+    color: var(--n-ink);
+    outline: none;
+  }
+
+  .n-rich-text__content:focus-visible {
+    border-color: var(--n-primary-500);
+    box-shadow: 0 0 0 2px var(--n-primary-200);
+  }
+
+  .n-rich-text__content[aria-invalid="true"] {
+    border-color: var(--n-error-ink);
+  }
+
+  .n-rich-text__hint {
+    font-size: var(--n-text-xs);
+    color: var(--n-ink-muted);
+  }
+}

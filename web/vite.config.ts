@@ -10,5 +10,14 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: "./src/test-setup.ts",
+    // `vitest run --coverage`: o lcov vai para o SonarQube Cloud na esteira (RFC 0011).
+    coverage: {
+      provider: "v8",
+      // Caminhos relativos à raiz do repositório, de onde o Sonar resolve os arquivos.
+      reporter: [["lcov", { projectRoot: ".." }], "text-summary"],
+      reportsDirectory: "coverage",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/test-setup.ts", "src/main.tsx"],
+    },
   },
 });

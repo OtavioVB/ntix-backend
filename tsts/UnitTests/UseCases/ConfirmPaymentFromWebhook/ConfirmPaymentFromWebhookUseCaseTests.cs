@@ -39,6 +39,7 @@ public sealed class ConfirmPaymentFromWebhookUseCaseTests : IDisposable
     private readonly IProducerIntegrationRepository _integrationRepository = Substitute.For<IProducerIntegrationRepository>();
     private readonly ICustomerRepository _customerRepository = Substitute.For<ICustomerRepository>();
     private readonly ITicketRepository _ticketRepository = Substitute.For<ITicketRepository>();
+    private readonly ISalesRepository _salesRepository = Substitute.For<ISalesRepository>();
     private readonly IOutboxRepository _outboxRepository = Substitute.For<IOutboxRepository>();
     private readonly IPaymentWebhookEventRepository _webhookEventRepository = Substitute.For<IPaymentWebhookEventRepository>();
     private readonly IPixChargeClient _pixClient = Substitute.For<IPixChargeClient>();
@@ -46,6 +47,7 @@ public sealed class ConfirmPaymentFromWebhookUseCaseTests : IDisposable
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(OrderTestData.NOW));
     private readonly TestMeterFactory _meterFactory = new();
+    private readonly CapturingLogger<ConfirmPaymentFromWebhookUseCase> _logger = new();
     private readonly ConfirmPaymentFromWebhookUseCase _useCase;
 
     private readonly AuditableInfoValueObject _auditableInfo = AuditableInfoValueObject.Build(
@@ -71,6 +73,7 @@ public sealed class ConfirmPaymentFromWebhookUseCaseTests : IDisposable
             _integrationRepository,
             _customerRepository,
             _ticketRepository,
+            _salesRepository,
             _outboxRepository,
             _webhookEventRepository,
             [_pixClient],
@@ -79,7 +82,7 @@ public sealed class ConfirmPaymentFromWebhookUseCaseTests : IDisposable
             _timeProvider,
             new AbacatePayConfiguration { WebhookPublicKey = WebhookTestData.PUBLIC_KEY },
             new ConfirmPaymentFromWebhookDiagnostics(_meterFactory),
-            new CapturingLogger<ConfirmPaymentFromWebhookUseCase>());
+            _logger);
     }
 
     public void Dispose()
@@ -376,6 +379,57 @@ public sealed class ConfirmPaymentFromWebhookUseCaseTests : IDisposable
         await _ticketRepository.Received(1).CreateManyAsync(Arg.Is<IReadOnlyList<TicketModel>>(tickets => tickets.Count == 2), Arg.Any<CancellationToken>());
         await _outboxRepository.Received(1).AddAsync(Arg.Is<OutboxEventModel>(item => item.EventType == ConfirmPaymentFromWebhookUseCase.ORDER_PAID_EVENT_TYPE), Arg.Any<CancellationToken>());
         await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Given_PixPaidAtSource_When_Executing_Should_RegisterTheSaleItemsInTheSameTransaction()
+    {
+        // Arrange
+        var order = OrderTestData.NewModel();
+
+        // Act
+        await ExecuteAsync(Completed());
+
+        // Assert (REQ14, RN9): um registro por item, com o preço do pedido, antes do commit.
+        await _salesRepository.Received(1).RegisterPaidOrderAsync(
+            Arg.Is<IReadOnlyList<SaleEntryModel>>(entries => entries.Count == 1
+                && entries[0].EventId == order.EventId
+                && entries[0].ProducerId == order.ProducerId
+                && entries[0].Quantity == 2
+                && entries[0].PaidAt == _timeProvider.GetUtcNow().UtcDateTime),
+            Arg.Any<CancellationToken>());
+        Received.InOrder(() =>
+        {
+            _salesRepository.RegisterPaidOrderAsync(Arg.Any<IReadOnlyList<SaleEntryModel>>(), Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task Given_SaleFallsIntoTheDefaultPartition_When_Executing_Should_WarnAndCountIt()
+    {
+        // Arrange (REQ14, RN14)
+        _salesRepository.RegisterPaidOrderAsync(Arg.Any<IReadOnlyList<SaleEntryModel>>(), Arg.Any<CancellationToken>()).Returns(1);
+
+        // Act
+        var result = await ExecuteAsync(Completed());
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Contains(_logger.Logs, log => log.EventId == 7212);
+    }
+
+    [Fact]
+    public async Task Given_OrderAlreadyPaid_When_Executing_Should_NotRegisterTheSaleAgain()
+    {
+        // Arrange
+        _orderRepository.GetByIdForUpdateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(OrderTestData.NewModel() with { Status = "PAID" });
+
+        // Act
+        await ExecuteAsync(Completed());
+
+        // Assert
+        await _salesRepository.DidNotReceiveWithAnyArgs().RegisterPaidOrderAsync(default!, default);
     }
 
     [Fact]

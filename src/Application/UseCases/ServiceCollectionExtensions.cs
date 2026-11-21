@@ -56,6 +56,9 @@ using Application.UseCases.UpdateEvent;
 using Application.UseCases.UpdateEvent.Inputs;
 using Application.UseCases.CreateTicketBatch;
 using Application.UseCases.CreateTicketBatch.Inputs;
+using Application.UseCases.GetEventDailySales;
+using Application.UseCases.GetEventDailySales.Inputs;
+using Application.UseCases.GetEventDailySales.Outputs;
 using Application.UseCases.GetTicketBatches;
 using Application.UseCases.GetTicketBatches.Inputs;
 using Application.UseCases.GetTicketBatches.Outputs;
@@ -137,6 +140,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUseCase<CreateTicketBatchUseCaseInput, TicketBatchOutput>, CreateTicketBatchUseCase>();
         services.AddSingleton<GetTicketBatchesDiagnostics>();
         services.AddScoped<IUseCase<GetTicketBatchesUseCaseInput, GetTicketBatchesUseCaseOutput>, GetTicketBatchesUseCase>();
+
+        services.AddSingleton<GetEventDailySalesDiagnostics>();
+        services.AddScoped<IUseCase<GetEventDailySalesUseCaseInput, GetEventDailySalesUseCaseOutput>, GetEventDailySalesUseCase>();
         services.AddSingleton<UpdateTicketBatchDiagnostics>();
         services.AddScoped<IUseCase<UpdateTicketBatchUseCaseInput, TicketBatchOutput>, UpdateTicketBatchUseCase>();
         services.AddSingleton<PublishEventDiagnostics>();

@@ -124,7 +124,7 @@ public sealed class CreateEventUseCase : IUseCase<CreateEventUseCaseInput, Produ
 
             CreateEventLog.Created(_logger, @event.Id.Value, @event.Slug.Value, producerSlug);
 
-            return MethodResult<ProducerEventOutput>.Success(EventConversions.ToOutput(@event));
+            return MethodResult<ProducerEventOutput>.Success(EventConversions.ToOutput(@event, EventConversions.NO_SALES, now));
         }
         catch (Exception ex)
         {

@@ -9,6 +9,7 @@ using Domain.CrossCutting.NotificationContext;
 using Domain.ValueObjects;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
 using Infra.PostgreSql.Repositories.Producers.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -20,6 +21,7 @@ public sealed class UpdateEventUseCase : IUseCase<UpdateEventUseCaseInput, Produ
 {
     private readonly IProducerRepository _producerRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly ISalesRepository _salesRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly UpdateEventDiagnostics _diagnostics;
@@ -28,6 +30,7 @@ public sealed class UpdateEventUseCase : IUseCase<UpdateEventUseCaseInput, Produ
     public UpdateEventUseCase(
         IProducerRepository producerRepository,
         IEventRepository eventRepository,
+        ISalesRepository salesRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
         UpdateEventDiagnostics diagnostics,
@@ -35,6 +38,7 @@ public sealed class UpdateEventUseCase : IUseCase<UpdateEventUseCaseInput, Produ
     {
         _producerRepository = producerRepository;
         _eventRepository = eventRepository;
+        _salesRepository = salesRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _diagnostics = diagnostics;
@@ -98,13 +102,15 @@ public sealed class UpdateEventUseCase : IUseCase<UpdateEventUseCaseInput, Produ
 
             await _eventRepository.UpdateAsync(EventConversions.ToModel(updated), cancellationToken);
 
+            var summary = (await _salesRepository.GetEventSummariesAsync(updated.ProducerId.Value, [updated.Id.Value], cancellationToken)).GetValueOrDefault(updated.Id.Value, EventConversions.NO_SALES);
+
             await _unitOfWork.CommitAsync(cancellationToken);
 
             RecordOutcome(UpdateEventDiagnostics.OUTCOME_UPDATED);
 
             UpdateEventLog.Updated(_logger, updated.Id.Value, producerSlug, changedFields);
 
-            return MethodResult<ProducerEventOutput>.Success(EventConversions.ToOutput(updated));
+            return MethodResult<ProducerEventOutput>.Success(EventConversions.ToOutput(updated, summary, now));
         }
         catch (Exception ex)
         {

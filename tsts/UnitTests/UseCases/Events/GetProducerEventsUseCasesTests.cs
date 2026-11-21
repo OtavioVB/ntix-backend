@@ -4,6 +4,8 @@ using Application.UseCases.GetProducerEvents;
 using Application.UseCases.GetProducerEvents.Inputs;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Models;
 using Infra.PostgreSql.Repositories.Producers.Interfaces;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -15,6 +17,8 @@ public sealed class GetProducerEventsUseCasesTests : IDisposable
 {
     private readonly IProducerRepository _producerRepository = Substitute.For<IProducerRepository>();
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
+    private readonly ISalesRepository _salesRepository = Substitute.For<ISalesRepository>();
+    private readonly FakeTimeProvider _timeProvider = new(EventTestData.NOW);
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly TestMeterFactory _meterFactory = new();
     private readonly MeasurementCollector _measurements;
@@ -27,8 +31,8 @@ public sealed class GetProducerEventsUseCasesTests : IDisposable
 
         _measurements = new MeasurementCollector(_meterFactory);
 
-        _listUseCase = new GetProducerEventsUseCase(_producerRepository, _eventRepository, _unitOfWork, new GetProducerEventsDiagnostics(_meterFactory), new CapturingLogger<GetProducerEventsUseCase>());
-        _getUseCase = new GetProducerEventUseCase(_producerRepository, _eventRepository, _unitOfWork, new GetProducerEventDiagnostics(_meterFactory), new CapturingLogger<GetProducerEventUseCase>());
+        _listUseCase = new GetProducerEventsUseCase(_producerRepository, _eventRepository, _salesRepository, _timeProvider, _unitOfWork, new GetProducerEventsDiagnostics(_meterFactory), new CapturingLogger<GetProducerEventsUseCase>());
+        _getUseCase = new GetProducerEventUseCase(_producerRepository, _eventRepository, _salesRepository, _timeProvider, _unitOfWork, new GetProducerEventDiagnostics(_meterFactory), new CapturingLogger<GetProducerEventUseCase>());
     }
 
     public void Dispose()
@@ -44,7 +48,7 @@ public sealed class GetProducerEventsUseCasesTests : IDisposable
     public async Task Given_StatusFilter_When_Listing_Should_PassItToRepositoryAndOnlyRead(string? status, string? expectedFilter)
     {
         // Arrange
-        _eventRepository.ListByProducerAsync(EventTestData.PRODUCER_ID, expectedFilter, Arg.Any<CancellationToken>()).Returns([EventTestData.NewModel()]);
+        _eventRepository.ListByProducerAsync(EventTestData.PRODUCER_ID, expectedFilter, EventTestData.NOW, Arg.Any<CancellationToken>()).Returns([EventTestData.NewModel()]);
 
         // Act
         var result = await _listUseCase.ExecuteAsync(GetProducerEventsUseCaseInput.Create(EventTestData.PRODUCER_SLUG, status), EventTestData.AuditableInfo());
@@ -57,10 +61,74 @@ public sealed class GetProducerEventsUseCasesTests : IDisposable
     }
 
     [Fact]
+    public async Task Given_EventsWithSales_When_Listing_Should_ReadAllSummariesAtOnceAndConvertToCents()
+    {
+        // Arrange
+        _eventRepository.ListByProducerAsync(EventTestData.PRODUCER_ID, null, EventTestData.NOW, Arg.Any<CancellationToken>()).Returns([EventTestData.NewModel()]);
+        _salesRepository.GetEventSummariesAsync(EventTestData.PRODUCER_ID, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, EventSalesSummaryModel> { [EventTestData.EVENT_ID] = new(Capacity: 1200, SoldQuantity: 431, GrossAmount: 51720.00m, PaidOrders: 298) });
+
+        // Act
+        var result = await _listUseCase.ExecuteAsync(GetProducerEventsUseCaseInput.Create(EventTestData.PRODUCER_SLUG, null), EventTestData.AuditableInfo());
+
+        // Assert (RN10)
+        var summary = Assert.Single(result.Output!.Events).SalesSummary;
+        Assert.Equal(1200, summary.Capacity);
+        Assert.Equal(431, summary.SoldQuantity);
+        Assert.Equal(5172000, summary.GrossCents);
+        Assert.Equal(298, summary.PaidOrders);
+        await _salesRepository.Received(1).GetEventSummariesAsync(EventTestData.PRODUCER_ID, Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == EventTestData.EVENT_ID), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Given_EventWithoutSales_When_Listing_Should_ReturnAZeroedSummary()
+    {
+        // Arrange
+        _eventRepository.ListByProducerAsync(EventTestData.PRODUCER_ID, null, EventTestData.NOW, Arg.Any<CancellationToken>()).Returns([EventTestData.NewModel()]);
+        _salesRepository.GetEventSummariesAsync(EventTestData.PRODUCER_ID, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, EventSalesSummaryModel>());
+
+        // Act
+        var result = await _listUseCase.ExecuteAsync(GetProducerEventsUseCaseInput.Create(EventTestData.PRODUCER_SLUG, null), EventTestData.AuditableInfo());
+
+        // Assert
+        Assert.Equal(new Application.UseCases.Base.Events.Outputs.ProducerEventSalesSummaryOutput(0, 0, 0, 0), Assert.Single(result.Output!.Events).SalesSummary);
+    }
+
+    [Fact]
+    public async Task Given_EventThatHasEnded_When_Getting_Should_ExposeEndedStatus()
+    {
+        // Arrange
+        _timeProvider.Advance(EventTestData.ENDS_AT.AddMinutes(1) - EventTestData.NOW);
+        _eventRepository.GetByIdAsync(EventTestData.PRODUCER_ID, EventTestData.EVENT_ID, Arg.Any<CancellationToken>()).Returns(EventTestData.NewModel());
+
+        // Act
+        var result = await _getUseCase.ExecuteAsync(GetProducerEventUseCaseInput.Create(EventTestData.PRODUCER_SLUG, EventTestData.EVENT_ID.ToString()), EventTestData.AuditableInfo());
+
+        // Assert (RN1)
+        Assert.Equal("ENDED", result.Output!.Status);
+    }
+
+    [Fact]
+    public async Task Given_EndedFilter_When_Listing_Should_PassItWithTheClockToTheRepository()
+    {
+        // Arrange
+        _eventRepository.ListByProducerAsync(EventTestData.PRODUCER_ID, "ENDED", EventTestData.NOW, Arg.Any<CancellationToken>()).Returns([]);
+
+        // Act
+        var result = await _listUseCase.ExecuteAsync(GetProducerEventsUseCaseInput.Create(EventTestData.PRODUCER_SLUG, "ENDED"), EventTestData.AuditableInfo());
+
+        // Assert (RN3): sem eventos, nem consulta os resumos.
+        Assert.True(result.IsSuccess);
+        await _eventRepository.Received(1).ListByProducerAsync(EventTestData.PRODUCER_ID, "ENDED", EventTestData.NOW, Arg.Any<CancellationToken>());
+        await _salesRepository.DidNotReceive().GetEventSummariesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Given_UnknownStatus_When_Listing_Should_ReportStatusInvalid()
     {
         // Arrange & Act
-        var result = await _listUseCase.ExecuteAsync(GetProducerEventsUseCaseInput.Create(EventTestData.PRODUCER_SLUG, "ENDED"), EventTestData.AuditableInfo());
+        var result = await _listUseCase.ExecuteAsync(GetProducerEventsUseCaseInput.Create(EventTestData.PRODUCER_SLUG, "CANCELED"), EventTestData.AuditableInfo());
 
         // Assert
         Assert.Equal("EVENT_STATUS_INVALID", Assert.Single(result.Notifications).Code);

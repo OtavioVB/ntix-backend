@@ -13,6 +13,7 @@ using Domain.CrossCutting.NotificationContext;
 using Domain.ValueObjects;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
 using Infra.PostgreSql.Repositories.Outbox.Interfaces;
 using Infra.PostgreSql.Repositories.Outbox.Models;
 using Infra.PostgreSql.Repositories.Payments.Interfaces;
@@ -31,6 +32,7 @@ public sealed class PublishEventUseCase : IUseCase<PublishEventUseCaseInput, Pro
 {
     private readonly IProducerRepository _producerRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly ISalesRepository _salesRepository;
     private readonly ITicketBatchRepository _ticketBatchRepository;
     private readonly IPaymentProviderRepository _paymentProviderRepository;
     private readonly IProducerIntegrationRepository _producerIntegrationRepository;
@@ -44,6 +46,7 @@ public sealed class PublishEventUseCase : IUseCase<PublishEventUseCaseInput, Pro
     public PublishEventUseCase(
         IProducerRepository producerRepository,
         IEventRepository eventRepository,
+        ISalesRepository salesRepository,
         ITicketBatchRepository ticketBatchRepository,
         IPaymentProviderRepository paymentProviderRepository,
         IProducerIntegrationRepository producerIntegrationRepository,
@@ -56,6 +59,7 @@ public sealed class PublishEventUseCase : IUseCase<PublishEventUseCaseInput, Pro
     {
         _producerRepository = producerRepository;
         _eventRepository = eventRepository;
+        _salesRepository = salesRepository;
         _ticketBatchRepository = ticketBatchRepository;
         _paymentProviderRepository = paymentProviderRepository;
         _producerIntegrationRepository = producerIntegrationRepository;
@@ -137,13 +141,15 @@ public sealed class PublishEventUseCase : IUseCase<PublishEventUseCaseInput, Pro
             await _eventRepository.UpdateStatusAsync(EventConversions.ToModel(published), cancellationToken);
             await _outboxRepository.AddAsync(BuildEventPublishedOutboxEvent(published), cancellationToken);
 
+            var summary = (await _salesRepository.GetEventSummariesAsync(published.ProducerId.Value, [published.Id.Value], cancellationToken)).GetValueOrDefault(published.Id.Value, EventConversions.NO_SALES);
+
             await _unitOfWork.CommitAsync(cancellationToken);
 
             RecordOutcome(PublishEventDiagnostics.OUTCOME_PUBLISHED);
 
             PublishEventLog.Published(_logger, published.Id.Value, published.Slug.Value, producerSlug, batches.Length);
 
-            return MethodResult<ProducerEventOutput>.Success(EventConversions.ToOutput(published));
+            return MethodResult<ProducerEventOutput>.Success(EventConversions.ToOutput(published, summary, now));
         }
         catch (Exception ex)
         {

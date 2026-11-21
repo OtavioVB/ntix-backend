@@ -2,6 +2,7 @@ using Application.UseCases.UpdateEvent;
 using Application.UseCases.UpdateEvent.Inputs;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Models;
 using Infra.PostgreSql.Repositories.Producers.Interfaces;
 using NSubstitute;
@@ -14,6 +15,7 @@ public sealed class UpdateEventUseCaseTests : IDisposable
 {
     private readonly IProducerRepository _producerRepository = Substitute.For<IProducerRepository>();
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
+    private readonly ISalesRepository _salesRepository = Substitute.For<ISalesRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly CapturingLogger<UpdateEventUseCase> _logger = new();
     private readonly TestMeterFactory _meterFactory = new();
@@ -34,6 +36,7 @@ public sealed class UpdateEventUseCaseTests : IDisposable
         _useCase = new UpdateEventUseCase(
             producerRepository: _producerRepository,
             eventRepository: _eventRepository,
+            salesRepository: _salesRepository,
             unitOfWork: _unitOfWork,
             timeProvider: _timeProvider,
             diagnostics: new UpdateEventDiagnostics(_meterFactory),

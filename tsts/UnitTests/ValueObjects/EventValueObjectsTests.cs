@@ -195,10 +195,11 @@ public sealed class EventValueObjectsTests
     [Theory]
     [InlineData("DRAFT", EventStatus.DRAFT)]
     [InlineData("PUBLISHED", EventStatus.PUBLISHED)]
+    [InlineData("ENDED", EventStatus.ENDED)]
     public void Given_KnownStatus_When_Building_Should_BeValid(string status, EventStatus expected)
         => Assert.Equal(expected, EventStatusValueObject.Build(status).Value);
 
     [Fact]
     public void Given_UnknownStatus_When_Building_Should_BeInvalid()
-        => Assert.Equal("EVENT_STATUS_INVALID", SingleCode(EventStatusValueObject.Build("ENDED").MethodResult));
+        => Assert.Equal("EVENT_STATUS_INVALID", SingleCode(EventStatusValueObject.Build("CANCELED").MethodResult));
 }

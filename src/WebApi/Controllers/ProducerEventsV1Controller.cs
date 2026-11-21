@@ -2,6 +2,9 @@ using Application.UseCases.Base.Events.Outputs;
 using Application.UseCases.Base.Interfaces;
 using Application.UseCases.CreateEvent;
 using Application.UseCases.CreateEvent.Inputs;
+using Application.UseCases.GetEventDailySales;
+using Application.UseCases.GetEventDailySales.Inputs;
+using Application.UseCases.GetEventDailySales.Outputs;
 using Application.UseCases.GetProducerEvent;
 using Application.UseCases.GetProducerEvent.Inputs;
 using Application.UseCases.GetProducerEvents;
@@ -72,7 +75,7 @@ public sealed class ProducerEventsV1Controller : ControllerBase
         return Created($"/api/v1/producers/{slug}/events/{result.Output!.Id}", result.Output);
     }
 
-    /// <summary>Eventos da produtora por início crescente; <c>status</c> opcional (DRAFT ou PUBLISHED).</summary>
+    /// <summary>Eventos da produtora por início crescente, com o resumo de vendas; <c>status</c> opcional (DRAFT, PUBLISHED ou ENDED).</summary>
     [HttpGet]
     public async Task<IActionResult> GetProducerEventsAsync(
         [FromServices] IUseCase<GetProducerEventsUseCaseInput, GetProducerEventsUseCaseOutput> useCase,
@@ -193,6 +196,38 @@ public sealed class ProducerEventsV1Controller : ControllerBase
                 notifications: result.Notifications,
                 canceledCode: PublishEventUseCase.PUBLISH_EVENT_CANCELED_NOTIFICATION_CODE,
                 notFoundCodes: [PublishEventUseCase.EVENT_NOT_FOUND_NOTIFICATION_CODE]);
+        }
+
+        return Ok(result.Output);
+    }
+
+    /// <summary>
+    /// Vendas por dia do evento (REQ14), com os dias sem venda zerados. <c>from</c> e <c>to</c> em <c>yyyy-MM-dd</c> (Brasília),
+    /// opcionais: sem eles, os últimos 30 dias. No máximo 366 dias.
+    /// </summary>
+    [HttpGet("{eventId}/sales/daily")]
+    public async Task<IActionResult> GetEventDailySalesAsync(
+        [FromServices] IUseCase<GetEventDailySalesUseCaseInput, GetEventDailySalesUseCaseOutput> useCase,
+        [FromRoute] string? slug,
+        [FromRoute] string? eventId,
+        [FromQuery] string? from,
+        [FromQuery] string? to,
+        [FromHeader(Name = AuditableInfoValueObject.CORRELATION_ID_HEADER_KEY)] string? correlationId,
+        [FromHeader(Name = AuditableInfoValueObject.ORIGIN_SERVICE_HEADER_KEY)] string? originService,
+        [FromHeader(Name = AuditableInfoValueObject.REQUESTED_AT_HEADER_KEY)] string? requestedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await useCase.ExecuteAsync(
+            input: GetEventDailySalesUseCaseInput.Create(slug, eventId, from, to),
+            auditableInfo: BuildAuditableInfo(correlationId, originService, requestedAt),
+            cancellationToken: cancellationToken);
+
+        if (result.IsError)
+        {
+            return ToErrorResult(
+                notifications: result.Notifications,
+                canceledCode: GetEventDailySalesUseCase.GET_EVENT_DAILY_SALES_CANCELED_NOTIFICATION_CODE,
+                notFoundCodes: [GetEventDailySalesUseCase.PRODUCER_NOT_FOUND_NOTIFICATION_CODE, GetEventDailySalesUseCase.EVENT_NOT_FOUND_NOTIFICATION_CODE]);
         }
 
         return Ok(result.Output);

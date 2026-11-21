@@ -7,6 +7,7 @@ using Application.UseCases.UpdateTicketBatch.Inputs;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Enums;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Models;
 using Infra.PostgreSql.Repositories.Producers.Interfaces;
 using NSubstitute;
@@ -19,6 +20,7 @@ public sealed class TicketBatchUseCasesTests : IDisposable
 {
     private readonly IProducerRepository _producerRepository = Substitute.For<IProducerRepository>();
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
+    private readonly ISalesRepository _salesRepository = Substitute.For<ISalesRepository>();
     private readonly ITicketBatchRepository _batchRepository = Substitute.For<ITicketBatchRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly TestMeterFactory _meterFactory = new();
@@ -44,8 +46,8 @@ public sealed class TicketBatchUseCasesTests : IDisposable
         _measurements = new MeasurementCollector(_meterFactory);
 
         _createUseCase = new CreateTicketBatchUseCase(_producerRepository, _eventRepository, _batchRepository, _unitOfWork, _timeProvider, new CreateTicketBatchDiagnostics(_meterFactory), new CapturingLogger<CreateTicketBatchUseCase>());
-        _updateUseCase = new UpdateTicketBatchUseCase(_producerRepository, _eventRepository, _batchRepository, _unitOfWork, _timeProvider, new UpdateTicketBatchDiagnostics(_meterFactory), new CapturingLogger<UpdateTicketBatchUseCase>());
-        _listUseCase = new GetTicketBatchesUseCase(_producerRepository, _eventRepository, _batchRepository, _unitOfWork, _timeProvider, new GetTicketBatchesDiagnostics(_meterFactory), new CapturingLogger<GetTicketBatchesUseCase>());
+        _updateUseCase = new UpdateTicketBatchUseCase(_producerRepository, _eventRepository, _batchRepository, _salesRepository, _unitOfWork, _timeProvider, new UpdateTicketBatchDiagnostics(_meterFactory), new CapturingLogger<UpdateTicketBatchUseCase>());
+        _listUseCase = new GetTicketBatchesUseCase(_producerRepository, _eventRepository, _batchRepository, _salesRepository, _unitOfWork, _timeProvider, new GetTicketBatchesDiagnostics(_meterFactory), new CapturingLogger<GetTicketBatchesUseCase>());
     }
 
     public void Dispose()

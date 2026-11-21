@@ -23,7 +23,7 @@ export const AGE_RATING_LABELS: Record<AgeRating, string> = {
   AGE_18: "18 anos",
 };
 
-export const STATUS_LABELS: Record<EventStatus, string> = { DRAFT: "Rascunho", PUBLISHED: "Publicado" };
+export const STATUS_LABELS: Record<EventStatus, string> = { DRAFT: "Rascunho", PUBLISHED: "Publicado", ENDED: "Encerrado" };
 
 export const STATES = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
 

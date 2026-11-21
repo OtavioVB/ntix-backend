@@ -33,6 +33,8 @@ export type HubEvent = {
   startsAt: string;
   ageRating: string;
   description: string[];
+  /** Descrição em Markdown vinda da API (REQ14); a demonstração usa só os parágrafos. */
+  markdown?: string;
   schedule: { time: string; title: string }[];
   included: string[];
   /** Foto do evento. Sem ela, vale a arte gerada. */

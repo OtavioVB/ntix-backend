@@ -48,4 +48,8 @@ internal static partial class ConfirmPaymentFromWebhookLog
     [LoggerMessage(EventId = 7211, Level = LogLevel.Error,
         Message = "Falha ao desfazer a transação da confirmação do webhook.")]
     public static partial void RollbackFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 7212, Level = LogLevel.Warning,
+        Message = "Venda do pedido {OrderCode} gravada na partição padrão de orders.sale_entry: crie as partições dos próximos meses.")]
+    public static partial void SaleInDefaultPartition(ILogger logger, string orderCode);
 }

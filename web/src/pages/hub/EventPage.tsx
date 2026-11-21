@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Icon, Scene, Stepper } from "../../design-system";
+import { MarkdownView } from "../../design-system/components/MarkdownView";
 import { itemsFromSelection, orderTotal, ticketCount } from "../../customer/orders";
 import { CART_MINUTES, useCustomer } from "../../customer/session";
 import type { HubBatch, HubEvent } from "../../hub/catalog";
@@ -53,7 +54,7 @@ function EventBody({ event }: { event: HubEvent }) {
 
   function continueToCheckout() {
     update({ cart: { eventId: event.id, slug: event.slug, selection, expiresAt: Date.now() + CART_MINUTES * 60_000 } });
-    navigate(`/eventos/${event.slug}/checkout`);
+    void navigate(`/eventos/${event.slug}/checkout`);
   }
 
   const style = { "--event-accent": event.accent } as CSSProperties;
@@ -125,7 +126,9 @@ function EventBody({ event }: { event: HubEvent }) {
 
             <section className="event-section" aria-labelledby="about-title">
               <h2 className="n-display n-display--sm" id="about-title">Sobre o evento</h2>
-              <div className="event-text">{event.description.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
+              {event.markdown
+                ? <MarkdownView markdown={event.markdown} className="event-text n-markdown" />
+                : <div className="event-text">{event.description.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>}
               {event.included.length > 0 && (
                 <ul className="event-included">
                   {event.included.map((item) => <li key={item}><Icon name="check" /> {item}</li>)}

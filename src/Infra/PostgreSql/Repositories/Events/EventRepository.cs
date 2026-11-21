@@ -76,7 +76,10 @@ public sealed class EventRepository : IEventRepository
 
     private const string SELECT_BY_PRODUCER_SQL = SELECT_COLUMNS + """
 
-        WHERE id_producer = @id_producer AND (@status::varchar IS NULL OR status = @status)
+        WHERE id_producer = @id_producer
+          AND (@status::varchar IS NULL
+               OR (@status = 'ENDED' AND ends_at <= @now)
+               OR (status = @status AND ends_at > @now))
         ORDER BY starts_at, id_event;
         """;
 
@@ -168,7 +171,7 @@ public sealed class EventRepository : IEventRepository
     public Task<EventModel?> GetByIdForUpdateAsync(Guid producerId, Guid eventId, CancellationToken cancellationToken = default)
         => GetSingleAsync(SELECT_BY_ID_FOR_UPDATE_SQL, nameof(GetByIdForUpdateAsync), producerId, eventId, cancellationToken);
 
-    public async Task<IReadOnlyList<EventModel>> ListByProducerAsync(Guid producerId, string? status, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<EventModel>> ListByProducerAsync(Guid producerId, string? status, DateTime now, CancellationToken cancellationToken = default)
     {
         using var activity = StartDatabaseActivity(nameof(ListByProducerAsync));
 
@@ -176,6 +179,7 @@ public sealed class EventRepository : IEventRepository
 
         command.Parameters.Add("@id_producer", NpgsqlDbType.Uuid).Value = producerId;
         command.Parameters.Add("@status", NpgsqlDbType.Varchar, ENUM_MAX_LENGTH).Value = (object?)status ?? DBNull.Value;
+        command.Parameters.Add("@now", NpgsqlDbType.TimestampTz).Value = now;
 
         return await ReadEventsAsync(command, cancellationToken);
     }

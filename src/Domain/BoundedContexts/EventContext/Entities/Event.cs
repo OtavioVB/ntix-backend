@@ -132,6 +132,13 @@ public sealed record Event
     public static Event Restore(IdValueObject id, IdValueObject producerId, SlugValueObject slug, EventDetails details, EventStatus status, DateTimeValueObject createdAt, IdValueObject createdCorrelationId, DateTimeValueObject updatedAt, IdValueObject updatedCorrelationId)
         => new(id, producerId, slug, details, status, createdAt, createdCorrelationId, updatedAt, updatedCorrelationId);
 
+    /// <summary>
+    /// Situação exposta (REQ14, RN1): todo evento cujo término chegou é <see cref="EventStatus.ENDED"/>, publicado ou não;
+    /// antes disso, vale a situação gravada.
+    /// </summary>
+    public EventStatus StatusAt(DateTime now)
+        => Details.Period.EndsAt <= now ? EventStatus.ENDED : Status;
+
     /// <summary>RN11: evento que já começou não é editado. Reutilizado pelos lotes (REQ10).</summary>
     public bool CanBeEdited(DateTime now)
         => Details.Period.StartsAt > now;
