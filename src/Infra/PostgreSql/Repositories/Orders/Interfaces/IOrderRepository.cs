@@ -14,6 +14,9 @@ public interface IOrderRepository
     /// <summary>Mesmo que <see cref="GetByCodeAsync"/>, travando o pedido até o fim da transação (pagamento, REQ7).</summary>
     Task<OrderModel?> GetByCodeForUpdateAsync(string code, Guid customerId, CancellationToken cancellationToken = default);
 
+    /// <summary>Pedido pelo id, travado até o fim da transação, com os itens. Usado pela confirmação do webhook (REQ8, RN6).</summary>
+    Task<OrderModel?> GetByIdForUpdateAsync(Guid orderId, CancellationToken cancellationToken = default);
+
     /// <summary>Grava a nova situação do pedido (vencimento da reserva, REQ7; pagamento, REQ8).</summary>
     Task UpdateStatusAsync(OrderModel order, CancellationToken cancellationToken = default);
 }

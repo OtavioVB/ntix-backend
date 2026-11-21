@@ -20,4 +20,5 @@ public sealed record OrderOutput(
     OrderEventOutput Event,
     IReadOnlyList<OrderItemOutput> Items,
     IReadOnlyList<OrderTicketOutput> Tickets,
-    OrderPaymentOutput? Payment = null);
+    OrderPaymentOutput? Payment = null,
+    DateTime? PaidAt = null);

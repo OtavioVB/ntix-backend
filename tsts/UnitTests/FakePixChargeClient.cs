@@ -54,4 +54,35 @@ public sealed class FakePixChargeClient : IPixChargeClient
 
         return Task.FromResult(PixChargeResultModel.Created($"pix_char_{suffix}", $"00020101021226950014br.gov.bcb.pix{suffix}", "data:image/png;base64,iVBORw0KGgo="));
     }
+
+    private readonly Dictionary<string, string> _statusByReference = [];
+
+    /// <summary>Faz a consulta da cobrança devolver <paramref name="status"/> (ex.: PAID, PENDING). Sem configuração, responde PENDING.</summary>
+    public void SetStatus(string providerReference, string status)
+    {
+        lock (_lock)
+            _statusByReference[providerReference] = status;
+    }
+
+    /// <summary>Faz a consulta desta cobrança falhar, como a fonte fora do ar (REQ8: 503 no webhook).</summary>
+    public void FailStatusQuery(string providerReference, string reason)
+    {
+        lock (_lock)
+            _statusByReference[providerReference] = $"!{reason}";
+    }
+
+    public Task<PixChargeStatusResultModel> GetPixChargeStatusAsync(string apiKey, string providerReference, CancellationToken cancellationToken = default)
+    {
+        string? configured;
+
+        lock (_lock)
+            _statusByReference.TryGetValue(providerReference, out configured);
+
+        configured ??= "PENDING";
+
+        if (configured.StartsWith('!'))
+            return Task.FromResult(PixChargeStatusResultModel.Unavailable(configured[1..]));
+
+        return Task.FromResult(PixChargeStatusResultModel.Found(configured));
+    }
 }

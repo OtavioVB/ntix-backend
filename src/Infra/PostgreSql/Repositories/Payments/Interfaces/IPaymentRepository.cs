@@ -12,6 +12,9 @@ public interface IPaymentRepository
     /// </summary>
     Task<PaymentModel?> GetLatestByOrderAsync(Guid orderId, CancellationToken cancellationToken = default);
 
+    /// <summary>Cobrança pelo id do fornecedor (<c>provider_reference</c>), usada pelo webhook (REQ8, RN2). Nula quando não existe.</summary>
+    Task<PaymentModel?> GetByProviderReferenceAsync(string providerReference, CancellationToken cancellationToken = default);
+
     /// <summary>Grava a nova situação da cobrança (vencimento, REQ7; pagamento, REQ8).</summary>
     Task UpdateStatusAsync(PaymentModel payment, CancellationToken cancellationToken = default);
 }

@@ -2,6 +2,9 @@ using Domain.BoundedContexts.EventContext.Entities;
 using Domain.BoundedContexts.EventContext.Enums;
 using Domain.BoundedContexts.EventContext.Services;
 using Domain.BoundedContexts.OrderContext.Enums;
+using Domain.BoundedContexts.OrderContext.Events;
+using Domain.BoundedContexts.OrderContext.Services;
+using Domain.BoundedContexts.PaymentContext.Entities;
 using Domain.CrossCutting.MethodResultContext;
 using Domain.CrossCutting.NotificationContext;
 using Domain.CrossCutting.NotificationContext.Interfaces;
@@ -162,6 +165,54 @@ public sealed record Order
     /// <summary>RN12: grava o vencimento da reserva na próxima escrita do pedido.</summary>
     public Order MarkExpired(DateTime now, IdValueObject correlationId)
         => this with { Status = OrderStatus.EXPIRED, UpdatedAt = DateTimeValueObject.Build(now), UpdatedCorrelationId = correlationId };
+
+    /// <summary>
+    /// Confirma o pagamento (REQ8, RN6, RN10): o pedido vira PAID, um ingresso VALID por unidade de cada item, no nome do comprador,
+    /// e o evento <c>OrderPaid</c>. Pedido vencido é honrado (RN10) e sinalizado. Quem chama já verificou que não está PAID (RN6).
+    /// </summary>
+    public OrderPaymentConfirmation ConfirmPayment(Payment payment, string holderName, DateTime now, IdValueObject correlationId)
+    {
+        var timestamp = DateTimeValueObject.Build(now);
+        var paidAfterExpiration = GetEffectiveStatus(now) == OrderStatus.EXPIRED;
+
+        var tickets = Items
+            .SelectMany(item => Enumerable.Range(0, item.Quantity.Value).Select(_ => new Ticket(
+                Id: IdValueObject.Build(),
+                OrderItemId: item.Id,
+                OrderId: Id,
+                CustomerId: CustomerId,
+                EventId: EventId,
+                Code: TicketCodeValueObject.Generate().Value,
+                HolderName: holderName,
+                Status: TicketStatus.VALID,
+                CreatedAt: now,
+                CreatedCorrelationId: correlationId)))
+            .ToArray();
+
+        var paid = this with
+        {
+            Status = OrderStatus.PAID,
+            PaidAt = now,
+            UpdatedAt = timestamp,
+            UpdatedCorrelationId = correlationId,
+        };
+
+        var @event = new OrderPaidEvent(
+            OrderId: Id.Value,
+            OrderCode: Code.Value,
+            ProducerId: ProducerId.Value,
+            EventId: EventId.Value,
+            CustomerId: CustomerId.Value,
+            SalesChannel: SalesChannel.ToString(),
+            TotalCents: TotalCents,
+            Items: Items.Select(item => new OrderPaidItem(item.BatchId.Value, item.Quantity.Value, item.UnitPrice.Cents)).ToArray(),
+            PaymentId: payment.Id.Value,
+            PaymentIntegrationId: payment.IntegrationId.Value,
+            PaymentMethod: payment.Method.ToString(),
+            PaidAt: now);
+
+        return new OrderPaymentConfirmation(paid, tickets, @event, paidAfterExpiration);
+    }
 
     private static MethodResult<Order> Failure(string code, string message)
         => MethodResult<Order>.Error([Notification.Error(code, message)]);
