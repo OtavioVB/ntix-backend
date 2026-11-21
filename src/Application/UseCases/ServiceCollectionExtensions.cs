@@ -1,3 +1,10 @@
+using Application.UseCases.Base.Customers.Outputs;
+using Application.UseCases.GetCustomerOrders;
+using Application.UseCases.GetCustomerOrders.Inputs;
+using Application.UseCases.GetCustomerTickets;
+using Application.UseCases.GetCustomerTickets.Inputs;
+using Application.UseCases.GetCustomerTicket;
+using Application.UseCases.GetCustomerTicket.Inputs;
 using Application.UseCases.ConfirmPaymentFromWebhook;
 using Application.UseCases.ConfirmPaymentFromWebhook.Inputs;
 using Application.UseCases.Base.Configuration;
@@ -195,5 +202,14 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ConfirmPaymentFromWebhookDiagnostics>();
         services.AddScoped<IUseCase<ConfirmPaymentFromWebhookUseCaseInput>, ConfirmPaymentFromWebhookUseCase>();
+
+        services.AddSingleton<GetCustomerOrdersDiagnostics>();
+        services.AddScoped<IUseCase<GetCustomerOrdersUseCaseInput, CustomerOrdersPageOutput>, GetCustomerOrdersUseCase>();
+
+        services.AddSingleton<GetCustomerTicketsDiagnostics>();
+        services.AddScoped<IUseCase<GetCustomerTicketsUseCaseInput, CustomerTicketsPageOutput>, GetCustomerTicketsUseCase>();
+
+        services.AddSingleton<GetCustomerTicketDiagnostics>();
+        services.AddScoped<IUseCase<GetCustomerTicketUseCaseInput, CustomerTicketDetailOutput>, GetCustomerTicketUseCase>();
     }
 }

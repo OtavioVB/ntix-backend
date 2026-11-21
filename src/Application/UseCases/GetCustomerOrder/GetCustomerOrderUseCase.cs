@@ -1,7 +1,10 @@
 using Application.UseCases.Base;
 using Application.UseCases.Base.Interfaces;
 using Application.UseCases.Base.Orders;
+using Application.UseCases.Base.Customers.Outputs;
 using Application.UseCases.Base.Orders.Outputs;
+using Infra.PostgreSql.Repositories.Producers.Interfaces;
+using Infra.PostgreSql.Repositories.Producers.Models;
 using Application.UseCases.GetCustomerOrder.Inputs;
 using Domain.CrossCutting.MethodResultContext;
 using Domain.CrossCutting.NotificationContext;
@@ -28,6 +31,7 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
     private readonly IEventRepository _eventRepository;
     private readonly IPaymentRepository _paymentRepository;
     private readonly ITicketRepository _ticketRepository;
+    private readonly IProducerRepository _producerRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly GetCustomerOrderDiagnostics _diagnostics;
@@ -38,6 +42,7 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
         IEventRepository eventRepository,
         IPaymentRepository paymentRepository,
         ITicketRepository ticketRepository,
+        IProducerRepository producerRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
         GetCustomerOrderDiagnostics diagnostics,
@@ -47,6 +52,7 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
         _eventRepository = eventRepository;
         _paymentRepository = paymentRepository;
         _ticketRepository = ticketRepository;
+        _producerRepository = producerRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _diagnostics = diagnostics;
@@ -102,6 +108,11 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
                 ? await _ticketRepository.ListByOrderAsync(orderModel.Id, cancellationToken)
                 : [];
 
+            // Produtor do pedido (REQ13): slug e nome, pelo mesmo perfil da vitrine (REQ11).
+            IReadOnlyList<ProducerProfileModel> producers = orderModel is null
+                ? []
+                : await _producerRepository.GetProfilesByIdsAsync([orderModel.ProducerId], cancellationToken);
+
             await _unitOfWork.RollbackAsync(CancellationToken.None);
 
             // Pedido sem evento não existe: a FK composta garante o evento do pedido.
@@ -110,7 +121,14 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
 
             var order = OrderConversions.ToOrder(orderModel);
             var tickets = ticketModels.Select(ticket => new OrderTicketOutput(ticket.Code, ticket.BatchName, ticket.HolderName, ticket.Status)).ToArray();
-            var output = OrderConversions.ToOutput(order, eventModel, now, paymentModel is null ? null : OrderPaymentConversions.ToOutput(OrderPaymentConversions.ToPayment(paymentModel), now), tickets);
+            var producer = producers.FirstOrDefault(profile => profile.Id == orderModel.ProducerId);
+            var output = OrderConversions.ToOutput(
+                order,
+                eventModel,
+                now,
+                paymentModel is null ? null : OrderPaymentConversions.ToOutput(OrderPaymentConversions.ToPayment(paymentModel), now),
+                tickets,
+                producer is null ? null : new CustomerProducerOutput(producer.Slug, producer.Name));
 
             RecordOutcome(GetCustomerOrderDiagnostics.OUTCOME_SERVED);
 

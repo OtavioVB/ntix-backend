@@ -151,6 +151,58 @@ public sealed class OrderRepository : IOrderRepository
         return order with { Items = await ListItemsAsync(order.Id, cancellationToken) };
     }
 
+    public async Task<CustomerOrderPageModel> ListByCustomerAsync(Guid customerId, string? statusFilter, DateTime now, int offset, int pageSize, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(ListByCustomerAsync), "orders.orders");
+
+        var filter = CustomerOrdersQueries.FilterFor(statusFilter);
+        var listSql = CustomerOrdersQueries.SELECT_ORDERS + " " + CustomerOrdersQueries.FROM_ORDERS + filter + CustomerOrdersQueries.ORDER_BY_CREATED;
+        var countSql = CustomerOrdersQueries.COUNT_ORDERS + CustomerOrdersQueries.FROM_ORDERS + filter + ";";
+
+        int totalItems;
+
+        await using (var command = _unitOfWork.CreateCommand(countSql))
+        {
+            command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = customerId;
+            command.Parameters.Add("@now", NpgsqlDbType.TimestampTz).Value = now;
+
+            totalItems = (int)(await command.ExecuteScalarAsync(cancellationToken) ?? 0);
+        }
+
+        var items = new List<CustomerOrderRowModel>();
+
+        await using (var command = _unitOfWork.CreateCommand(listSql))
+        {
+            command.Parameters.Add("@id_customer", NpgsqlDbType.Uuid).Value = customerId;
+            command.Parameters.Add("@now", NpgsqlDbType.TimestampTz).Value = now;
+            command.Parameters.Add("@page_size", NpgsqlDbType.Integer).Value = pageSize;
+            command.Parameters.Add("@offset", NpgsqlDbType.Integer).Value = offset;
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                items.Add(new CustomerOrderRowModel(
+                    Code: reader.GetString(0),
+                    Status: reader.GetString(1),
+                    ExpiresAt: reader.GetDateTime(2),
+                    CreatedAt: reader.GetDateTime(3),
+                    PaidAt: await reader.IsDBNullAsync(4, cancellationToken) ? null : reader.GetDateTime(4),
+                    TotalAmount: reader.GetDecimal(5),
+                    TicketCount: reader.GetInt32(6),
+                    ProducerId: reader.GetGuid(7),
+                    EventSlug: reader.GetString(8),
+                    EventTitle: reader.GetString(9),
+                    EventStartsAt: reader.GetDateTime(10),
+                    EventCity: reader.GetString(11),
+                    EventState: reader.GetString(12),
+                    EventImageUrl: await reader.IsDBNullAsync(13, cancellationToken) ? null : reader.GetString(13)));
+            }
+        }
+
+        return new CustomerOrderPageModel(items, totalItems);
+    }
+
     public async Task UpdateStatusAsync(OrderModel order, CancellationToken cancellationToken = default)
     {
         using var activity = StartDatabaseActivity(nameof(UpdateStatusAsync), "orders.orders");

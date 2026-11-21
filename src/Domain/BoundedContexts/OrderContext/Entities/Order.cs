@@ -160,7 +160,13 @@ public sealed record Order
     /// Reutilizado pelo pagamento (REQ7), pela efetivação (REQ8) e pelos pedidos do cliente (REQ13).
     /// </summary>
     public OrderStatus GetEffectiveStatus(DateTime now)
-        => Status == OrderStatus.PENDING_PAYMENT && ExpiresAt.Value <= now ? OrderStatus.EXPIRED : Status;
+        => EffectiveStatusOf(Status, ExpiresAt.Value, now);
+
+    /// <summary>
+    /// Status efetivo de um pedido gravado, sem carregá-lo: as listas do comprador (REQ13) filtram e mostram pelo mesmo cálculo (RN3).
+    /// </summary>
+    public static OrderStatus EffectiveStatusOf(OrderStatus status, DateTime expiresAt, DateTime now)
+        => status == OrderStatus.PENDING_PAYMENT && expiresAt <= now ? OrderStatus.EXPIRED : status;
 
     /// <summary>RN12: grava o vencimento da reserva na próxima escrita do pedido.</summary>
     public Order MarkExpired(DateTime now, IdValueObject correlationId)

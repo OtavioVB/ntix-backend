@@ -115,6 +115,7 @@ public sealed class StockConcurrencyTests
         public Task<OrderModel?> GetByCodeAsync(string code, Guid customerId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<OrderModel?> GetByCodeForUpdateAsync(string code, Guid customerId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<OrderModel?> GetByIdForUpdateAsync(Guid orderId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<CustomerOrderPageModel> ListByCustomerAsync(Guid customerId, string? statusFilter, DateTime now, int offset, int pageSize, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task UpdateStatusAsync(OrderModel order, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 

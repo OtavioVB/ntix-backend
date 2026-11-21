@@ -23,6 +23,7 @@ public sealed class GetCustomerOrderUseCaseTests : IDisposable
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
     private readonly IPaymentRepository _paymentRepository = Substitute.For<IPaymentRepository>();
     private readonly ITicketRepository _ticketRepository = Substitute.For<ITicketRepository>();
+    private readonly Infra.PostgreSql.Repositories.Producers.Interfaces.IProducerRepository _producerRepository = Substitute.For<Infra.PostgreSql.Repositories.Producers.Interfaces.IProducerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly TestMeterFactory _meterFactory = new();
     private readonly MeasurementCollector _measurements;
@@ -33,10 +34,11 @@ public sealed class GetCustomerOrderUseCaseTests : IDisposable
     public GetCustomerOrderUseCaseTests()
     {
         _orderRepository.GetByCodeAsync(CODE, OrderTestData.CUSTOMER_ID, Arg.Any<CancellationToken>()).Returns(OrderTestData.NewModel());
+        _producerRepository.GetProfilesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<Infra.PostgreSql.Repositories.Producers.Models.ProducerProfileModel>());
         _eventRepository.GetByIdAsync(EventTestData.PRODUCER_ID, EventTestData.EVENT_ID, Arg.Any<CancellationToken>()).Returns(OrderTestData.PublishedEventModel());
 
         _measurements = new MeasurementCollector(_meterFactory);
-        _useCase = new GetCustomerOrderUseCase(_orderRepository, _eventRepository, _paymentRepository, _ticketRepository, _unitOfWork, _timeProvider, new GetCustomerOrderDiagnostics(_meterFactory), _logger);
+        _useCase = new GetCustomerOrderUseCase(_orderRepository, _eventRepository, _paymentRepository, _ticketRepository, _producerRepository, _unitOfWork, _timeProvider, new GetCustomerOrderDiagnostics(_meterFactory), _logger);
     }
 
     public void Dispose()
