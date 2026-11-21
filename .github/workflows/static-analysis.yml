@@ -19,11 +19,11 @@ env:
   NODE_VERSION: "24"
   SONAR_HOST_URL: https://sonarcloud.io
   # Arquivos fora do cálculo de cobertura: inicialização, configuração e modelos sem regra de negócio.
-  SONAR_COVERAGE_EXCLUSIONS: "**/Program.cs,**/ServiceCollectionExtensions.cs,**/Observability/**,**/Configuration/**,**/Payloads/**,**/Models/**,**/Inputs/**,**/*Log.cs,**/*Diagnostics.cs"
+  SONAR_COVERAGE_EXCLUSIONS: "**/.claude/**,**/.github.com/**,**/backlog/**,**/data/**,**/devops/**,**/TestResults/**,**/Program.cs,**/ServiceCollectionExtensions.cs,**/Observability/**,**/Configuration/**,**/Payloads/**,**/Models/**,**/Inputs/**,**/*Log.cs,**/*Diagnostics.cs"
   # Arquivos fora da identificação de issues: artefatos de build, código gerado e testes de carga.
-  SONAR_EXCLUSIONS: "**/bin/**,**/obj/**,**/*.g.cs,**/*.feature.cs,**/LoadTests/**"
+  SONAR_EXCLUSIONS: "**/.claude/**,**/.github.com/**,**/backlog/**,**/data/**,**/devops/**,**/TestResults/**,**/bin/**,**/obj/**,**/*.g.cs,**/*.feature.cs,**/LoadTests/**"
   # Arquivos fora da detecção de duplicação: contratos parecidos por natureza e cenários de teste.
-  SONAR_CPD_EXCLUSIONS: "**/Payloads/**,**/Models/**,**/Inputs/**,tsts/**"
+  SONAR_CPD_EXCLUSIONS: "**/.claude/**,**/.github.com/**,**/backlog/**,**/data/**,**/devops/**,**/TestResults/**,**/Payloads/**,**/Models/**,**/Inputs/**,tsts/**"
   # Regra ignorada nos testes: os nomes Given_[Cenário]_When_[Comportamento]_Should_[ResultadoEsperado] usam sublinhado.
   SONAR_IGNORED_RULE: csharpsquid:S100
   SONAR_IGNORED_RULE_FILES: "tsts/**/*"
