@@ -56,7 +56,14 @@ public readonly struct SalesReportPeriodValueObject
         if ((hasFrom && !TryParse(from, out parsedFrom)) || (hasTo && !TryParse(to, out parsedTo)))
             return Invalid();
 
-        var end = hasTo ? parsedTo : (hasFrom ? parsedFrom.AddDays(DEFAULT_DAYS - 1) : today);
+        // Sem o fim: com o início, completa o padrão para frente; sem nenhum, termina hoje.
+        var end = today;
+
+        if (hasTo)
+            end = parsedTo;
+        else if (hasFrom)
+            end = parsedFrom.AddDays(DEFAULT_DAYS - 1);
+
         var start = hasFrom ? parsedFrom : end.AddDays(-(DEFAULT_DAYS - 1));
 
         if (start > end || end.DayNumber - start.DayNumber + 1 > MAX_DAYS)

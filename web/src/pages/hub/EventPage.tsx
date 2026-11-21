@@ -54,7 +54,7 @@ function EventBody({ event }: { event: HubEvent }) {
 
   function continueToCheckout() {
     update({ cart: { eventId: event.id, slug: event.slug, selection, expiresAt: Date.now() + CART_MINUTES * 60_000 } });
-    navigate(`/eventos/${event.slug}/checkout`);
+    void navigate(`/eventos/${event.slug}/checkout`);
   }
 
   const style = { "--event-accent": event.accent } as CSSProperties;

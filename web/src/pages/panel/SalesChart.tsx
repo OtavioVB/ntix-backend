@@ -33,6 +33,8 @@ export function SalesChart({ days }: Readonly<{ days: DailySales[] }>) {
   const totalTickets = days.reduce((sum, day) => sum + day.soldQuantity, 0);
   const totalGross = days.reduce((sum, day) => sum + day.grossCents, 0);
   const shown = active === undefined ? undefined : days[active];
+  const first = days.at(0);
+  const last = days.at(-1);
 
   return (
     <figure className="sales-chart">
@@ -68,10 +70,10 @@ export function SalesChart({ days }: Readonly<{ days: DailySales[] }>) {
           );
         })}
       </svg>
-      {days.length > 0 && (
+      {first && last && (
         <div className="sales-chart__axis" aria-hidden="true">
-          <span>{dayLabel(days[0].date)}</span>
-          <span>{dayLabel(days[days.length - 1].date)}</span>
+          <span>{dayLabel(first.date)}</span>
+          <span>{dayLabel(last.date)}</span>
         </div>
       )}
       <details className="sales-chart__table">

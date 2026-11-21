@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -87,6 +87,12 @@ function Toolbar({ id }: Readonly<{ id: string }>) {
   const [url, setUrl] = useState("https://");
   const [linkError, setLinkError] = useState<string>();
   const [saved, setSaved] = useState<BaseSelection | null>(null);
+  const linkInput = useRef<HTMLInputElement>(null);
+
+  // Ao abrir o campo do link, o foco vai para ele, para a pessoa digitar o endereço direto.
+  useEffect(() => {
+    if (linkOpen) linkInput.current?.focus();
+  }, [linkOpen]);
 
   function setBlock(block: Block) {
     editor.update(() => {
@@ -172,13 +178,14 @@ function Toolbar({ id }: Readonly<{ id: string }>) {
       <button type="button" onClick={() => setBlock("quote")}>Citação</button>
 
       {linkOpen && (
-        <div className="n-rich-text__link" role="group" aria-label="Link">
+        <fieldset className="n-rich-text__link">
+          <legend className="n-visually-hidden">Link</legend>
           <label className="n-field__label" htmlFor={`${id}-link`}>Endereço do link</label>
-          <input id={`${id}-link`} className="n-input" type="url" value={url} autoFocus aria-invalid={linkError ? true : undefined} onChange={(event) => setUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); applyLink(); } }} />
+          <input id={`${id}-link`} className="n-input" type="url" ref={linkInput} value={url} aria-invalid={linkError ? true : undefined} onChange={(event) => setUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); applyLink(); } }} />
           {linkError && <p className="n-field__error" role="alert">{linkError}</p>}
           <button type="button" onClick={applyLink}>Aplicar</button>
           <button type="button" onClick={() => setLinkOpen(false)}>Cancelar</button>
-        </div>
+        </fieldset>
       )}
     </div>
   );

@@ -105,10 +105,12 @@ jobs:
 
       - name: Rodar os testes do front com cobertura
         working-directory: web
+        # --ignore-scripts: nenhum script de instalação de pacote roda na esteira. Os comandos vêm dos scripts do
+        # package.json, com as versões fixadas no lock, sem o npx baixar nada sob demanda.
         run: |
-          npm ci
-          npx tsc --noEmit
-          npx vitest run --coverage
+          npm ci --ignore-scripts
+          npm run typecheck
+          npm run test -- --coverage
 
       - name: Enviar a análise
         run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"

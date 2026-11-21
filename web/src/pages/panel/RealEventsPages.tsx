@@ -153,7 +153,7 @@ export function ProducerEventsListPage() {
       {events.error && <p className="n-field__error" role="alert">{events.error}</p>}
       {!events.data && !events.error && <p className="tile__note">Carregando os eventos…</p>}
 
-      {list && list.length === 0 && (
+      {list?.length === 0 && (
         <section className="tile empty-state">
           {filter.status ? (
             <h2 className="n-title">Nenhum evento nesta situação</h2>
@@ -263,7 +263,7 @@ export function ProducerEventCreatePage() {
     const result = await createProducerEvent(session.slug, toEventRequest(form));
     if (!result.ok) return mapEventNotifications(result.notifications);
 
-    navigate(panelPath(`eventos/${result.data.id}`));
+    void navigate(panelPath(`eventos/${result.data.id}`));
     return {};
   }
 
@@ -275,7 +275,7 @@ export function ProducerEventCreatePage() {
         <h1 className="n-display n-display--md">Novo evento</h1>
         <p className="n-lead">Ele nasce em rascunho. Depois você cria os lotes e publica.</p>
       </header>
-      <EventFormFields onSave={save} onCancel={() => navigate(panelPath("eventos"))} />
+      <EventFormFields onSave={save} onCancel={() => { void navigate(panelPath("eventos")); }} />
     </>
   );
 }
@@ -297,7 +297,7 @@ export function ProducerEventEditPage() {
     const result = await updateProducerEvent(session.slug, eventId, toEventRequest(form));
     if (!result.ok) return mapEventNotifications(result.notifications);
 
-    navigate(detailPath);
+    void navigate(detailPath);
     return {};
   }
 
@@ -308,7 +308,7 @@ export function ProducerEventEditPage() {
         <Link className="back-link" to={detailPath}>{event.data.title}</Link>
         <h1 className="n-display n-display--md">Editar {event.data.title}</h1>
       </header>
-      <EventFormFields key={event.data.id} editing={event.data} onSave={save} onCancel={() => navigate(detailPath)} />
+      <EventFormFields key={event.data.id} editing={event.data} onSave={save} onCancel={() => { void navigate(detailPath); }} />
     </>
   );
 }

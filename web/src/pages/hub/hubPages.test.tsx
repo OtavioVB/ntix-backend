@@ -132,6 +132,7 @@ describe("página do evento", () => {
 });
 
 describe("compra", () => {
+  // Percorre a compra inteira na demonstração: com a cobertura ligada (job do Sonar), passa dos 5 s padrão.
   it("cria a conta na compra, paga com cartão e mostra o avatar com o ingresso na mão", async () => {
     const user = userEvent.setup();
     renderHub("/eventos/riso-solto");
@@ -155,7 +156,7 @@ describe("compra", () => {
     expect(screen.getByText("Ingresso garantido")).toBeInTheDocument();
     // Primeira compra sem avatar: já oferece montar.
     expect(screen.getByText(/Monte seu avatar/)).toBeInTheDocument();
-  });
+  }, 15_000);
 
   it("recusa cartão inválido e mantém a pessoa na compra quando a operadora nega", async () => {
     const user = userEvent.setup();
