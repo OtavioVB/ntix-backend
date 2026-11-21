@@ -23,4 +23,23 @@ find "$DATA_DIR" -type f -name '*.sql' | LC_ALL=C sort | while read -r script; d
     psql_command --dbname "$DATABASE" --file "$script"
 done
 
+# Usuário do PgAdmin (database.ntix.com.br): somente leitura em todos os schemas, inclusive tabelas futuras.
+# pg_read_all_data dá SELECT e USAGE sem GRANT por tabela; a sessão também nasce read-only, como segunda barreira.
+# A senha é reaplicada a cada execução, então trocar o secret troca a senha. Sem senha (ambiente local), não é criado.
+if [ -n "${PGADMIN_DATABASE_PASSWORD:-}" ]; then
+    psql_command --dbname "$DATABASE" --set pgadmin_password="$PGADMIN_DATABASE_PASSWORD" <<'SQL'
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ntix_pgadmin') THEN
+        CREATE ROLE ntix_pgadmin;
+    END IF;
+END
+$$;
+ALTER ROLE ntix_pgadmin WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'pgadmin_password';
+ALTER ROLE ntix_pgadmin SET default_transaction_read_only = on;
+GRANT pg_read_all_data TO ntix_pgadmin;
+SQL
+    echo "[ntix] Usuário somente leitura 'ntix_pgadmin' pronto."
+fi
+
 echo "[ntix] Banco '$DATABASE' pronto."

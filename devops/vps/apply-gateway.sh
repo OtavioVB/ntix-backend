@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
 # Sobrescreve a configuração do nginx com a pasta gateway/ do repositório e recarrega.
-# Emite o certificado HTTPS dos domínios quando ele não existe ou não cobre todos. Uso: apply-gateway.sh <pasta>
+# Emite o certificado HTTPS dos domínios quando ele não existe ou não cobre todos.
+# Uso: apply-gateway.sh <pasta> [arquivo com os IPs do PgAdmin]. Sem o arquivo, a lista de IPs atual é mantida.
 set -euo pipefail
 
 GATEWAY_DIR="${1:?Informe a pasta com os arquivos do gateway}"
+DATABASE_ALLOWED_IPS_FILE="${2:-}"
 # Precisam apontar para este servidor no DNS antes da emissão: o Let's Encrypt valida cada um pela porta 80.
-CERT_DOMAINS=(ntix.com.br www.ntix.com.br api.ntix.com.br produtores.ntix.com.br)
+CERT_DOMAINS=(ntix.com.br www.ntix.com.br api.ntix.com.br produtores.ntix.com.br database.ntix.com.br)
 CERT_NAME="ntix.com.br"
 CERT_FILE="/etc/letsencrypt/live/$CERT_NAME/fullchain.pem"
 # 80: validação do Let's Encrypt e redirecionamento. 443: HTTPS.
 GATEWAY_PORTS=(80 443)
 NGINX_CONF_DIR="/etc/nginx/conf.d"
 ACME_WEBROOT="/var/www/acme"
+# Fora de conf.d: o deploy do frontend substitui conf.d sem conhecer os IPs, e a lista precisa sobreviver a ele.
+DATABASE_ALLOWLIST_FILE="/etc/nginx/ntix/database-allowed-ips.conf"
 if [ "$(id -u)" -eq 0 ]; then SUDO=(); else SUDO=(sudo -n); fi
 
 # Os deploys da API e do frontend rodam em paralelo: um aplica o gateway por vez.
@@ -43,6 +47,33 @@ restore_backup() {
     "${SUDO[@]}" cp -a "$BACKUP_DIR/." "$NGINX_CONF_DIR/"
     "${SUDO[@]}" nginx -t && "${SUDO[@]}" systemctl reload nginx || true
 }
+
+# Lista de IPs do PgAdmin (gateway/ntix-database.conf): 'allow' por IP ou faixa CIDR e 'deny all' no final.
+# Separados por vírgula, espaço ou quebra de linha. Um valor inválido interrompe o deploy antes de tocar no nginx.
+write_database_allowlist() {
+    local content="" address
+    for address in $(tr ',' ' ' <"$1"); do
+        if ! [[ "$address" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$ ||
+            "$address" =~ ^[0-9A-Fa-f]{0,4}(:[0-9A-Fa-f]{0,4}){2,7}(/[0-9]{1,3})?$ ]]; then
+            echo "[ntix] IP inválido na lista do PgAdmin: $address" >&2
+            exit 1
+        fi
+        content+="allow $address;"$'\n'
+    done
+    if [ -z "$content" ]; then
+        echo "[ntix] Lista de IPs do PgAdmin vazia: database.ntix.com.br recusa todos os acessos." >&2
+    fi
+    content+="deny all;"$'\n'
+    "${SUDO[@]}" install -d -m 755 "$(dirname "$DATABASE_ALLOWLIST_FILE")"
+    printf '%s' "$content" | "${SUDO[@]}" tee "$DATABASE_ALLOWLIST_FILE" >/dev/null
+}
+
+if [ -n "$DATABASE_ALLOWED_IPS_FILE" ]; then
+    write_database_allowlist "$DATABASE_ALLOWED_IPS_FILE"
+elif ! "${SUDO[@]}" test -f "$DATABASE_ALLOWLIST_FILE"; then
+    # Deploy do frontend antes do primeiro deploy da API com a lista: ninguém acessa até ela existir.
+    write_database_allowlist /dev/null
+fi
 
 # Substitui a pasta por inteiro: arquivos removidos do repositório não podem continuar no servidor.
 replace_config() {

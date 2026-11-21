@@ -1,0 +1,13 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "ntix",
+            "Group": "Servers",
+            "Host": "ntix-postgresql-local",
+            "Port": 5432,
+            "MaintenanceDB": "ntix",
+            "Username": "ntix_pgadmin",
+            "SSLMode": "prefer"
+        }
+    }
+}
