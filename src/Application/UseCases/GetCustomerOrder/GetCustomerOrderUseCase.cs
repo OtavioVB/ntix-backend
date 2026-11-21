@@ -9,6 +9,7 @@ using Domain.ValueObjects;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
 using Infra.PostgreSql.Repositories.Orders.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Models;
 using Infra.PostgreSql.Repositories.Payments.Interfaces;
 using Infra.PostgreSql.Repositories.Payments.Models;
 using Application.UseCases.Base.Payments;
@@ -26,6 +27,7 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
     private readonly IOrderRepository _orderRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IPaymentRepository _paymentRepository;
+    private readonly ITicketRepository _ticketRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly GetCustomerOrderDiagnostics _diagnostics;
@@ -35,6 +37,7 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
         IOrderRepository orderRepository,
         IEventRepository eventRepository,
         IPaymentRepository paymentRepository,
+        ITicketRepository ticketRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
         GetCustomerOrderDiagnostics diagnostics,
@@ -43,6 +46,7 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
         _orderRepository = orderRepository;
         _eventRepository = eventRepository;
         _paymentRepository = paymentRepository;
+        _ticketRepository = ticketRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _diagnostics = diagnostics;
@@ -93,6 +97,11 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
             if (orderModel is not null && eventModel is not null)
                 paymentModel = await _paymentRepository.GetLatestByOrderAsync(orderModel.Id, cancellationToken);
 
+            // Os ingressos só existem com o pedido pago (REQ8): a lista sai vazia antes disso.
+            IReadOnlyList<TicketListItemModel> ticketModels = orderModel is not null && orderModel.Status == "PAID"
+                ? await _ticketRepository.ListByOrderAsync(orderModel.Id, cancellationToken)
+                : [];
+
             await _unitOfWork.RollbackAsync(CancellationToken.None);
 
             // Pedido sem evento não existe: a FK composta garante o evento do pedido.
@@ -100,7 +109,8 @@ public sealed class GetCustomerOrderUseCase : IUseCase<GetCustomerOrderUseCaseIn
                 return NotFound();
 
             var order = OrderConversions.ToOrder(orderModel);
-            var output = OrderConversions.ToOutput(order, eventModel, now, paymentModel is null ? null : OrderPaymentConversions.ToOutput(OrderPaymentConversions.ToPayment(paymentModel), now));
+            var tickets = ticketModels.Select(ticket => new OrderTicketOutput(ticket.Code, ticket.BatchName, ticket.HolderName, ticket.Status)).ToArray();
+            var output = OrderConversions.ToOutput(order, eventModel, now, paymentModel is null ? null : OrderPaymentConversions.ToOutput(OrderPaymentConversions.ToPayment(paymentModel), now), tickets);
 
             RecordOutcome(GetCustomerOrderDiagnostics.OUTCOME_SERVED);
 

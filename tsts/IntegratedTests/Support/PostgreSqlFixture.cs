@@ -60,6 +60,7 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
             .AddPaymentRepositoriesConfiguration(configuration)
             .AddEventRepositoriesConfiguration(configuration)
             .AddOrderRepositoriesConfiguration(configuration)
+            .AddSingleton(new Infra.Http.Payments.AbacatePay.AbacatePayConfiguration { WebhookPublicKey = UnitTests.Support.WebhookTestData.PUBLIC_KEY })
             .AddCredentialCipherConfiguration(configuration)
             .AddSingleton<IPixChargeClient>(PixClient)
             .AddUseCasesConfiguration(configuration)

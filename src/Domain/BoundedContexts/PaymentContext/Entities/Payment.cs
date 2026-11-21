@@ -72,6 +72,13 @@ public sealed record Payment
     public bool IsPendingAndValid(DateTime now)
         => GetEffectiveStatus(now) == PaymentStatus.PENDING;
 
+    /// <summary>RN9: o valor da cobrança é o que o pedido pediu na criação. Divergência não confirma.</summary>
+    public bool HasAmount(long amountCents) => AmountCents == amountCents;
+
+    /// <summary>REQ8: a cobrança confirmada na fonte vira PAID, com a data do pagamento.</summary>
+    public Payment Confirm(DateTime paidAt, DateTime now, IdValueObject correlationId)
+        => this with { Status = PaymentStatus.PAID, PaidAt = paidAt, UpdatedAt = DateTimeValueObject.Build(now), UpdatedCorrelationId = correlationId };
+
     public Payment MarkExpired(DateTime now, IdValueObject correlationId)
         => this with { Status = PaymentStatus.EXPIRED, UpdatedAt = DateTimeValueObject.Build(now), UpdatedCorrelationId = correlationId };
 }

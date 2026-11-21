@@ -44,3 +44,16 @@ public sealed record PixChargeResultModel(PixChargeOutcome Outcome, string? Refe
     public static PixChargeResultModel Unavailable(string reason)
         => new(PixChargeOutcome.Unavailable, null, null, null, reason);
 }
+
+/// <summary>
+/// Situação de uma cobrança consultada na fonte (REQ8, RN4). A consulta do AbacatePay não devolve valor: a conferência de valor
+/// usa o que a Ntix gravou na criação (RN9). <see cref="Available"/> falso: a fonte não respondeu, e o webhook volta com 503.
+/// </summary>
+public sealed record PixChargeStatusResultModel(bool Available, string? Status, string? FailureReason)
+{
+    public static PixChargeStatusResultModel Found(string status)
+        => new(true, status, null);
+
+    public static PixChargeStatusResultModel Unavailable(string reason)
+        => new(false, null, reason);
+}

@@ -46,6 +46,14 @@ public sealed class OrderRepository : IOrderRepository
         FOR UPDATE;
         """;
 
+    private const string SELECT_BY_ID_FOR_UPDATE_SQL = """
+        SELECT id_order, code, id_producer, id_event, id_customer, sales_channel, total_amount, status, expires_at, paid_at,
+               created_at, created_correlation_id, updated_at, updated_correlation_id
+        FROM orders.orders
+        WHERE id_order = @id_order
+        FOR UPDATE;
+        """;
+
     private const string UPDATE_STATUS_SQL = """
         UPDATE orders.orders
         SET status = @status, paid_at = @paid_at, updated_at = @updated_at, updated_correlation_id = @updated_correlation_id
@@ -123,6 +131,25 @@ public sealed class OrderRepository : IOrderRepository
 
     public Task<OrderModel?> GetByCodeForUpdateAsync(string code, Guid customerId, CancellationToken cancellationToken = default)
         => ReadByCodeAsync(SELECT_BY_CODE_FOR_UPDATE_SQL, nameof(GetByCodeForUpdateAsync), code, customerId, cancellationToken);
+
+    public async Task<OrderModel?> GetByIdForUpdateAsync(Guid orderId, CancellationToken cancellationToken = default)
+    {
+        using var activity = StartDatabaseActivity(nameof(GetByIdForUpdateAsync), "orders.orders");
+
+        OrderModel? order;
+
+        await using (var command = _unitOfWork.CreateCommand(SELECT_BY_ID_FOR_UPDATE_SQL))
+        {
+            command.Parameters.Add("@id_order", NpgsqlDbType.Uuid).Value = orderId;
+
+            order = await ReadOrderAsync(command, cancellationToken);
+        }
+
+        if (order is null)
+            return null;
+
+        return order with { Items = await ListItemsAsync(order.Id, cancellationToken) };
+    }
 
     public async Task UpdateStatusAsync(OrderModel order, CancellationToken cancellationToken = default)
     {

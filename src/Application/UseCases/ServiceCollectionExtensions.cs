@@ -1,3 +1,5 @@
+using Application.UseCases.ConfirmPaymentFromWebhook;
+using Application.UseCases.ConfirmPaymentFromWebhook.Inputs;
 using Application.UseCases.Base.Configuration;
 using Application.UseCases.Base.Interfaces;
 using Application.UseCases.CreateCustomer;
@@ -190,5 +192,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUseCase<RevokeCustomerSessionUseCaseInput>, RevokeCustomerSessionUseCase>();
         services.AddSingleton<GetCurrentCustomerDiagnostics>();
         services.AddScoped<IUseCase<GetCurrentCustomerUseCaseInput, CurrentCustomerOutput>, GetCurrentCustomerUseCase>();
+
+        services.AddSingleton<ConfirmPaymentFromWebhookDiagnostics>();
+        services.AddScoped<IUseCase<ConfirmPaymentFromWebhookUseCaseInput>, ConfirmPaymentFromWebhookUseCase>();
     }
 }

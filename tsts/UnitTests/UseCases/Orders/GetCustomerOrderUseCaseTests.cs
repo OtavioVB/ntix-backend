@@ -22,6 +22,7 @@ public sealed class GetCustomerOrderUseCaseTests : IDisposable
     private readonly IOrderRepository _orderRepository = Substitute.For<IOrderRepository>();
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
     private readonly IPaymentRepository _paymentRepository = Substitute.For<IPaymentRepository>();
+    private readonly ITicketRepository _ticketRepository = Substitute.For<ITicketRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly TestMeterFactory _meterFactory = new();
     private readonly MeasurementCollector _measurements;
@@ -35,7 +36,7 @@ public sealed class GetCustomerOrderUseCaseTests : IDisposable
         _eventRepository.GetByIdAsync(EventTestData.PRODUCER_ID, EventTestData.EVENT_ID, Arg.Any<CancellationToken>()).Returns(OrderTestData.PublishedEventModel());
 
         _measurements = new MeasurementCollector(_meterFactory);
-        _useCase = new GetCustomerOrderUseCase(_orderRepository, _eventRepository, _paymentRepository, _unitOfWork, _timeProvider, new GetCustomerOrderDiagnostics(_meterFactory), _logger);
+        _useCase = new GetCustomerOrderUseCase(_orderRepository, _eventRepository, _paymentRepository, _ticketRepository, _unitOfWork, _timeProvider, new GetCustomerOrderDiagnostics(_meterFactory), _logger);
     }
 
     public void Dispose()

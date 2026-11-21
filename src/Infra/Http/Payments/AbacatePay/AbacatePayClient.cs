@@ -17,6 +17,7 @@ public sealed class AbacatePayClient : IPixChargeClient
     public const string PROVIDER_CODE = "ABACATEPAY";
 
     private const string CREATE_ROUTE = "transparents/create";
+    private const string CHECK_ROUTE = "transparents/check";
     private const int DETAIL_MAX_LENGTH = 200;
 
     private static readonly ActivitySource ACTIVITY_SOURCE = new("Ntix.Http");
@@ -73,6 +74,63 @@ public sealed class AbacatePayClient : IPixChargeClient
             return PixChargeResultModel.Unavailable("network");
         }
     }
+
+    /// <summary>
+    /// Situação na fonte (REQ8, RN4): <c>GET /v2/transparents/check?id=</c>, com a chave da integração. A resposta traz o status, sem valor.
+    /// Só <c>PAID</c> confirma, e isso é decidido por quem chama.
+    /// </summary>
+    public async Task<PixChargeStatusResultModel> GetPixChargeStatusAsync(string apiKey, string providerReference, CancellationToken cancellationToken = default)
+    {
+        using var activity = ACTIVITY_SOURCE
+            .StartActivity($"{nameof(AbacatePayClient)}.{nameof(GetPixChargeStatusAsync)}", ActivityKind.Client)
+            ?.SetTag("ntix.payments.provider", PROVIDER_CODE);
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        timeout.CancelAfter(TimeSpan.FromSeconds(_configuration.TimeoutSeconds));
+
+        using var message = new HttpRequestMessage(HttpMethod.Get, $"{CHECK_ROUTE}?id={Uri.EscapeDataString(providerReference)}");
+
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        try
+        {
+            using var response = await _httpClient.SendAsync(message, timeout.Token);
+
+            activity?.SetTag("http.response.status_code", (int)response.StatusCode);
+
+            if (!response.IsSuccessStatusCode)
+                return PixChargeStatusResultModel.Unavailable(GetStatusReason((int)response.StatusCode));
+
+            var envelope = await response.Content.ReadFromJsonAsync<StatusEnvelope>(JSON_OPTIONS, timeout.Token);
+            var status = envelope?.Data?.Status;
+
+            if (envelope?.Success == false || string.IsNullOrWhiteSpace(status))
+                return PixChargeStatusResultModel.Unavailable("invalid_response");
+
+            return PixChargeStatusResultModel.Found(status);
+        }
+        catch (JsonException)
+        {
+            return PixChargeStatusResultModel.Unavailable("invalid_response");
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, "timeout");
+
+            return PixChargeStatusResultModel.Unavailable("timeout");
+        }
+        catch (HttpRequestException ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.GetType().Name);
+
+            return PixChargeStatusResultModel.Unavailable("network");
+        }
+    }
+
+    private sealed record StatusEnvelope(bool? Success, StatusData? Data);
+
+    private sealed record StatusData(string? Id, string? Status);
 
     private static async Task<PixChargeResultModel> ReadChargeAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {

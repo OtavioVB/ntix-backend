@@ -12,6 +12,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProducerIntegrationRepository, ProducerIntegrationRepository>();
         services.AddScoped<IPaymentRouteRepository, PaymentRouteRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<IPaymentWebhookEventRepository, PaymentWebhookEventRepository>();
 
         return services;
     }

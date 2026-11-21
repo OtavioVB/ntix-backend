@@ -61,7 +61,7 @@ public static class OrderConversions
             updatedCorrelationId: IdValueObject.Build(model.UpdatedCorrelationId.ToString()));
 
     /// <summary>Saída do pedido. O status é o efetivo (RN12): reserva vencida aparece como EXPIRED.</summary>
-    public static OrderOutput ToOutput(Order order, EventModel @event, DateTime now, OrderPaymentOutput? payment = null)
+    public static OrderOutput ToOutput(Order order, EventModel @event, DateTime now, OrderPaymentOutput? payment = null, IReadOnlyList<OrderTicketOutput>? tickets = null)
         => new(
             Code: order.Code.Value,
             Status: order.GetEffectiveStatus(now).ToString(),
@@ -85,6 +85,7 @@ public static class OrderConversions
                     UnitPriceCents: item.UnitPrice.Cents,
                     TotalCents: item.TotalCents))
                 .ToArray(),
-            Tickets: [],
-            Payment: payment);
+            Tickets: tickets ?? [],
+            Payment: payment,
+            PaidAt: order.PaidAt);
 }
