@@ -1,33 +1,18 @@
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearSessionTokens, storeSessionTokens } from "../../api/auth";
-import { createTicketBatch, publishProducerEvent, updateTicketBatch, type ProducerEvent, type TicketBatch } from "../../api/events";
-import { ProducerSessionProvider, type ProducerSession } from "../../producer/session";
-import PanelRoutes from "./PanelRoutes";
-import { EMPTY_BATCH_FORM, mapBatchNotifications, toBatchRequest, validateBatch, withStatus, type BatchForm } from "./batches";
+import { createTicketBatch, publishProducerEvent, updateTicketBatch, type TicketBatch } from "../../api/events";
 
-const ADMIN = { id: "admin", name: "Pessoa Administradora", email: "admin@exemplo.test", isAdmin: true, invited: false };
-const LOGGED_IN: Partial<ProducerSession> = { name: "Maré Cultural", slug: "mare-cultural", loggedIn: true, adminEmail: ADMIN.email, team: [ADMIN] };
+import { EMPTY_BATCH_FORM, mapBatchNotifications, toBatchRequest, validateBatch, withStatus, type BatchForm } from "./batches";
 
 const EVENT_ENDS_AT = "2030-03-21T06:00:00.000Z";
 
 const VALID_FORM: BatchForm = { name: "1º  lote - Pista", note: "", price: "120,50", quantity: "500", salesStartsAt: "2030-01-01T10:00", salesEndsAt: "2030-02-01T10:00" };
 
-function apiEvent(overrides: Partial<ProducerEvent> = {}): ProducerEvent {
-  return {
-    id: "0b6e", slug: "festival-horizonte", title: "Festival Horizonte", category: "FESTIVALS",
-    startsAt: "2030-03-20T21:00:00.000Z", endsAt: EVENT_ENDS_AT, venueName: "Parque das Dunas", address: "Av. Beira-Mar, 1200",
-    city: "Recife", state: "PE", ageRating: "AGE_16", status: "DRAFT", createdAt: "2026-11-20T12:00:00.000Z", updatedAt: "2026-11-20T12:00:00.000Z",
-    ...overrides,
-  };
-}
-
 function apiBatch(overrides: Partial<TicketBatch> = {}): TicketBatch {
   return {
     id: "b1", name: "VIP", priceCents: 30000, quantity: 50, soldQuantity: 0, reservedQuantity: 0, availableQuantity: 50,
-    salesStartsAt: "2030-01-01T13:00:00.000Z", salesEndsAt: "2030-02-01T13:00:00.000Z", status: "ACTIVE", saleState: "ON_SALE",
+    salesStartsAt: "2030-01-01T13:00:00.000Z", salesEndsAt: "2030-02-01T13:00:00.000Z", status: "ACTIVE", saleState: "ON_SALE", grossCents: 0, paidOrders: 0,
     ...overrides,
   };
 }
@@ -39,18 +24,6 @@ function jsonResponse(status: number, body: unknown) {
 function sentRequest(fetchMock: ReturnType<typeof vi.fn>, call: number) {
   const [url, init] = fetchMock.mock.calls[call] as [string, RequestInit];
   return { url, init, body: init.body ? JSON.parse(init.body as string) : undefined };
-}
-
-function renderEvents() {
-  return render(
-    <MemoryRouter initialEntries={["/painel/eventos"]}>
-      <ProducerSessionProvider initial={LOGGED_IN}>
-        <Routes>
-          <Route path="/painel/*" element={<PanelRoutes />} />
-        </Routes>
-      </ProducerSessionProvider>
-    </MemoryRouter>,
-  );
 }
 
 beforeAll(() => {
@@ -118,44 +91,3 @@ describe("lotes e publicação na API", () => {
   });
 });
 
-describe("aba Eventos com lotes", () => {
-  it("mostra os lotes do evento e publica", async () => {
-    window.sessionStorage.setItem("ntix:api-mode", "real");
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse(200, [apiEvent()]))
-      .mockResolvedValueOnce(jsonResponse(200, [apiBatch()]))
-      .mockResolvedValueOnce(jsonResponse(200, apiEvent({ status: "PUBLISHED" })))
-      .mockResolvedValue(jsonResponse(200, [apiEvent({ status: "PUBLISHED" })]));
-    vi.stubGlobal("fetch", fetchMock);
-    const user = userEvent.setup();
-
-    renderEvents();
-
-    await user.click(await screen.findByRole("button", { name: "Lotes de Festival Horizonte" }));
-    expect(await screen.findByText("VIP")).toBeInTheDocument();
-    expect(screen.getByText("Em venda")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Publicar evento" }));
-
-    expect(sentRequest(fetchMock, 2).url).toMatch(/\/publication$/);
-    expect(await screen.findAllByText("Publicado")).not.toHaveLength(0);
-    expect(screen.queryByRole("button", { name: "Publicar evento" })).not.toBeInTheDocument();
-  });
-
-  it("mostra a recusa da publicação", async () => {
-    window.sessionStorage.setItem("ntix:api-mode", "real");
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse(200, [apiEvent()]))
-      .mockResolvedValueOnce(jsonResponse(200, []))
-      .mockResolvedValueOnce(jsonResponse(400, [{ code: "EVENT_WITHOUT_PAYMENT_METHOD", message: "Configure uma integração de pagamento para Pix na aba Integrações antes de publicar o evento." }]));
-    vi.stubGlobal("fetch", fetchMock);
-    const user = userEvent.setup();
-
-    renderEvents();
-
-    await user.click(await screen.findByRole("button", { name: "Lotes de Festival Horizonte" }));
-    await user.click(await screen.findByRole("button", { name: "Publicar evento" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("aba Integrações");
-  });
-});

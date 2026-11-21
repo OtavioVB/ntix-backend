@@ -3,6 +3,7 @@ using Domain.BoundedContexts.EventContext.Entities;
 using Domain.BoundedContexts.EventContext.Services;
 using Domain.ValueObjects;
 using Infra.PostgreSql.Repositories.Events.Models;
+using Infra.PostgreSql.Repositories.Orders.Models;
 
 namespace Application.UseCases.Base.Events;
 
@@ -52,7 +53,7 @@ public static class TicketBatchConversions
             updatedAt: DateTimeValueObject.Build(DateTime.SpecifyKind(model.UpdatedAt, DateTimeKind.Utc)),
             updatedCorrelationId: IdValueObject.Build(model.UpdatedCorrelationId.ToString()));
 
-    public static TicketBatchOutput ToOutput(TicketBatch batch, TicketBatchSalesModel sales, DateTime now)
+    public static TicketBatchOutput ToOutput(TicketBatch batch, TicketBatchSalesModel sales, TicketBatchSalesTotalsModel totals, DateTime now)
     {
         var availability = TicketBatchAvailability.Calculate(batch, sales.Sold, sales.Reserved, now);
 
@@ -68,7 +69,9 @@ public static class TicketBatchConversions
             SalesStartsAt: batch.Details.SalesPeriod.StartsAt,
             SalesEndsAt: batch.Details.SalesPeriod.EndsAt,
             Status: batch.Details.Status.Value.ToString(),
-            SaleState: availability.SaleState.ToString());
+            SaleState: availability.SaleState.ToString(),
+            GrossCents: EventConversions.ToCents(totals.GrossAmount),
+            PaidOrders: totals.PaidOrders);
     }
 
     /// <summary>Id da rota; texto que não é GUID vira nulo e o caso de uso responde como inexistente.</summary>
@@ -76,4 +79,6 @@ public static class TicketBatchConversions
         => Guid.TryParse(id, out var parsed) ? parsed : null;
 
     public static readonly TicketBatchSalesModel NO_SALES = new(Sold: 0, Reserved: 0);
+
+    public static readonly TicketBatchSalesTotalsModel NO_TOTALS = new(GrossAmount: 0m, PaidOrders: 0);
 }

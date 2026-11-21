@@ -1,8 +1,8 @@
 import { authorizedRequest } from "./auth";
 import { requestJson, type ApiDataResult } from "./client";
 
-/** Situação do evento (REQ9). Só a publicação (REQ10) leva a PUBLISHED. */
-export type EventStatus = "DRAFT" | "PUBLISHED";
+/** Situação exposta pela API (REQ9). Só a publicação (REQ10) leva a PUBLISHED; ENDED é todo evento cujo término passou (REQ14). */
+export type EventStatus = "DRAFT" | "PUBLISHED" | "ENDED";
 
 /** Categorias do hub (REQ9, RN3). */
 export type EventCategory = "SHOWS" | "FESTIVALS" | "THEATER" | "STAND_UP" | "ELECTRONIC" | "SPORTS" | "GASTRONOMY" | "KIDS" | "OTHER";
@@ -26,7 +26,15 @@ export type EventRequest = {
   imageUrl?: string;
 };
 
-/** Evento como o painel o vê. Campo opcional ausente não vem no JSON. */
+/** Resumo de vendas do evento (REQ14): capacidade dos lotes e vendas de pedidos pagos, calculados pela API. */
+export type EventSalesSummary = {
+  capacity: number;
+  soldQuantity: number;
+  grossCents: number;
+  paidOrders: number;
+};
+
+/** Evento como o painel o vê. Campo opcional ausente não vem no JSON. A descrição é Markdown (REQ14). */
 export type ProducerEvent = Omit<EventRequest, "category" | "ageRating"> & {
   id: string;
   slug: string;
@@ -35,7 +43,13 @@ export type ProducerEvent = Omit<EventRequest, "category" | "ageRating"> & {
   status: EventStatus;
   createdAt: string;
   updatedAt: string;
+  salesSummary: EventSalesSummary;
 };
+
+/** Um dia de `GET .../events/{id}/sales/daily` (REQ14), no fuso de Brasília. */
+export type DailySales = { date: string; soldQuantity: number; grossCents: number; paidOrders: number };
+
+export type DailySalesReport = { from: string; to: string; days: DailySales[] };
 
 const eventsRoute = (slug: string) => `/api/v1/producers/${encodeURIComponent(slug)}/events`;
 
@@ -81,6 +95,9 @@ export type TicketBatch = Omit<TicketBatchRequest, "note"> & {
   reservedQuantity: number;
   availableQuantity: number;
   saleState: BatchSaleState;
+  /** Detalhe de vendas do lote (REQ14), só de pedidos pagos. */
+  grossCents: number;
+  paidOrders: number;
 };
 
 const batchesRoute = (slug: string, eventId: string) => `${eventsRoute(slug)}/${encodeURIComponent(eventId)}/batches`;
@@ -95,6 +112,16 @@ export function createTicketBatch(slug: string, eventId: string, request: Ticket
 
 export function updateTicketBatch(slug: string, eventId: string, batchId: string, request: TicketBatchRequest): Promise<ApiDataResult<TicketBatch>> {
   return authorizedRequest("PUT", `${batchesRoute(slug, eventId)}/${encodeURIComponent(batchId)}`, { body: request });
+}
+
+/** Vendas por dia (REQ14): datas `yyyy-MM-dd` de Brasília; sem elas, a API devolve os últimos 30 dias. */
+export function getEventDailySales(slug: string, eventId: string, period: { from?: string; to?: string } = {}, signal?: AbortSignal): Promise<ApiDataResult<DailySalesReport>> {
+  const params = new URLSearchParams();
+  if (period.from) params.set("from", period.from);
+  if (period.to) params.set("to", period.to);
+  const search = params.toString();
+  const route = `${eventsRoute(slug)}/${encodeURIComponent(eventId)}/sales/daily`;
+  return authorizedRequest("GET", search ? `${route}?${search}` : route, { signal });
 }
 
 /** POST .../events/{id}/publication: sem corpo; devolve o evento publicado. */

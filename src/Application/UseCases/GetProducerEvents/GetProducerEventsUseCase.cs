@@ -8,6 +8,8 @@ using Domain.CrossCutting.NotificationContext;
 using Domain.ValueObjects;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Models;
 using Infra.PostgreSql.Repositories.Producers.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -19,6 +21,8 @@ public sealed class GetProducerEventsUseCase : IUseCase<GetProducerEventsUseCase
 {
     private readonly IProducerRepository _producerRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly ISalesRepository _salesRepository;
+    private readonly TimeProvider _timeProvider;
     private readonly IUnitOfWork _unitOfWork;
     private readonly GetProducerEventsDiagnostics _diagnostics;
     private readonly ILogger<GetProducerEventsUseCase> _logger;
@@ -26,12 +30,16 @@ public sealed class GetProducerEventsUseCase : IUseCase<GetProducerEventsUseCase
     public GetProducerEventsUseCase(
         IProducerRepository producerRepository,
         IEventRepository eventRepository,
+        ISalesRepository salesRepository,
+        TimeProvider timeProvider,
         IUnitOfWork unitOfWork,
         GetProducerEventsDiagnostics diagnostics,
         ILogger<GetProducerEventsUseCase> logger)
     {
         _producerRepository = producerRepository;
         _eventRepository = eventRepository;
+        _salesRepository = salesRepository;
+        _timeProvider = timeProvider;
         _unitOfWork = unitOfWork;
         _diagnostics = diagnostics;
         _logger = logger;
@@ -65,6 +73,7 @@ public sealed class GetProducerEventsUseCase : IUseCase<GetProducerEventsUseCase
 
             var producerSlug = input.ProducerSlug.Value;
             var status = input.Status?.Value.ToString();
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
 
             // Só leitura: a transação dá uma conexão ao repositório e é desfeita no fim.
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
@@ -73,7 +82,12 @@ public sealed class GetProducerEventsUseCase : IUseCase<GetProducerEventsUseCase
 
             var models = producerId is null
                 ? []
-                : await _eventRepository.ListByProducerAsync(producerId.Value, status, cancellationToken);
+                : await _eventRepository.ListByProducerAsync(producerId.Value, status, now, cancellationToken);
+
+            // RN10: os resumos de todos os eventos numa leitura só, dos contadores.
+            var summaries = producerId is null || models.Count == 0
+                ? new Dictionary<Guid, EventSalesSummaryModel>()
+                : await _salesRepository.GetEventSummariesAsync(producerId.Value, models.Select(model => model.Id).ToArray(), cancellationToken);
 
             await _unitOfWork.RollbackAsync(CancellationToken.None);
 
@@ -90,7 +104,9 @@ public sealed class GetProducerEventsUseCase : IUseCase<GetProducerEventsUseCase
 
             GetProducerEventsLog.Served(_logger, producerSlug, status ?? "ALL", models.Count);
 
-            return MethodResult<GetProducerEventsUseCaseOutput>.Success(new GetProducerEventsUseCaseOutput(models.Select(EventConversions.ToOutput).ToArray()));
+            return MethodResult<GetProducerEventsUseCaseOutput>.Success(new GetProducerEventsUseCaseOutput(models
+                .Select(model => EventConversions.ToOutput(model, summaries.GetValueOrDefault(model.Id, EventConversions.NO_SALES), now))
+                .ToArray()));
         }
         catch (Exception ex)
         {

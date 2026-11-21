@@ -58,6 +58,7 @@ public sealed class ConfirmPaymentFromWebhookUseCase : IUseCase<ConfirmPaymentFr
     private readonly IProducerIntegrationRepository _integrationRepository;
     private readonly ICustomerRepository _customerRepository;
     private readonly ITicketRepository _ticketRepository;
+    private readonly ISalesRepository _salesRepository;
     private readonly IOutboxRepository _outboxRepository;
     private readonly IPaymentWebhookEventRepository _webhookEventRepository;
     private readonly IReadOnlyList<IPixChargeClient> _pixClients;
@@ -74,6 +75,7 @@ public sealed class ConfirmPaymentFromWebhookUseCase : IUseCase<ConfirmPaymentFr
         IProducerIntegrationRepository integrationRepository,
         ICustomerRepository customerRepository,
         ITicketRepository ticketRepository,
+        ISalesRepository salesRepository,
         IOutboxRepository outboxRepository,
         IPaymentWebhookEventRepository webhookEventRepository,
         IEnumerable<IPixChargeClient> pixClients,
@@ -89,6 +91,7 @@ public sealed class ConfirmPaymentFromWebhookUseCase : IUseCase<ConfirmPaymentFr
         _integrationRepository = integrationRepository;
         _customerRepository = customerRepository;
         _ticketRepository = ticketRepository;
+        _salesRepository = salesRepository;
         _outboxRepository = outboxRepository;
         _webhookEventRepository = webhookEventRepository;
         _pixClients = pixClients.ToArray();
@@ -276,9 +279,19 @@ public sealed class ConfirmPaymentFromWebhookUseCase : IUseCase<ConfirmPaymentFr
         await _orderRepository.UpdateStatusAsync(OrderConversions.ToModel(confirmation.Order), cancellationToken);
         await _outboxRepository.AddAsync(BuildOrderPaidOutboxEvent(confirmation.Event, now, correlationId), cancellationToken);
 
+        // REQ14, RN9: as vendas entram nas estruturas de leitura na mesma transação; só a transição para PAID chega aqui.
+        var defaultPartitionRows = await _salesRepository.RegisterPaidOrderAsync(BuildSaleEntries(confirmation.Order, confirmation.Event.PaidAt, correlationId), cancellationToken);
+
         await _unitOfWork.CommitAsync(cancellationToken);
 
         ConfirmPaymentFromWebhookLog.Confirmed(_logger, envelope.Id, current.Id.Value, order.Code.Value, ticketCount);
+
+        if (defaultPartitionRows > 0)
+        {
+            ConfirmPaymentFromWebhookLog.SaleInDefaultPartition(_logger, order.Code.Value);
+
+            _diagnostics.SaleEntriesInDefaultPartition(defaultPartitionRows);
+        }
 
         if (confirmation.PaidAfterExpiration)
         {
@@ -291,6 +304,20 @@ public sealed class ConfirmPaymentFromWebhookUseCase : IUseCase<ConfirmPaymentFr
 
         return Finished(ConfirmPaymentFromWebhookDiagnostics.OUTCOME_CONFIRMED);
     }
+
+    private static SaleEntryModel[] BuildSaleEntries(Order order, DateTime paidAt, IdValueObject correlationId)
+        => order.Items
+            .Select(item => new SaleEntryModel(
+                OrderItemId: item.Id.Value,
+                OrderId: order.Id.Value,
+                ProducerId: order.ProducerId.Value,
+                EventId: order.EventId.Value,
+                TicketBatchId: item.BatchId.Value,
+                Quantity: item.Quantity.Value,
+                UnitPrice: item.UnitPrice.Amount,
+                PaidAt: paidAt,
+                CorrelationId: correlationId.Value))
+            .ToArray();
 
     // Código de ingresso repetido (RN7) desfaz só o lote no savepoint; a tentativa seguinte sorteia outros códigos.
     private async Task<int> CreateTicketsAsync(OrderPaymentConfirmation confirmation, CancellationToken cancellationToken)

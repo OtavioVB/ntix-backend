@@ -8,6 +8,7 @@ using Domain.CrossCutting.NotificationContext;
 using Domain.ValueObjects;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
 using Infra.PostgreSql.Repositories.Producers.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -19,6 +20,8 @@ public sealed class GetProducerEventUseCase : IUseCase<GetProducerEventUseCaseIn
 {
     private readonly IProducerRepository _producerRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly ISalesRepository _salesRepository;
+    private readonly TimeProvider _timeProvider;
     private readonly IUnitOfWork _unitOfWork;
     private readonly GetProducerEventDiagnostics _diagnostics;
     private readonly ILogger<GetProducerEventUseCase> _logger;
@@ -26,12 +29,16 @@ public sealed class GetProducerEventUseCase : IUseCase<GetProducerEventUseCaseIn
     public GetProducerEventUseCase(
         IProducerRepository producerRepository,
         IEventRepository eventRepository,
+        ISalesRepository salesRepository,
+        TimeProvider timeProvider,
         IUnitOfWork unitOfWork,
         GetProducerEventDiagnostics diagnostics,
         ILogger<GetProducerEventUseCase> logger)
     {
         _producerRepository = producerRepository;
         _eventRepository = eventRepository;
+        _salesRepository = salesRepository;
+        _timeProvider = timeProvider;
         _unitOfWork = unitOfWork;
         _diagnostics = diagnostics;
         _logger = logger;
@@ -77,6 +84,10 @@ public sealed class GetProducerEventUseCase : IUseCase<GetProducerEventUseCaseIn
                 ? null
                 : await _eventRepository.GetByIdAsync(producerId.Value, input.EventId.Value, cancellationToken);
 
+            var summary = model is null
+                ? EventConversions.NO_SALES
+                : (await _salesRepository.GetEventSummariesAsync(model.ProducerId, [model.Id], cancellationToken)).GetValueOrDefault(model.Id, EventConversions.NO_SALES);
+
             await _unitOfWork.RollbackAsync(CancellationToken.None);
 
             if (producerId is null)
@@ -101,7 +112,7 @@ public sealed class GetProducerEventUseCase : IUseCase<GetProducerEventUseCaseIn
 
             GetProducerEventLog.Served(_logger, model.Id, producerSlug);
 
-            return MethodResult<ProducerEventOutput>.Success(EventConversions.ToOutput(model));
+            return MethodResult<ProducerEventOutput>.Success(EventConversions.ToOutput(model, summary, _timeProvider.GetUtcNow().UtcDateTime));
         }
         catch (Exception ex)
         {

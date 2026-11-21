@@ -45,6 +45,9 @@ web/src/api/
 - **Recurso criado no servidor durante a tela** (ex.: pedido do checkout, REQ6): guarde-o no estado local da tela (`cart.order`) para recarregar reaproveitar o que já existe em vez de criar outro, e use o prazo e o total do servidor. Enquanto a vitrine real carrega (`loading` do `useHub`), mostre o carregamento em vez de redirecionar. Exemplo: `useServerOrder` em `pages/hub/CheckoutPage.tsx` e `customer/serverOrder.ts`.
 - **Acompanhar um estado que muda no servidor** (ex.: pagamento do pedido, REQ7): consulta periódica com `setInterval` e `AbortController` limpos ao sair da tela, intervalo recebido por prop para o teste usar um curto, e uma consulta que falhou é ignorada (a próxima tenta de novo). A função de saída do componente fica numa `ref`, para a consulta não reiniciar a cada renderização. Exemplo: `pages/hub/PixPayment.tsx`.
 - **Testes de tela autenticada**: chame `storeSessionTokens({ accessToken, refreshToken })` antes de renderizar e `clearSessionTokens()` no `afterEach`.
+- **Entidade do painel com páginas próprias** (REQ14): lista, `/novo`, `/{id}` e `/{id}/editar`, cada uma com a sua rota em `PanelRoutes` dentro do ramo `isRealApi()`; a demonstração mantém as rotas dela no outro ramo. A lista reaproveita os componentes da demonstração (`event-cards`, `stat-row`, `batch-table`), filtro em `Segmented` refletido na URL, e 404 da API leva de volta à lista. Exemplo: `pages/panel/RealEventsPages.tsx`.
+- **Teste de página que carrega várias coisas em paralelo**: simule o `fetch` por método e rota (`routeFetch` em `pages/panel/realEvents.test.tsx`), não por ordem de chamada, e confira a URL atual com um componente que lê `useLocation`.
+- **Texto rico**: Markdown editado no `RichTextEditor` (carregado com `React.lazy`) e exibido com `MarkdownView`, nunca com `dangerouslySetInnerHTML` ([RFC 0010](../../../docs/rfcs/0010-editor-de-descricao-em-markdown.md)).
 
 ## 4. Testes
 

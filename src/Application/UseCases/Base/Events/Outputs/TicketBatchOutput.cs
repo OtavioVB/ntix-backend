@@ -1,6 +1,9 @@
 namespace Application.UseCases.Base.Events.Outputs;
 
-/// <summary>Lote como o painel do produtor o vê (REQ10): preço em centavos, disponibilidade e estado de venda derivados.</summary>
+/// <summary>
+/// Lote como o painel do produtor o vê (REQ10): preço em centavos, disponibilidade e estado de venda derivados.
+/// <paramref name="GrossCents"/> e <paramref name="PaidOrders"/> são o detalhe de vendas do lote (REQ14), só de pedidos pagos.
+/// </summary>
 public sealed record TicketBatchOutput(
     Guid Id,
     string Name,
@@ -13,4 +16,6 @@ public sealed record TicketBatchOutput(
     DateTime SalesStartsAt,
     DateTime SalesEndsAt,
     string Status,
-    string SaleState);
+    string SaleState,
+    long GrossCents,
+    int PaidOrders);

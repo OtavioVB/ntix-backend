@@ -24,7 +24,7 @@ public readonly struct EventStatusValueObject
     }
 
     private const string EVENT_STATUS_INVALID_NOTIFICATION_CODE = "EVENT_STATUS_INVALID";
-    private const string EVENT_STATUS_INVALID_NOTIFICATION_MESSAGE = "A situação do evento deve ser DRAFT ou PUBLISHED.";
+    private const string EVENT_STATUS_INVALID_NOTIFICATION_MESSAGE = "A situação do evento deve ser DRAFT, PUBLISHED ou ENDED.";
 
     public static EventStatusValueObject Build(string? value)
     {

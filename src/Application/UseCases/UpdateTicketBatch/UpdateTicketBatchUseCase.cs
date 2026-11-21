@@ -10,6 +10,7 @@ using Domain.ValueObjects;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Enums;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
 using Infra.PostgreSql.Repositories.Producers.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -22,6 +23,7 @@ public sealed class UpdateTicketBatchUseCase : IUseCase<UpdateTicketBatchUseCase
     private readonly IProducerRepository _producerRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ITicketBatchRepository _ticketBatchRepository;
+    private readonly ISalesRepository _salesRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly UpdateTicketBatchDiagnostics _diagnostics;
@@ -31,6 +33,7 @@ public sealed class UpdateTicketBatchUseCase : IUseCase<UpdateTicketBatchUseCase
         IProducerRepository producerRepository,
         IEventRepository eventRepository,
         ITicketBatchRepository ticketBatchRepository,
+        ISalesRepository salesRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
         UpdateTicketBatchDiagnostics diagnostics,
@@ -39,6 +42,7 @@ public sealed class UpdateTicketBatchUseCase : IUseCase<UpdateTicketBatchUseCase
         _producerRepository = producerRepository;
         _eventRepository = eventRepository;
         _ticketBatchRepository = ticketBatchRepository;
+        _salesRepository = salesRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _diagnostics = diagnostics;
@@ -117,13 +121,15 @@ public sealed class UpdateTicketBatchUseCase : IUseCase<UpdateTicketBatchUseCase
             if (await _ticketBatchRepository.UpdateAsync(TicketBatchConversions.ToModel(batch), cancellationToken) == TicketBatchWriteResult.NameAlreadyExists)
                 return await RejectAsync(UpdateTicketBatchDiagnostics.OUTCOME_NAME_ALREADY_EXISTS, BATCH_NAME_ALREADY_EXISTS_NOTIFICATION_CODE, BATCH_NAME_ALREADY_EXISTS_NOTIFICATION_MESSAGE, producerSlug);
 
+            var totals = (await _salesRepository.GetBatchTotalsAsync([batch.Id.Value], cancellationToken)).GetValueOrDefault(batch.Id.Value, TicketBatchConversions.NO_TOTALS);
+
             await _unitOfWork.CommitAsync(cancellationToken);
 
             RecordOutcome(UpdateTicketBatchDiagnostics.OUTCOME_UPDATED);
 
             UpdateTicketBatchLog.Updated(_logger, batch.Id.Value, batch.EventId.Value, producerSlug, batch.Details.Status.Value.ToString(), batch.Details.Price.Cents, batch.Details.Quantity.Value);
 
-            return MethodResult<TicketBatchOutput>.Success(TicketBatchConversions.ToOutput(batch, sales, now));
+            return MethodResult<TicketBatchOutput>.Success(TicketBatchConversions.ToOutput(batch, sales, totals, now));
         }
         catch (Exception ex)
         {

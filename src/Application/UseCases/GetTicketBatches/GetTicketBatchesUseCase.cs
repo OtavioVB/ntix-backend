@@ -8,6 +8,7 @@ using Domain.CrossCutting.NotificationContext;
 using Domain.ValueObjects;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
 using Infra.PostgreSql.Repositories.Producers.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -20,6 +21,7 @@ public sealed class GetTicketBatchesUseCase : IUseCase<GetTicketBatchesUseCaseIn
     private readonly IProducerRepository _producerRepository;
     private readonly IEventRepository _eventRepository;
     private readonly ITicketBatchRepository _ticketBatchRepository;
+    private readonly ISalesRepository _salesRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly GetTicketBatchesDiagnostics _diagnostics;
@@ -29,6 +31,7 @@ public sealed class GetTicketBatchesUseCase : IUseCase<GetTicketBatchesUseCaseIn
         IProducerRepository producerRepository,
         IEventRepository eventRepository,
         ITicketBatchRepository ticketBatchRepository,
+        ISalesRepository salesRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
         GetTicketBatchesDiagnostics diagnostics,
@@ -37,6 +40,7 @@ public sealed class GetTicketBatchesUseCase : IUseCase<GetTicketBatchesUseCaseIn
         _producerRepository = producerRepository;
         _eventRepository = eventRepository;
         _ticketBatchRepository = ticketBatchRepository;
+        _salesRepository = salesRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _diagnostics = diagnostics;
@@ -94,11 +98,12 @@ public sealed class GetTicketBatchesUseCase : IUseCase<GetTicketBatchesUseCaseIn
 
             var models = await _ticketBatchRepository.ListByEventAsync(producerId!.Value, eventModel.Id, cancellationToken);
             var sales = await _ticketBatchRepository.GetSalesAsync(models.Select(model => model.Id).ToArray(), now, cancellationToken);
+            var totals = await _salesRepository.GetBatchTotalsAsync(models.Select(model => model.Id).ToArray(), cancellationToken);
 
             await _unitOfWork.RollbackAsync(CancellationToken.None);
 
             var batches = models
-                .Select(model => TicketBatchConversions.ToOutput(TicketBatchConversions.ToBatch(model), sales.GetValueOrDefault(model.Id, TicketBatchConversions.NO_SALES), now))
+                .Select(model => TicketBatchConversions.ToOutput(TicketBatchConversions.ToBatch(model), sales.GetValueOrDefault(model.Id, TicketBatchConversions.NO_SALES), totals.GetValueOrDefault(model.Id, TicketBatchConversions.NO_TOTALS), now))
                 .ToArray();
 
             RecordOutcome(GetTicketBatchesDiagnostics.OUTCOME_SERVED);

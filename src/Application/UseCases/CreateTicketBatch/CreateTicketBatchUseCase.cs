@@ -106,7 +106,7 @@ public sealed class CreateTicketBatchUseCase : IUseCase<CreateTicketBatchUseCase
 
             CreateTicketBatchLog.Created(_logger, batch.Id.Value, batch.EventId.Value, producerSlug, batch.Details.Price.Cents, batch.Details.Quantity.Value);
 
-            return MethodResult<TicketBatchOutput>.Success(TicketBatchConversions.ToOutput(batch, TicketBatchConversions.NO_SALES, now));
+            return MethodResult<TicketBatchOutput>.Success(TicketBatchConversions.ToOutput(batch, TicketBatchConversions.NO_SALES, TicketBatchConversions.NO_TOTALS, now));
         }
         catch (Exception ex)
         {

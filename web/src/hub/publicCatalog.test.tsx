@@ -115,6 +115,27 @@ describe("hub com a API real", () => {
     expect(screen.getByText("Pista")).toBeInTheDocument();
   });
 
+  it("mostra a descrição formatada do produtor (REQ14), sem executar HTML", async () => {
+    window.sessionStorage.setItem("ntix:api-mode", "real");
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, { items: [{ slug: "festival-horizonte" }], page: 1, pageSize: 50, totalItems: 1 }))
+      .mockResolvedValueOnce(jsonResponse(200, publicEvent({ description: "## Atrações\n\n- **Banda Maré** às 21h\n\n<script>alert(1)</script>" }))));
+
+    const { container } = render(
+      <MemoryRouter initialEntries={["/eventos/festival-horizonte"]}>
+        <ProducerSessionProvider>
+          <CustomerProvider>
+            <HubRoutes />
+          </CustomerProvider>
+        </ProducerSessionProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Atrações" })).toBeInTheDocument();
+    expect(screen.getByText("Banda Maré").tagName).toBe("STRONG");
+    expect(container.querySelector(".event-text script")).toBeNull();
+  });
+
   it("avisa quando a vitrine não carrega", async () => {
     window.sessionStorage.setItem("ntix:api-mode", "real");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(500, undefined)));

@@ -3,6 +3,7 @@ using Application.UseCases.PublishEvent.Inputs;
 using Domain.BoundedContexts.EventContext.Events;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
 using Infra.PostgreSql.Repositories.Events.Models;
 using Infra.PostgreSql.Repositories.Outbox.Interfaces;
 using Infra.PostgreSql.Repositories.Outbox.Models;
@@ -21,6 +22,7 @@ public sealed class PublishEventUseCaseTests : IDisposable
 
     private readonly IProducerRepository _producerRepository = Substitute.For<IProducerRepository>();
     private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
+    private readonly ISalesRepository _salesRepository = Substitute.For<ISalesRepository>();
     private readonly ITicketBatchRepository _batchRepository = Substitute.For<ITicketBatchRepository>();
     private readonly IPaymentProviderRepository _providerRepository = Substitute.For<IPaymentProviderRepository>();
     private readonly IProducerIntegrationRepository _integrationRepository = Substitute.For<IProducerIntegrationRepository>();
@@ -50,6 +52,7 @@ public sealed class PublishEventUseCaseTests : IDisposable
         _useCase = new PublishEventUseCase(
             producerRepository: _producerRepository,
             eventRepository: _eventRepository,
+            salesRepository: _salesRepository,
             ticketBatchRepository: _batchRepository,
             paymentProviderRepository: _providerRepository,
             producerIntegrationRepository: _integrationRepository,

@@ -37,3 +37,11 @@ export function producerAreaHref(target: "signup" | "login", hostname = currentH
   if (!PUBLIC_HOSTS.includes(hostname)) return path;
   return target === "signup" ? `${PRODUCER_ORIGIN}/` : `${PRODUCER_ORIGIN}${LOGIN_PATH}`;
 }
+
+const PUBLIC_ORIGIN = "https://ntix.com.br";
+
+/** Página do evento na vitrine (REQ11). No subdomínio do produtor, ela fica no domínio público. */
+export function hubEventHref(eventSlug: string, hostname = currentHost()): string {
+  const path = `/eventos/${encodeURIComponent(eventSlug)}`;
+  return isProducerHost(hostname) ? `${PUBLIC_ORIGIN}${path}` : path;
+}

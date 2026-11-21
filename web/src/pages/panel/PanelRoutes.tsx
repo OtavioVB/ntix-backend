@@ -5,7 +5,7 @@ import { useProducerSession } from "../../producer/session";
 import { ApprovalPage } from "./ApprovalPage";
 import { isRealApi } from "../../api/mode";
 import { EventsPage } from "./EventsPage";
-import { ProducerEventsPage } from "./ProducerEventsPage";
+import { ProducerEventCreatePage, ProducerEventDetailPage, ProducerEventEditPage, ProducerEventsListPage } from "./RealEventsPages";
 import { IntegrationsPage } from "./IntegrationsPage";
 import { LOCKED_DOMAINS, LockedPage } from "./LockedPage";
 import { OverviewPage } from "./OverviewPage";
@@ -34,10 +34,21 @@ export default function PanelRoutes() {
       <Route element={<PanelLayout />}>
         {/* No subdomínio do produtor, a raiz é o cadastro: a visão geral ganha caminho próprio. */}
         {overviewPath ? <Route path={overviewPath} element={overview} /> : <Route index element={overview} />}
-        {/* Com ?api=real, a aba fala com a API (REQ9) em qualquer situação da produtora: o rascunho não depende da aprovação. */}
-        <Route path="eventos" element={isRealApi() ? <ProducerEventsPage /> : <ByStatus rehearsal={<EventsPage />} production={<EventsListPage />} />} />
-        <Route path="eventos/novo" element={<ByStatus rehearsal={toEvents} production={<EventFormPage />} />} />
-        <Route path="eventos/:eventId" element={<ByStatus rehearsal={toEvents} production={<EventDetailPage />} />} />
+        {/* Com ?api=real, a aba fala com a API (REQ9, REQ14) em qualquer situação da produtora: o rascunho não depende da aprovação. */}
+        {isRealApi() ? (
+          <>
+            <Route path="eventos" element={<ProducerEventsListPage />} />
+            <Route path="eventos/novo" element={<ProducerEventCreatePage />} />
+            <Route path="eventos/:eventId" element={<ProducerEventDetailPage />} />
+            <Route path="eventos/:eventId/editar" element={<ProducerEventEditPage />} />
+          </>
+        ) : (
+          <>
+            <Route path="eventos" element={<ByStatus rehearsal={<EventsPage />} production={<EventsListPage />} />} />
+            <Route path="eventos/novo" element={<ByStatus rehearsal={toEvents} production={<EventFormPage />} />} />
+            <Route path="eventos/:eventId" element={<ByStatus rehearsal={toEvents} production={<EventDetailPage />} />} />
+          </>
+        )}
         <Route path="vendas" element={<ByStatus rehearsal={<LockedPage domain={LOCKED_DOMAINS.vendas} />} production={<SalesPage />} />} />
         <Route path="portaria" element={<ByStatus rehearsal={<LockedPage domain={LOCKED_DOMAINS.portaria} />} production={<EntryPage />} />} />
         <Route path="clientes" element={<ByStatus rehearsal={<LockedPage domain={LOCKED_DOMAINS.clientes} />} production={<CustomersPage />} />} />
