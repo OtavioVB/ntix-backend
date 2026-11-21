@@ -52,7 +52,9 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 - Deploy em VPS via SSH, depois dos testes: acesso por secrets, variáveis de ambiente geradas no servidor a cada deploy e API em contêiner construído pelo `Dockerfile`.
 - O deploy verifica as dependências do servidor e instala o que faltar antes de usá-las.
 - O deploy detecta a arquitetura e os recursos do servidor e ajusta imagens e limites a eles. Antes de adotar uma imagem, confira se ela existe para a arquitetura do servidor: a VPS de produção é ARM64.
-- Na VPS só a API é pública. Banco e observabilidade escutam em `127.0.0.1`.
+- Na VPS, o nginx (`gateway/`) publica a API, o frontend e o PgAdmin. Os contêineres, inclusive banco e observabilidade, escutam em `127.0.0.1`.
+- Subdomínio novo entra em `CERT_DOMAINS` de `devops/vps/apply-gateway.sh` (o certbot expande o certificado) e precisa existir no DNS antes do deploy.
+- PgAdmin em `database.ntix.com.br`: aceita só os IPs do secret `VPS_PGADMIN_ALLOWED_IPS` e conecta com o usuário `ntix_pgadmin`, somente leitura (`pg_read_all_data`), criado por `devops/postgresql/init-database.sh`. Acesso ao banco pelo navegador nunca usa o usuário `ntix` da API.
 - Análise estática em workflow próprio (`static-analysis.yml`), chamado pelo `github-workflows.yml` a cada commit na `main`, com Sonar e cobertura pelo Coverlet ([RFC 0006](../../../../docs/rfcs/0006-analise-estatica-com-sonar-e-coverlet.md)). Exclusões de cobertura, de issues e de duplicação ficam configuradas na pipeline, e a API Key do Sonar vem do GitHub.
 
 ### Nomes

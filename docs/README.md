@@ -95,10 +95,14 @@ A imagem da API é construída para a arquitetura detectada no servidor, x86_64 
 | `VPS_PASSWORD_PRIVATE_KEY` | Chave privada combinada ao hash das senhas dos clientes, sem `'`. Gere com `openssl rand -base64 32` |
 | `VPS_PAYMENT_CREDENTIAL_ENCRYPTION_KEY` | Chave AES-256 que cifra as credenciais das integrações de pagamento (REQ4): 32 bytes em Base64. Gere com `openssl rand -base64 32` e guarde um backup fora do GitHub |
 | `VPS_JWT_SIGNING_KEY` | Chave que assina o access token do usuário do produtor (REQ5): 32 bytes ou mais em Base64. Gere com `openssl rand -base64 32` |
+| `VPS_PGADMIN_EMAIL` | E-mail de login do PgAdmin em database.ntix.com.br, sem `'` |
+| `VPS_PGADMIN_PASSWORD` | Senha inicial de login do PgAdmin, sem `'` |
+| `VPS_PGADMIN_DATABASE_PASSWORD` | Senha do usuário somente leitura `ntix_pgadmin` do PostgreSQL, sem `'`. Gere com `openssl rand -base64 24` |
+| `VPS_PGADMIN_ALLOWED_IPS` | IPs ou faixas CIDR que podem abrir database.ntix.com.br, separados por vírgula ou espaço. Ex.: `203.0.113.7, 2001:db8::/64` |
 
 A connection string da API, o endpoint de telemetria e as demais configurações são resolvidos pelo `docker-compose.yml` a partir desse `.env`, a cada deploy.
 
-Só a API fica pública, na porta 8080. Os demais serviços escutam em `127.0.0.1`. Para abrir o Grafana, use um túnel e acesse <http://localhost:3000>:
+O nginx da VPS publica a API, o frontend e o PgAdmin. Os contêineres escutam em `127.0.0.1`. Para abrir o Grafana, use um túnel e acesse <http://localhost:3000>:
 
 ```bash
 ssh -L 3000:localhost:3000 <usuario>@<host>
@@ -125,6 +129,25 @@ dotnet user-secrets set "JwtConfiguration:SigningKey" "$(openssl rand -base64 32
 ## Banco de dados
 
 O esquema fica em scripts idempotentes em `data/<schema>/NNN-descricao.sql`, aplicados em ordem de caminho. Para mudar o esquema, adicione um novo script.
+
+### PgAdmin
+
+Em produção, o PgAdmin fica em <https://database.ntix.com.br>, com o servidor `ntix` já cadastrado. Antes do primeiro deploy:
+
+1. Crie no DNS o registro de `database.ntix.com.br` apontando para a VPS, sem proxy de CDN: o certbot valida o nome pela porta 80 e o nginx filtra pelo IP real de quem acessa. Sem o registro, a emissão do certificado falha e o deploy para.
+2. Cadastre os secrets `VPS_PGADMIN_*` da tabela acima.
+
+Só os IPs de `VPS_PGADMIN_ALLOWED_IPS` chegam ao login; os demais recebem 403. Quando o seu IP mudar, atualize o secret e rode o deploy de novo (**Actions > CI > Run workflow** na `main`).
+
+O PgAdmin conecta com o usuário `ntix_pgadmin`, somente leitura em todo o banco, inclusive em tabelas futuras: ele consulta, mas não altera dados nem estrutura. Na primeira conexão, informe a senha de `VPS_PGADMIN_DATABASE_PASSWORD`. O usuário é recriado a cada deploy, então trocar o secret troca a senha.
+
+A senha de login do PgAdmin (`VPS_PGADMIN_PASSWORD`) só vale na criação do volume `ntix-pgadmin-volume`. Depois, troque-a pela tela do PgAdmin; trocar o secret não tem efeito.
+
+Localmente, preencha as variáveis `PGADMIN_*` em `devops/.env`, suba com o profile e acesse <http://localhost:5050>:
+
+```bash
+docker compose -f devops/docker-compose.yml --profile pgadmin up -d
+```
 
 ## Observabilidade
 

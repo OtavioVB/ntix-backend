@@ -161,16 +161,28 @@ jobs:
           PASSWORD_PRIVATE_KEY: ${{ secrets.VPS_PASSWORD_PRIVATE_KEY }}
           PAYMENT_CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.VPS_PAYMENT_CREDENTIAL_ENCRYPTION_KEY }}
           JWT_SIGNING_KEY: ${{ secrets.VPS_JWT_SIGNING_KEY }}
+          PGADMIN_EMAIL: ${{ secrets.VPS_PGADMIN_EMAIL }}
+          PGADMIN_PASSWORD: ${{ secrets.VPS_PGADMIN_PASSWORD }}
+          PGADMIN_DATABASE_PASSWORD: ${{ secrets.VPS_PGADMIN_DATABASE_PASSWORD }}
         run: |
-          printf "POSTGRES_PASSWORD='%s'\nPASSWORD_PRIVATE_KEY='%s'\nPAYMENT_CREDENTIAL_ENCRYPTION_KEY='%s'\nJWT_SIGNING_KEY='%s'\nWEBAPI_IMAGE=%s\nASPNETCORE_ENVIRONMENT=Production\nWEBAPI_PORT_BINDING=127.0.0.1:5080\n" \
-            "$POSTGRES_PASSWORD" "$PASSWORD_PRIVATE_KEY" "$PAYMENT_CREDENTIAL_ENCRYPTION_KEY" "$JWT_SIGNING_KEY" "$WEBAPI_IMAGE" \
+          for name in PGADMIN_EMAIL PGADMIN_PASSWORD PGADMIN_DATABASE_PASSWORD; do
+            [ -n "${!name}" ] || { echo "::error::Defina o secret VPS_$name"; exit 1; }
+          done
+          printf "POSTGRES_PASSWORD='%s'\nPASSWORD_PRIVATE_KEY='%s'\nPAYMENT_CREDENTIAL_ENCRYPTION_KEY='%s'\nJWT_SIGNING_KEY='%s'\nPGADMIN_EMAIL='%s'\nPGADMIN_PASSWORD='%s'\nPGADMIN_DATABASE_PASSWORD='%s'\nWEBAPI_IMAGE=%s\nASPNETCORE_ENVIRONMENT=Production\nWEBAPI_PORT_BINDING=127.0.0.1:5080\n" \
+            "$POSTGRES_PASSWORD" "$PASSWORD_PRIVATE_KEY" "$PAYMENT_CREDENTIAL_ENCRYPTION_KEY" "$JWT_SIGNING_KEY" \
+            "$PGADMIN_EMAIL" "$PGADMIN_PASSWORD" "$PGADMIN_DATABASE_PASSWORD" "$WEBAPI_IMAGE" \
             | ssh vps "umask 077 && cat > '$DEPLOY_PATH/devops/.env'"
 
       - name: Subir os serviços
-        run: ssh vps "cd '$DEPLOY_PATH' && docker compose -f devops/docker-compose.yml --profile app up -d --remove-orphans"
+        run: ssh vps "cd '$DEPLOY_PATH' && docker compose -f devops/docker-compose.yml --profile app --profile pgadmin up -d --remove-orphans"
 
       - name: Aplicar a configuração do gateway
-        run: ssh vps "bash '$DEPLOY_PATH/devops/vps/apply-gateway.sh' '$DEPLOY_PATH/gateway'"
+        env:
+          PGADMIN_ALLOWED_IPS: ${{ secrets.VPS_PGADMIN_ALLOWED_IPS }}
+        # A lista de IPs do PgAdmin vai para o servidor como arquivo, nunca na linha de comando do SSH.
+        run: |
+          printf '%s\n' "$PGADMIN_ALLOWED_IPS" | ssh vps "umask 077 && cat > '$DEPLOY_PATH/devops/pgadmin-allowed-ips'"
+          ssh vps "bash '$DEPLOY_PATH/devops/vps/apply-gateway.sh' '$DEPLOY_PATH/gateway' '$DEPLOY_PATH/devops/pgadmin-allowed-ips'"
 
       - name: Verificar a API
         # Chama pelo domínio, conectando em 127.0.0.1: valida o certificado sem depender de hairpin NAT.
@@ -180,6 +192,16 @@ jobs:
             sleep 5
           done
           docker logs --tail 50 ntix-webapi
+          exit 1"
+
+      - name: Verificar o PgAdmin
+        # Pelo domínio, a partir do próprio servidor (liberado na lista de IPs): valida certificado, nginx e contêiner.
+        run: |
+          ssh vps "for attempt in \$(seq 1 30); do
+            curl --fail --silent --output /dev/null --connect-to 'database.ntix.com.br:443:127.0.0.1:443' 'https://database.ntix.com.br/misc/ping' && exit 0
+            sleep 5
+          done
+          docker logs --tail 50 ntix-pgadmin
           exit 1"
 
       - name: Remover imagens antigas da API
