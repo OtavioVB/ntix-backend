@@ -16,7 +16,7 @@ Três barreiras:
 
 1. O nginx só aceita os IPs do secret `VPS_PGADMIN_ALLOWED_IPS`; os demais recebem 403.
 2. Login próprio do PgAdmin (`VPS_PGADMIN_EMAIL` e `VPS_PGADMIN_PASSWORD`).
-3. Conexão com o usuário `ntix_pgadmin`, membro de `pg_read_all_data` e com sessões read-only por padrão: lê todos os schemas, inclusive tabelas futuras, sem alterar dados nem estrutura. O usuário `ntix` da API não é usado.
+3. Conexão com o usuário `ntix_pgadmin`, membro de `pg_read_all_data`: lê todos os schemas, inclusive tabelas futuras. A única escrita é UPDATE em `producers.producer`, para aprovar o produtor (atualização abaixo). O usuário `ntix` da API não é usado.
 
 ## Alternativas consideradas
 
@@ -40,3 +40,7 @@ Imagem oficial do projeto pgAdmin, licença PostgreSQL, multi-arquitetura (a VPS
 ## Como reverter
 
 Remover o serviço `ntix-pgadmin` e o volume do compose, `--profile pgadmin` do workflow, `gateway/ntix-database.conf`, `database.ntix.com.br` de `CERT_DOMAINS` e o bloco do usuário `ntix_pgadmin` de `init-database.sh`. Na VPS, `DROP ROLE ntix_pgadmin`, `docker volume rm devops_ntix-pgadmin-volume` e apagar `/etc/nginx/ntix/`.
+
+## Atualização (2026-11-21): aprovação do produtor
+
+A aprovação do produtor ainda não tem tela nem endpoint: aprovar é mudar `producers.producer.status` para `ACTIVE`. Para isso, o `ntix_pgadmin` passou a ter `UPDATE` só em `producers.producer`, e a sessão deixou de nascer read-only, o que permite editar a célula pela grade do PgAdmin. Continuam negados `INSERT`, `DELETE` e DDL em tudo, e `UPDATE` em qualquer outra tabela, inclusive `producer_user` e `producer_user_session`, que guardam o hash da senha e os refresh tokens. Quando a aprovação ganhar backoffice próprio, a permissão sai do `init-database.sh` e entra um `REVOKE UPDATE ON producers.producer FROM ntix_pgadmin`.
