@@ -16,6 +16,9 @@ using Application.UseCases.ReplacePaymentRoute.Inputs;
 using Application.UseCases.ReplacePaymentRoute.Outputs;
 using Domain.CrossCutting.MethodResultContext;
 using Infra.PostgreSql.Base.UnitOfWork.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Enums;
+using Infra.PostgreSql.Repositories.Orders.Interfaces;
+using Infra.PostgreSql.Repositories.Orders.Models;
 using IntegratedTests.Support;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -235,4 +238,47 @@ public sealed class PaymentWebhookUseCasesTests
         // Assert (RN2): 404, sem reenvio.
         Assert.Contains(result.Notifications, notification => notification.Code == ConfirmPaymentFromWebhookUseCase.PAYMENT_NOT_FOUND_NOTIFICATION_CODE);
     }
+
+    [Fact]
+    public async Task Given_TicketCodeAlreadyStored_When_CreatingAnotherWithTheSameCode_Should_ReturnCodeAlreadyExistsAndListTheOrderTickets()
+    {
+        // Arrange
+        var pix = await GivenPendingPixAsync();
+        var orderItemId = await _fixture.ScalarAsync<Guid>("SELECT id_order_item FROM orders.order_item WHERE id_order = @id ORDER BY id_order_item LIMIT 1;", Id(pix.OrderId));
+        var eventId = await _fixture.ScalarAsync<Guid>(ORDER_EVENT_SQL, Text("@code", pix.Code));
+        var code = "ABCDEFGHJKMN";
+
+        using var scope = _fixture.Services.CreateScope();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var tickets = scope.ServiceProvider.GetRequiredService<ITicketRepository>();
+
+        // Act
+        await unitOfWork.BeginTransactionAsync();
+
+        var first = await tickets.CreateManyAsync([NewTicket(orderItemId, pix, eventId, code)]);
+        var listed = await tickets.ListByOrderAsync(pix.OrderId);
+        var collision = await tickets.CreateManyAsync([NewTicket(orderItemId, pix, eventId, code)]);
+
+        await unitOfWork.RollbackAsync();
+
+        // Assert (RN7): o código é único; a colisão volta como resultado, sem perder a transação.
+        Assert.Equal(TicketCreationResult.Created, first);
+        Assert.Single(listed, item => item.Code == code && item.HolderName == "Marina Souza" && item.Status == "VALID");
+        Assert.Equal(TicketCreationResult.CodeAlreadyExists, collision);
+    }
+
+    private const string ORDER_EVENT_SQL = "SELECT id_event FROM orders.orders WHERE code = @code;";
+
+    private static TicketModel NewTicket(Guid orderItemId, PendingPix pix, Guid eventId, string code)
+        => new(
+            Id: Guid.NewGuid(),
+            OrderItemId: orderItemId,
+            OrderId: pix.OrderId,
+            CustomerId: pix.CustomerId,
+            EventId: eventId,
+            Code: code,
+            HolderName: "Marina Souza",
+            Status: "VALID",
+            CreatedAt: DateTime.UtcNow,
+            CreatedCorrelationId: Guid.NewGuid());
 }
