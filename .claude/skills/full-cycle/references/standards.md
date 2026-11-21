@@ -48,6 +48,7 @@ Toda nova aplicação de apresentação referencia apenas `Application`. `Domain
 ### Integração contínua
 - GitHub Actions: build, testes unitários e integrados em paralelo, análise estática e, depois, testes funcionais.
 - O job do Sonar roda também os testes do front (`tsc` e `vitest run --coverage`) e envia `web/coverage/lcov.info`: o Quality Gate de 80% vale para o C# e o TypeScript juntos. Cobertura que falta se resolve com teste, não com exclusão (decidido pelo usuário no REQ14, [RFC 0011](../../../../docs/rfcs/0011-cobertura-do-front-no-sonar.md)).
+- Na esteira, pacotes npm entram com `npm ci --ignore-scripts`, e os comandos rodam pelos scripts do `package.json` (`npm run ...`), nunca por `npx`, que pode baixar pacote sob demanda (regras S6505 e S8543 do Sonar).
 - Jobs de build, testes e análise estática no environment `Staging` do GitHub; o deploy no environment `Production`.
 - Valores sensíveis da esteira vêm de secrets do repositório, nunca do arquivo do workflow.
 - Deploy em VPS via SSH, depois dos testes: acesso por secrets, variáveis de ambiente geradas no servidor a cada deploy e API em contêiner construído pelo `Dockerfile`.
