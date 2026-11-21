@@ -407,3 +407,92 @@ describe("demonstração intacta", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("lotes na página do evento", () => {
+  async function fillBatch(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(await screen.findByLabelText("Nome do lote"), "2º lote");
+    await user.type(screen.getByLabelText("Preço (R$)"), "150,00");
+    await user.type(screen.getByLabelText("Quantidade"), "200");
+    await user.type(screen.getByLabelText("Venda começa em"), "2029-01-01T10:00");
+    await user.type(screen.getByLabelText("Venda termina em"), "2029-02-01T10:00");
+  }
+
+  it("cria o lote, limpa o formulário e recarrega os lotes", async () => {
+    const fetchMock = routeFetch([
+      { method: "POST", path: BATCHES_PATH, reply: () => jsonResponse(201, apiBatch({ id: "b2", name: "2º lote" })) },
+      ...detailHandlers(apiEvent()),
+    ]);
+    const user = userEvent.setup();
+
+    renderAt("/painel/eventos/0b6e");
+    await fillBatch(user);
+    await user.click(screen.getByRole("button", { name: "Adicionar lote" }));
+
+    await waitFor(() => expect(calls(fetchMock, "GET", BATCHES_PATH)).toHaveLength(2));
+    expect(JSON.parse(calls(fetchMock, "POST", BATCHES_PATH)[0].init.body as string)).toMatchObject({ name: "2º lote", priceCents: 15000, quantity: 200, status: "ACTIVE" });
+    expect(screen.getByLabelText("Nome do lote")).toHaveValue("");
+  });
+
+  it("valida antes de enviar", async () => {
+    const fetchMock = routeFetch(detailHandlers(apiEvent()));
+    const user = userEvent.setup();
+
+    renderAt("/painel/eventos/0b6e");
+    await user.click(await screen.findByRole("button", { name: "Adicionar lote" }));
+
+    expect(calls(fetchMock, "POST", BATCHES_PATH)).toHaveLength(0);
+    expect(screen.getByLabelText("Nome do lote")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("mostra a recusa da API no campo do lote", async () => {
+    routeFetch([
+      { method: "POST", path: BATCHES_PATH, reply: () => jsonResponse(409, [{ code: "BATCH_NAME_ALREADY_EXISTS", message: "Já existe um lote com esse nome neste evento." }]) },
+      ...detailHandlers(apiEvent()),
+    ]);
+    const user = userEvent.setup();
+
+    renderAt("/painel/eventos/0b6e");
+    await fillBatch(user);
+    await user.click(screen.getByRole("button", { name: "Adicionar lote" }));
+
+    expect(await screen.findByText("Já existe um lote com esse nome neste evento.")).toBeInTheDocument();
+  });
+
+  it("mostra a recusa ao pausar um lote", async () => {
+    routeFetch([
+      { method: "PUT", path: /\/batches\/b1$/, reply: () => jsonResponse(400, [{ code: "EVENT_ALREADY_STARTED", message: "O evento já começou e não pode mais ser alterado." }]) },
+      ...detailHandlers(apiEvent()),
+    ]);
+    const user = userEvent.setup();
+
+    renderAt("/painel/eventos/0b6e");
+    await user.click(await screen.findByRole("button", { name: "Pausar 1º lote" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("O evento já começou");
+  });
+
+  it("lote pausado oferece reativar", async () => {
+    routeFetch(detailHandlers(apiEvent(), [apiBatch({ status: "INACTIVE", saleState: "PAUSED" })]));
+
+    renderAt("/painel/eventos/0b6e");
+
+    expect(await screen.findByRole("button", { name: "Reativar 1º lote" })).toBeInTheDocument();
+  });
+});
+
+describe("gráfico de vendas por dia", () => {
+  it("mostra o dia ao passar o mouse e tem a tabela", async () => {
+    routeFetch(detailHandlers(apiEvent()));
+    const user = userEvent.setup();
+
+    renderAt("/painel/eventos/0b6e");
+
+    const chart = await screen.findByRole("img", { name: /Ingressos vendidos por dia/ });
+    await user.hover(chart.querySelectorAll("g")[2]);
+    expect(screen.getByText(/12 ingressos, R\$\s?1\.440,00/, { selector: "figcaption" })).toBeInTheDocument();
+
+    await user.unhover(chart);
+    expect(screen.getByText(/12 ingressos e R\$\s?1\.440,00 no período/)).toBeInTheDocument();
+    expect(screen.getAllByRole("row")).toHaveLength(31);
+  });
+});

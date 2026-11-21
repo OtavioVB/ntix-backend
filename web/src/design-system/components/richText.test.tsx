@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MarkdownView } from "./MarkdownView";
@@ -72,5 +72,141 @@ describe("editor da descrição (RichTextEditor)", () => {
     await user.click(screen.getByRole("button", { name: "Aplicar" }));
 
     expect(screen.getByRole("alert")).toHaveTextContent("O link precisa começar com https://.");
+  });
+});
+
+describe("comandos do editor", () => {
+  type Editor = { update: (fn: () => void, options?: { discrete?: boolean }) => void };
+
+  /** Põe o cursor no fim do texto, como se a pessoa tivesse clicado ali. */
+  async function caretAtEnd(): Promise<Editor> {
+    const element = screen.getByRole("textbox", { name: "Descrição" }) as HTMLElement & { __lexicalEditor: Editor };
+    const { $getRoot } = await import("lexical");
+    act(() => element.__lexicalEditor.update(() => { $getRoot().selectEnd(); }, { discrete: true }));
+    return element.__lexicalEditor;
+  }
+
+  /** Seleciona todo o texto. */
+  async function selectAll() {
+    const element = screen.getByRole("textbox", { name: "Descrição" }) as HTMLElement & { __lexicalEditor: Editor };
+    const { $getRoot } = await import("lexical");
+    act(() => element.__lexicalEditor.update(() => { $getRoot().select(0, $getRoot().getChildrenSize()); }, { discrete: true }));
+  }
+
+  function renderEditor(value: string) {
+    const onChange = vi.fn();
+    render(<RichTextEditor id="description" label="Descrição" value={value} onChange={onChange} hint="0 de 5000 caracteres." error="Erro de teste" />);
+    return onChange;
+  }
+
+  const lastMarkdown = (onChange: ReturnType<typeof vi.fn>) => onChange.mock.calls.at(-1)?.[0] as string;
+
+  it("transforma o parágrafo em título, em subtítulo e de volta em parágrafo", async () => {
+    const onChange = renderEditor("Atrações");
+    const user = userEvent.setup();
+    await caretAtEnd();
+
+    await user.click(screen.getByRole("button", { name: "Título" }));
+    await waitFor(() => expect(lastMarkdown(onChange)).toBe("## Atrações"));
+
+    await user.click(screen.getByRole("button", { name: "Subtítulo" }));
+    await waitFor(() => expect(lastMarkdown(onChange)).toBe("### Atrações"));
+
+    await user.click(screen.getByRole("button", { name: "Subtítulo" }));
+    await waitFor(() => expect(lastMarkdown(onChange)).toBe("Atrações"));
+  });
+
+  it("vira citação", async () => {
+    const onChange = renderEditor("Leve documento");
+    const user = userEvent.setup();
+    await caretAtEnd();
+
+    await user.click(screen.getByRole("button", { name: "Citação" }));
+
+    await waitFor(() => expect(lastMarkdown(onChange)).toBe("> Leve documento"));
+  });
+
+  it("aplica negrito e itálico no texto selecionado", async () => {
+    const onChange = renderEditor("Banda Maré");
+    const user = userEvent.setup();
+    await selectAll();
+
+    await user.click(screen.getByRole("button", { name: "Negrito" }));
+    await waitFor(() => expect(lastMarkdown(onChange)).toBe("**Banda Maré**"));
+
+    await selectAll();
+    await user.click(screen.getByRole("button", { name: "Itálico" }));
+    await waitFor(() => expect(lastMarkdown(onChange)).toBe("***Banda Maré***"));
+  });
+
+  it("vira lista com marcadores e lista numerada", async () => {
+    const onChange = renderEditor("Portões às 20h");
+    const user = userEvent.setup();
+    await caretAtEnd();
+
+    await user.click(screen.getByRole("button", { name: "Lista" }));
+    await waitFor(() => expect(lastMarkdown(onChange)).toBe("- Portões às 20h"));
+
+    await caretAtEnd();
+    await user.click(screen.getByRole("button", { name: "Lista numerada" }));
+    await waitFor(() => expect(lastMarkdown(onChange)).toBe("1. Portões às 20h"));
+  });
+
+  it("aplica link https no texto selecionado e remove com o mesmo botão", async () => {
+    const onChange = renderEditor("Mapa");
+    const user = userEvent.setup();
+    await selectAll();
+
+    await user.click(screen.getByRole("button", { name: "Link" }));
+    const input = screen.getByLabelText("Endereço do link");
+    await user.clear(input);
+    await user.type(input, "https://exemplo.com/mapa{Enter}");
+
+    await waitFor(() => expect(lastMarkdown(onChange)).toBe("[Mapa](https://exemplo.com/mapa)"));
+    expect(screen.queryByLabelText("Endereço do link")).not.toBeInTheDocument();
+
+    await selectAll();
+    await user.click(screen.getByRole("button", { name: "Link" }));
+    await waitFor(() => expect(lastMarkdown(onChange)).toBe("Mapa"));
+  });
+
+  it("abre o link com Ctrl+K e cancela", async () => {
+    renderEditor("Mapa");
+    const user = userEvent.setup();
+    await selectAll();
+
+    const element = screen.getByRole("textbox", { name: "Descrição" });
+    act(() => { element.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true })); });
+
+    expect(await screen.findByLabelText("Endereço do link")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByLabelText("Endereço do link")).not.toBeInTheDocument();
+  });
+
+  it("título de nível 1 ou abaixo de 3 vira h2 ou h3", async () => {
+    renderEditor("# Grande\n\n#### Pequeno");
+    await caretAtEnd();
+
+    const editor = screen.getByRole("textbox", { name: "Descrição" });
+    await waitFor(() => expect(editor.querySelector("h1")).toBeNull());
+    expect(editor.querySelector("h2")).toHaveTextContent("Grande");
+    expect(editor.querySelector("h3")).toHaveTextContent("Pequeno");
+  });
+
+  it("mostra a dica e o erro ligados ao campo", () => {
+    renderEditor("");
+
+    const editor = screen.getByRole("textbox", { name: "Descrição" });
+    expect(editor).toHaveAttribute("aria-invalid", "true");
+    expect(editor).toHaveAttribute("aria-describedby", "description-hint");
+    expect(screen.getByText("Erro de teste")).toBeInTheDocument();
+  });
+});
+
+describe("níveis de título na vitrine", () => {
+  it("h4 a h6 viram h3", () => {
+    render(<MarkdownView markdown={"#### Quatro\n\n##### Cinco\n\n###### Seis"} />);
+
+    expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual(["Quatro", "Cinco", "Seis"]);
   });
 });
